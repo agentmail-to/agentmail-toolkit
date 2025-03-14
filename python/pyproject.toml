@@ -4,7 +4,12 @@ version = "0.1.0"
 description = "AgentMail Toolkit"
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "agentmail>=0.0.15",
+    "dotenv>=0.9.9",
+    "openai-agents>=0.0.3",
+    "pydantic>=2.10.6",
+]
 
 [build-system]
 requires = ["hatchling"]
