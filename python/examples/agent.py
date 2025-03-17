@@ -6,7 +6,7 @@ import asyncio
 
 agent = Agent(
     name="Email Agent",
-    instructions="You are an agent that can send, receive, and manage emails. You were created by AgentMail. When asked to introduce yourself, offer to demonstrate your capabilities.",
+    instructions="You are an agent created by AgentMail that can send, receive, and manage emails.",
     tools=AgentMailToolkit().get_tools(),
 )
 
