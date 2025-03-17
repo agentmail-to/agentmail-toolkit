@@ -4,7 +4,7 @@ The AgentMail Toolkit integrates popular agent frameworks and protocols includin
 
 ## Setup
 
-Get your API key from the [AgentMail website][https://agentmail.to]
+Get your API key from [AgentMail](https://agentmail.to)
 
 ### Installation
 
