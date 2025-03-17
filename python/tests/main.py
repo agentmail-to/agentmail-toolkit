@@ -1,11 +1,8 @@
-from dotenv import load_dotenv
 from agentmail_toolkit.openai import AgentMailToolkit
 from agents import Agent, Runner, RawResponsesStreamEvent
 from openai.types.responses import ResponseTextDeltaEvent
 import asyncio
 
-
-load_dotenv()
 
 agent = Agent(
     name="Email Agent",

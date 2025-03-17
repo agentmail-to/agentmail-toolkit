@@ -10,12 +10,14 @@ T = TypeVar("T")
 
 
 class Toolkit(Generic[T], ABC):
-    _client: AgentMail = AgentMail()
-    _tools: List[T] = []
+    _client: AgentMail = None
+    _tools: List[T] = None
 
     def __init__(self, client: Optional[AgentMail] = None):
         if client:
             self._client = client
+        else:
+            self._client = AgentMail()
 
         self._tools = [self._build_tool(tool) for tool in tools]
 

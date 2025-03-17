@@ -12,10 +12,14 @@ class AgentMailToolkit(Toolkit[FunctionTool]):
 
     def _build_tool(self, tool: Tool):
         async def on_invoke_tool(ctx: RunContextWrapper, input_str: str):
-            return self.call_method(
-                tool.method_name,
-                tool.params_schema.model_validate_json(input_str),
-            ).model_dump_json()
+            try:
+                result = self.call_method(
+                    tool.method_name,
+                    tool.params_schema.model_validate_json(input_str),
+                )
+                return result.model_dump_json()
+            except Exception as e:
+                return str(e)
 
         params_json_schema = tool.params_schema.model_json_schema()
         params_json_schema["additionalProperties"] = False
