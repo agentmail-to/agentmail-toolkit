@@ -38,7 +38,7 @@ tools: List[Tool] = [
     Tool(
         name="create_inbox",
         method_name="inboxes.create",
-        description="Create a new inbox",
+        description="Create a new inbox. Use default username, domain, and display name unless otherwise specified.",
         params_schema=CreateInboxParams,
     ),
     Tool(
