@@ -59,8 +59,10 @@ class SendMessageParams(BaseModel):
 
 class ReplyToMessageParams(BaseModel):
     inbox_id: str = Field(
-        description="The ID of the inbox to reply to the message from"
+        description="The inboc ID of the inbox to reply to the message from"
     )
-    message_id: str = Field(description="The ID of the message to reply to")
+    message_id: str = Field(
+        description="The message ID of the message you wish to reply to"
+    )
     text: Optional[str] = Field(description="The plain text body of the reply")
     html: Optional[str] = Field(description="The HTML body of the reply")
