@@ -12,8 +12,11 @@ class GetInboxParams(BaseModel):
 
 
 class CreateInboxParams(BaseModel):
-    username: str = Field(description="The username of the inbox to create")
-    display_name: str = Field(description="The display name of the inbox to create")
+    username: Optional[str] = Field(description="The username of the inbox to create.")
+    domain: Optional[str] = Field(description="The domain of the inbox to create.")
+    display_name: Optional[str] = Field(
+        description="The display name of the inbox to create."
+    )
 
 
 class ListThreadsParams(ListItemsParams):
