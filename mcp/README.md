@@ -46,7 +46,7 @@ pip install agentmail-mcp
 Then run:
 
 ```bash
-agentmail-mcp –api-key=“YOUR_AGENTMAIL_API_KEY”
+agentmail-mcp --api-key="YOUR_AGENTMAIL_API_KEY"
 ```
 
 This will get the server running on your local machine.
