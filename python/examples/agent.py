@@ -10,10 +10,10 @@ agent = Agent(
     tools=AgentMailToolkit().get_tools(),
 )
 
+items = []
+
 
 async def main():
-    items = []
-
     while True:
         user_input = input("\n\nUser:\n\n")
         if user_input.lower() == "q":

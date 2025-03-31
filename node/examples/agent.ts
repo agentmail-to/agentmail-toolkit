@@ -1,6 +1,6 @@
+import { createInterface } from 'node:readline/promises'
 import { type CoreMessage, streamText } from 'ai'
 import { openai } from '@ai-sdk/openai'
-import { createInterface } from 'node:readline/promises'
 
 import { AgentMailToolkit } from '../src'
 
@@ -21,7 +21,7 @@ async function main() {
             messages,
             system: 'You are an agent that can send, receive, and manage emails. You were created by AgentMail. When asked to introduce yourself, offer to demonstrate your capabilities.',
             tools: new AgentMailToolkit().getTools(),
-            maxSteps: 10,
+            maxSteps: 4,
         })
 
         process.stdout.write('\nAssistant:\n\n')
