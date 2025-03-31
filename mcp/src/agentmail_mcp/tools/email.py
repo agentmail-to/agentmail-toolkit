@@ -26,7 +26,9 @@ async def make_api_request(method: str, path: str, **kwargs) -> Dict[str, Any]:
     """Make a request to the AgentMail API"""
     global client
     if client is None:
-        logger.error("Client not initialized. Please call setup_client() first.")
+        error_msg = "Client not initialized. Please call setup_client() first."
+        logger.error(error_msg)
+        return {"error": error_msg, "status": "failed"}
 
     auth_header = client.headers.get("Authorization", "None")
     if auth_header.startswith("Bearer "):
@@ -34,29 +36,46 @@ async def make_api_request(method: str, path: str, **kwargs) -> Dict[str, Any]:
         logger.info(f"Using Authorization: {masked_token}")
     
     try:
+        logger.info(f"Making API request: {method.upper()} {path}")
         if method.lower() == "get":
             response = await client.get(path, **kwargs)
         elif method.lower() == "post":
             response = await client.post(path, **kwargs)
         elif method.lower() == "put":
             response = await client.put(path, **kwargs)
-        elif method.lower() == "delete":
-            response = await client.delete(path, **kwargs)
         else:
             raise ValueError(f"Unsupported HTTP method: {method}")
-            
+        
+        logger.info(f"API response status: {response.status_code}")
         response.raise_for_status()
-        return response.json()
+        
+        result = response.json()
+        logger.info(f"API response: {result}")
+        
+        # Check if response is empty or has no meaningful content
+        if not result or (isinstance(result, dict) and not any(result.values())):
+            return {"message": "The API returned an empty result", "data": result, "status": "success"}
+            
+        return result
+    except httpx.HTTPStatusError as e:
+        error_msg = f"HTTP error: {e.response.status_code} - {e.response.text}"
+        logger.error(f"API request error ({method} {path}): {error_msg}")
+        return {"error": error_msg, "status": "failed", "status_code": e.response.status_code}
+    except httpx.RequestError as e:
+        error_msg = f"Request error: {str(e)}"
+        logger.error(f"API request error ({method} {path}): {error_msg}")
+        return {"error": error_msg, "status": "failed"}
     except Exception as e:
-        logger.error(f"API request error ({method} {path}): {e}")
-        return {"error": str(e)}
+        error_msg = f"Unexpected error: {str(e)}"
+        logger.error(f"API request error ({method} {path}): {error_msg}")
+        return {"error": error_msg, "status": "failed"}
 
 def register_tools(mcp):
     """Register all email tools with the MCP server."""
     
     # Inbox operations
     @mcp.tool(description="List all inboxes")
-    async def list_inboxes(limit: Optional[int] = None, offset: Optional[int] = None) -> str:
+    async def listInboxes(limit: Optional[int] = None, offset: Optional[int] = None) -> str:
         """
         List all inboxes.
         
@@ -71,10 +90,20 @@ def register_tools(mcp):
             params["offset"] = offset
             
         result = await make_api_request("GET", "/inboxes", params=params)
+        
+        if "error" in result:
+            return f"Error listing inboxes: {result['error']}"
+        
+        # Check if we got inboxes or an empty list
+        if "data" in result and isinstance(result["data"], list):
+            if not result["data"]:
+                return "No inboxes found. You may need to create an inbox first."
+            return f"Found {len(result['data'])} inboxes: {result}"
+        
         return str(result)
     
     @mcp.tool(description="Get inbox by ID")
-    async def get_inbox(inbox_id: str) -> str:
+    async def getInbox(inbox_id: str) -> str:
         """
         Get inbox by ID.
         
@@ -85,7 +114,7 @@ def register_tools(mcp):
         return str(result)
     
     @mcp.tool(description="Create a new inbox")
-    async def create_inbox(username: Optional[str] = None, domain: Optional[str] = None, display_name: Optional[str] = None) -> str:
+    async def createInbox(username: Optional[str] = None, domain: Optional[str] = None, display_name: Optional[str] = None) -> str:
         """
         Create a new inbox. Use default username, domain, and display name unless otherwise specified.
         
@@ -107,7 +136,7 @@ def register_tools(mcp):
     
     # Thread operations
     @mcp.tool(description="List threads by inbox ID")
-    async def list_threads(inbox_id: str, limit: Optional[int] = None, offset: Optional[int] = None) -> str:
+    async def listThreads(inbox_id: str, limit: Optional[int] = None, offset: Optional[int] = None) -> str:
         """
         List threads by inbox ID.
         
@@ -126,7 +155,7 @@ def register_tools(mcp):
         return str(result)
     
     @mcp.tool(description="Get thread by ID")
-    async def get_thread(inbox_id: str, thread_id: str) -> str:
+    async def getThread(inbox_id: str, thread_id: str) -> str:
         """
         Get thread by ID.
         
@@ -139,7 +168,7 @@ def register_tools(mcp):
     
     # Message operations
     @mcp.tool(description="List messages")
-    async def list_messages(inbox_id: str, limit: Optional[int] = None, offset: Optional[int] = None) -> str:
+    async def listMessages(inbox_id: str, limit: Optional[int] = None, offset: Optional[int] = None) -> str:
         """
         List messages by thread ID.
         
@@ -158,7 +187,7 @@ def register_tools(mcp):
         return str(result)
     
     @mcp.tool(description="Get message by ID")
-    async def get_message(inbox_id: str, message_id: str) -> str:
+    async def getMessage(inbox_id: str, message_id: str) -> str:
         """
         Get message by ID.
         
@@ -170,7 +199,7 @@ def register_tools(mcp):
     
     # Attachment operations
     @mcp.tool(description="Get attachment by ID")
-    async def get_attachment(inbox_id: str, message_id: str, attachment_id: str) -> str:
+    async def getAttachment(inbox_id: str, message_id: str, attachment_id: str) -> str:
         """
         Get attachment by ID.
         
@@ -183,7 +212,7 @@ def register_tools(mcp):
     logger.info("Email tools registered")
 
     @mcp.tool(description="Send a message")
-    async def send_message(
+    async def sendMessage(
         inbox_id: str, 
         to: List[str], 
         subject: str, 
@@ -221,7 +250,7 @@ def register_tools(mcp):
         return str(result)
     
     @mcp.tool(description="Reply to a message")
-    async def reply_to_message(
+    async def replyToMessage(
         inbox_id: str,
         message_id: str, 
         text: str, 
@@ -249,14 +278,14 @@ def register_tools(mcp):
         result = await make_api_request("POST", f"/inboxes/{inbox_id}/messages/{message_id}/reply", json=payload)
         return str(result)
     return {
-        "list_inboxes": list_inboxes,
-        "get_inbox": get_inbox,
-        "create_inbox": create_inbox,
-        "list_threads": list_threads,
-        "get_thread": get_thread,
-        "list_messages": list_messages,
-        "get_message": get_message,
-        "send_message": send_message,
-        "reply_to_message": reply_to_message,
-        "get_attachment": get_attachment
+        "listInboxes": listInboxes,
+        "getInbox": getInbox,
+        "createInbox": createInbox,
+        "listThreads": listThreads,
+        "getThread": getThread,
+        "listMessages": listMessages,
+        "getMessage": getMessage,
+        "sendMessage": sendMessage,
+        "replyToMessage": replyToMessage,
+        "getAttachment": getAttachment
     }
