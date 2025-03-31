@@ -1,14 +1,30 @@
 {
     "name": "agentmail-toolkit",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "AgentMail Toolkit",
+    "main": "dist/src/index.js",
+    "files": [
+        "dist/src",
+        "README.md",
+        "LICENSE"
+    ],
     "scripts": {
         "build": "tsc",
         "lint": "eslint .",
         "test": "echo \"Error: no test specified\" && exit 1"
     },
-    "author": "",
+    "author": "AgentMail",
     "license": "ISC",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/agentmail-to/agentmail-toolkit.git"
+    },
+    "keywords": [
+        "Agents",
+        "Email",
+        "AgentMail",
+        "Toolkit"
+    ],
     "packageManager": "pnpm@10.6.4",
     "devDependencies": {
         "@eslint/js": "^9.22.0",
