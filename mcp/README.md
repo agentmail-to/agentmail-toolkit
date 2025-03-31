@@ -4,7 +4,7 @@ A simple **Model Context Protocol (MCP)** server that integrates with [AgentMail
 
 ### About AgentMail
 
-AgentMail is an API-first email provider that allows AI Agents to create inboxes on the fly to send, recieve and take action on emails. We have layers of intelligence built on top of the email layer optimized for agentic workflows and make data digestable by LLMs. Request an API key here[https://tally.so/r/nrYr4X]!
+AgentMail is an API-first email provider that allows AI Agents to create inboxes on the fly to send, recieve and take action on emails. We have layers of intelligence built on top of the email layer optimized for agentic workflows and make data digestable by LLMs. Request an API key [here](https://tally.so/r/nrYr4X)!
 
 ---
 
