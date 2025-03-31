@@ -61,7 +61,7 @@ If you want to interact with the server from Claude Desktop, follow these exact 
 source .venv/bin/activate
 ```
 
-2. Run the line below to find out where the MCP server is located. It should be in some .venv/bin/ directory.
+2. Run the line below to find out where the Agentmail MCP server package is located. It should be in some .venv/bin/ directory if you installed the agentmail-mcp package in the virtual environment. For Claude Desktop it is important you installed it in the virtual environment.
 
 ```bash
 which agentmail-mcp
