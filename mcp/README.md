@@ -22,7 +22,7 @@ This is a work in progress package as the MCP protocol is still evolving. Will u
 ### Prerequisites
 
 - **Python 3.10+**
-- **AgentMail account** (or valid API key)
+- **AgentMail API key**
 - (Optional) **Claude Desktop** or any other front-end that supports MCP commands
 
 ---
@@ -42,10 +42,12 @@ pip install agentmail-mcp
 Then run:
 
 ```bash
-agentmail-mcp-server –api-key=“YOUR_AGENTMAIL_API_KEY”
+agentmail-mcp –api-key=“YOUR_AGENTMAIL_API_KEY”
 ```
 
 This will get the server running on your local machine.
+
+# Option 1: Using Claude Desktop
 
 If you want to interact with the server from Claude Desktop, follow these exact steps.
 
@@ -55,7 +57,7 @@ If you want to interact with the server from Claude Desktop, follow these exact 
 source .venv/bin/activate
 ```
 
-2. Run which to find out where the MCP server is located.
+2. Run the line below to find out where the MCP server is located. It should be in some .venv/bin/ directory.
 
 ```bash
 which agentmail-mcp
