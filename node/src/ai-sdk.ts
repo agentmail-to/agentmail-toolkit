@@ -16,4 +16,8 @@ export class AgentMailToolkit extends Toolkit<AiSdkTool> {
             execute: (args) => this.callMethod(tool.methodName, args),
         }
     }
+
+    public getTools() {
+        return this.tools
+    }
 }

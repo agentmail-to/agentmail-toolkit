@@ -2,7 +2,7 @@ import { AgentMailClient } from 'agentmail'
 import { type Tool, tools } from './tools'
 
 export abstract class Toolkit<T> {
-    private readonly tools: Record<string, T> = {}
+    protected readonly tools: Record<string, T> = {}
 
     constructor(private readonly client?: AgentMailClient) {
         if (!this.client) this.client = new AgentMailClient()
@@ -18,9 +18,9 @@ export abstract class Toolkit<T> {
 
     protected abstract buildTool(tool: Tool): T
 
-    public getTools() {
-        return this.tools
-    }
+    // public getTools() {
+    //     return this.tools
+    // }
 
     public async callMethod(methodName: string, args: unknown) {
         const parts = methodName.split('.')

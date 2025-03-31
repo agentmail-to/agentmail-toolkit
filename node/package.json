@@ -1,6 +1,6 @@
 {
     "name": "agentmail-toolkit",
-    "version": "0.1.10",
+    "version": "0.1.11",
     "description": "AgentMail Toolkit",
     "files": [
         "dist/**/*"
@@ -10,6 +10,11 @@
             "types": "./dist/ai-sdk.d.ts",
             "import": "./dist/ai-sdk.mjs",
             "require": "./dist/ai-sdk.js"
+        },
+        "./langchain": {
+            "types": "./dist/langchain.d.ts",
+            "import": "./dist/langchain.mjs",
+            "require": "./dist/langchain.js"
         }
     },
     "scripts": {
@@ -48,6 +53,7 @@
         "zod": "^3.24.2"
     },
     "peerDependencies": {
+        "@langchain/core": "^0.3.43",
         "ai": "^4.2.8"
     }
 }
