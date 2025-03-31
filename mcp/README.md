@@ -2,11 +2,15 @@
 
 A simple **Model Context Protocol (MCP)** server that integrates with [AgentMail](https://agentmail.to) to dynamically manage email inboxes, list messages, and send or reply to emails—all through an AI assistant such as Claude. This reference implementation demonstrates how to use AgentMail’s API within an MCP server to orchestrate email inboxes on the fly.
 
+### About AgentMail
+
+AgentMail is an API-first email provider that allows AI Agents to create inboxes on the fly to send, recieve and take action on emails. We have layers of intelligence built on top of the email layer optimized for agentic workflows and make data digestable by LLMs. Request an API key here[https://tally.so/r/nrYr4X]!
+
 ---
 
 ### Important Note
 
-This is a work in progress package as the MCP protocol is still evolving. Will update as soon as new features are added. Join our discord! [Discord](https://discord.com/invite/ZYN7f7KPjS)
+This is a work in progress package as the MCP protocol is still evolving. Will update as soon as new features are added. Join our discord and join the community! [Discord](https://discord.com/invite/ZYN7f7KPjS)
 
 ### Features
 
