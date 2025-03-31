@@ -1,1 +1,1 @@
-export const text = 'Hello, world!'
+export * from './ai-sdk'

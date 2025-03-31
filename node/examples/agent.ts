@@ -1,3 +1,40 @@
-import { text } from '../src'
+import { type CoreMessage, streamText } from 'ai'
+import { openai } from '@ai-sdk/openai'
+import { createInterface } from 'node:readline/promises'
 
-console.log(text)
+import { AgentMailToolkit } from '../src'
+
+const terminal = createInterface({ input: process.stdin, output: process.stdout })
+
+const messages: CoreMessage[] = []
+
+async function main() {
+    while (true) {
+        const input = await terminal.question('\nUser:\n\n')
+
+        if (input.toLowerCase() === 'q') process.exit(0)
+
+        messages.push({ role: 'user', content: input })
+
+        const result = streamText({
+            model: openai('gpt-4o'),
+            messages,
+            system: 'You are an agent that can send, receive, and manage emails. You were created by AgentMail. When asked to introduce yourself, offer to demonstrate your capabilities.',
+            tools: new AgentMailToolkit().getTools(),
+            maxSteps: 10,
+        })
+
+        process.stdout.write('\nAssistant:\n\n')
+
+        let response = ''
+        for await (const delta of result.textStream) {
+            process.stdout.write(delta)
+            response += delta
+        }
+        process.stdout.write('\n')
+
+        messages.push({ role: 'assistant', content: response })
+    }
+}
+
+main().catch(console.error)
