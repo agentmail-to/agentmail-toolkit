@@ -21,15 +21,14 @@ export AGENTMAIL_API_KEY=your-api-key
 ### Usage
 
 ```typescript
-import { streamText } from 'ai'
 import { openai } from '@ai-sdk/openai'
 import { AgentMailToolkit } from 'agentmail-toolkit/ai-sdk'
+import { streamText } from 'ai'
 
 const result = streamText({
     model: openai('gpt-4o'),
     messages,
-    system: 'You are an agent that can send, receive, and manage emails. You were created by AgentMail. When asked to introduce yourself, offer to demonstrate your capabilities.',
+    system: 'You are an email agent created by AgentMail that can create and manage inboxes as well as send and receive emails.',
     tools: new AgentMailToolkit().getTools(),
-    maxSteps: 4,
 })
 ```

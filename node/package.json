@@ -1,9 +1,26 @@
 {
     "name": "agentmail-toolkit",
-    "version": "0.1.11",
+    "version": "0.1.12",
     "description": "AgentMail Toolkit",
+    "scripts": {
+        "build": "tsup",
+        "lint": "eslint .",
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "prettier": "prettier --write ."
+    },
+    "author": "AgentMail <support@agentmail.to>",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/agentmail-to/agentmail-toolkit.git"
+    },
+    "keywords": [
+        "AgentMail",
+        "Toolkit"
+    ],
+    "packageManager": "pnpm@10.6.4",
     "files": [
-        "dist/**/*"
+        "dist"
     ],
     "exports": {
         "./ai-sdk": {
@@ -17,24 +34,6 @@
             "require": "./dist/langchain.js"
         }
     },
-    "scripts": {
-        "build": "tsup",
-        "lint": "eslint .",
-        "test": "echo \"Error: no test specified\" && exit 1"
-    },
-    "author": "AgentMail",
-    "license": "ISC",
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/agentmail-to/agentmail-toolkit.git"
-    },
-    "keywords": [
-        "Agents",
-        "Email",
-        "AgentMail",
-        "Toolkit"
-    ],
-    "packageManager": "pnpm@10.6.4",
     "devDependencies": {
         "@eslint/js": "^9.22.0",
         "@types/node": "^22.13.10",
@@ -48,7 +47,6 @@
         "typescript-eslint": "^8.26.1"
     },
     "dependencies": {
-        "@ai-sdk/openai": "^1.3.4",
         "agentmail": "^0.0.22",
         "zod": "^3.24.2"
     },

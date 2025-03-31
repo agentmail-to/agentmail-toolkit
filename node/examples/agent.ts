@@ -1,6 +1,6 @@
 import { createInterface } from 'node:readline/promises'
-import { type CoreMessage, streamText } from 'ai'
 import { openai } from '@ai-sdk/openai'
+import { type CoreMessage, streamText } from 'ai'
 
 import { AgentMailToolkit } from '../src/ai-sdk'
 
@@ -19,7 +19,7 @@ async function main() {
         const result = streamText({
             model: openai('gpt-4o'),
             messages,
-            system: 'You are an agent that can send, receive, and manage emails. You were created by AgentMail. When asked to introduce yourself, offer to demonstrate your capabilities.',
+            system: 'You are an email agent created by AgentMail that can create and manage inboxes as well as send and receive emails.',
             tools: new AgentMailToolkit().getTools(),
             maxSteps: 4,
         })
