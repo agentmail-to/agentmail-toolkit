@@ -1,10 +1,10 @@
 import { type Tool as AiSdkTool } from 'ai'
 import { AgentMailClient } from 'agentmail'
 
-import { Toolkit } from './toolkit'
+import { MapToolkit } from './toolkit'
 import { type Tool } from './tools'
 
-export class AgentMailToolkit extends Toolkit<AiSdkTool> {
+export class AgentMailToolkit extends MapToolkit<AiSdkTool> {
     constructor(client?: AgentMailClient) {
         super(client)
     }
@@ -12,12 +12,8 @@ export class AgentMailToolkit extends Toolkit<AiSdkTool> {
     protected buildTool(tool: Tool): AiSdkTool {
         return {
             description: tool.description,
-            parameters: tool.paramsSchema,
-            execute: (args) => this.callMethod(tool.methodName, args),
+            parameters: tool.schema,
+            execute: (args) => this.callMethod(tool.method, args),
         }
-    }
-
-    public getTools() {
-        return this.tools
     }
 }

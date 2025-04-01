@@ -1,10 +1,10 @@
 import { type StructuredTool, tool as langchainTool } from '@langchain/core/tools'
 import { AgentMailClient } from 'agentmail'
 
-import { Toolkit } from './toolkit'
+import { ListToolkit } from './toolkit'
 import { type Tool } from './tools'
 
-export class AgentMailToolkit extends Toolkit<StructuredTool> {
+export class AgentMailToolkit extends ListToolkit<StructuredTool> {
     constructor(client?: AgentMailClient) {
         super(client)
     }
@@ -12,18 +12,14 @@ export class AgentMailToolkit extends Toolkit<StructuredTool> {
     protected buildTool(tool: Tool): StructuredTool {
         return langchainTool(
             async (args) => {
-                const result = await this.callMethod(tool.methodName, args)
+                const result = await this.callMethod(tool.method, args)
                 return result.toString()
             },
             {
                 name: tool.name,
                 description: tool.description,
-                schema: tool.paramsSchema,
+                schema: tool.schema,
             }
         )
-    }
-
-    public getTools() {
-        return Object.values(this.tools)
     }
 }
