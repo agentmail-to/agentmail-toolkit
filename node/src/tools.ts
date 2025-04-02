@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import { ZodTypeAny } from 'zod'
 
 import {
     ListItemsParams,
@@ -17,7 +17,7 @@ export type Tool = {
     name: string
     method: string
     description: string
-    schema: z.ZodObject<any>
+    schema: ZodTypeAny
 }
 
 export const tools: Tool[] = [

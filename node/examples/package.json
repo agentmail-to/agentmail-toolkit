@@ -13,5 +13,8 @@
         "@ai-sdk/openai": "^1.3.6",
         "agentmail-toolkit": "latest",
         "ai": "^4.2.10"
+    },
+    "devDependencies": {
+        "ts-node": "^10.9.2"
     }
 }
