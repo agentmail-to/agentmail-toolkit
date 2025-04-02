@@ -13,7 +13,7 @@ export class AgentMailToolkit extends ListToolkit<StructuredTool> {
         return langchainTool(
             async (args) => {
                 const result = await this.callMethod(tool.method, args)
-                return result.toString()
+                return JSON.stringify(result, null, 2)
             },
             {
                 name: tool.name,
