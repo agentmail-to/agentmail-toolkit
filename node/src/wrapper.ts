@@ -5,7 +5,7 @@ export class Wrapper {
         if (!this.client) this.client = new AgentMailClient()
     }
 
-    protected async callMethod(method: string, args: unknown) {
+    public async callMethod(method: string, args: unknown) {
         const parts = method.split('.')
         const methodKey = parts.pop()
 

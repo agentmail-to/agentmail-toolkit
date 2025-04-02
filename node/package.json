@@ -52,6 +52,7 @@
     },
     "peerDependencies": {
         "@langchain/core": "^0.3.43",
+        "@modelcontextprotocol/sdk": "^1.8.0",
         "ai": "^4.2.8"
     }
 }
