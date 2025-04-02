@@ -10,11 +10,11 @@ const messages: CoreMessage[] = []
 
 async function main() {
     while (true) {
-        const input = await terminal.question('\nUser:\n\n')
+        const prompt = await terminal.question('\nUser:\n\n')
 
-        if (input.toLowerCase() === 'q') process.exit(0)
+        if (prompt.toLowerCase() === 'q') process.exit(0)
 
-        messages.push({ role: 'user', content: input })
+        messages.push({ role: 'user', content: prompt })
 
         const result = streamText({
             model: openai('gpt-4o'),

@@ -15,12 +15,12 @@ async def main():
     items = []
 
     while True:
-        user_input = input("\n\nUser:\n\n")
-        if user_input.lower() == "q":
+        prompt = input("\n\nUser:\n\n")
+        if prompt.lower() == "q":
             break
 
         result = Runner.run_streamed(
-            agent, items + [{"role": "user", "content": user_input}]
+            agent, items + [{"role": "user", "content": prompt}]
         )
 
         print("\nAssistant:\n")
