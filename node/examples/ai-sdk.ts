@@ -1,7 +1,8 @@
 import { createInterface } from 'node:readline/promises'
 import { type CoreMessage, streamText } from 'ai'
 import { openai } from '@ai-sdk/openai'
-import { AgentMailToolkit } from 'agentmail-toolkit/ai-sdk'
+
+import { AgentMailToolkit } from '../src/ai-sdk'
 
 const terminal = createInterface({ input: process.stdin, output: process.stdout })
 

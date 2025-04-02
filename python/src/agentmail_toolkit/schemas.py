@@ -12,17 +12,16 @@ class GetInboxParams(BaseModel):
 
 
 class CreateInboxParams(BaseModel):
-    username: Optional[str] = Field(description="The username of the inbox to create.")
-    domain: Optional[str] = Field(description="The domain of the inbox to create.")
+    username: Optional[str] = Field(description="The username of the inbox to create")
+    domain: Optional[str] = Field(description="The domain of the inbox to create")
     display_name: Optional[str] = Field(
-        description="The display name of the inbox to create."
+        description="The display name of the inbox to create"
     )
 
 
 class ListThreadsParams(ListItemsParams):
     inbox_id: str = Field(description="The ID of the inbox to list threads for")
-    received: bool = Field(description="Whether to filter by received threads")
-    sent: bool = Field(description="Whether to filter by sent threads")
+    labels: Optional[List[str]] = Field(description="The labels to filter threads by")
 
 
 class GetThreadParams(BaseModel):
@@ -32,6 +31,7 @@ class GetThreadParams(BaseModel):
 
 class ListMessagesParams(ListItemsParams):
     inbox_id: str = Field(description="The ID of the inbox to list messages for")
+    labels: Optional[List[str]] = Field(description="The labels to filter messages by")
 
 
 class GetMessageParams(BaseModel):

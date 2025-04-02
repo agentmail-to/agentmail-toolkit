@@ -10,15 +10,14 @@ export const GetInboxParams = z.object({
 })
 
 export const CreateInboxParams = z.object({
-    username: z.string().optional().describe('The username of the inbox to create.'),
-    domain: z.string().optional().describe('The domain of the inbox to create.'),
-    display_name: z.string().optional().describe('The display name of the inbox to create.'),
+    username: z.string().optional().describe('The username of the inbox to create'),
+    domain: z.string().optional().describe('The domain of the inbox to create'),
+    display_name: z.string().optional().describe('The display name of the inbox to create'),
 })
 
 export const ListThreadsParams = ListItemsParams.extend({
     inbox_id: z.string().describe('The ID of the inbox to list threads for'),
-    received: z.boolean().optional().describe('Whether to filter by received threads'),
-    sent: z.boolean().optional().describe('Whether to filter by sent threads'),
+    labels: z.array(z.string()).optional().describe('The labels to filter threads by'),
 })
 
 export const GetThreadParams = z.object({
@@ -28,6 +27,7 @@ export const GetThreadParams = z.object({
 
 export const ListMessagesParams = ListItemsParams.extend({
     inbox_id: z.string().describe('The ID of the inbox to list messages for'),
+    labels: z.array(z.string()).optional().describe('The labels to filter messages by'),
 })
 
 export const GetMessageParams = z.object({
@@ -52,7 +52,7 @@ export const SendMessageParams = z.object({
 })
 
 export const ReplyToMessageParams = z.object({
-    inbox_id: z.string().describe('The inboc ID of the inbox to reply to the message from'),
+    inbox_id: z.string().describe('The inbox ID of the inbox to reply to the message from'),
     message_id: z.string().describe('The message ID of the message you wish to reply to'),
     text: z.string().optional().describe('The plain text body of the reply'),
     html: z.string().optional().describe('The HTML body of the reply'),
