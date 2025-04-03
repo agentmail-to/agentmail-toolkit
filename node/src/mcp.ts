@@ -15,8 +15,6 @@ export class AgentMailMcpServer extends McpServer {
 
         this.wrapper = new Wrapper(client)
 
-        for (const tool of tools) {
-            this.tool(tool.name, tool.description, tool.schema.shape, (args: unknown) => this.wrapper.callMethod(tool.method, args))
-        }
+        for (const tool of tools) this.tool(tool.name, tool.description, tool.schema.shape, (args: unknown) => this.wrapper.callMethod(tool.method, args))
     }
 }

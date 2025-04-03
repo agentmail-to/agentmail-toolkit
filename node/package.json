@@ -1,23 +1,23 @@
 {
     "name": "agentmail-toolkit",
-    "version": "0.1.14",
+    "version": "0.1.15",
     "description": "AgentMail Toolkit",
     "scripts": {
         "build": "tsup",
         "lint": "eslint .",
-        "test": "echo \"Error: no test specified\" && exit 1",
-        "prettier": "prettier --write ."
+        "prettier": "prettier --write .",
+        "test": "echo \"Error: no test specified\" && exit 1"
     },
+    "keywords": [
+        "AgentMail",
+        "Toolkit"
+    ],
     "author": "AgentMail <support@agentmail.to>",
     "license": "MIT",
     "repository": {
         "type": "git",
         "url": "git+https://github.com/agentmail-to/agentmail-toolkit.git"
     },
-    "keywords": [
-        "AgentMail",
-        "Toolkit"
-    ],
     "packageManager": "pnpm@10.6.4",
     "files": [
         "dist"
@@ -32,6 +32,11 @@
             "types": "./dist/langchain.d.ts",
             "import": "./dist/langchain.mjs",
             "require": "./dist/langchain.js"
+        },
+        "./mcp": {
+            "types": "./dist/mcp.d.ts",
+            "import": "./dist/mcp.mjs",
+            "require": "./dist/mcp.js"
         }
     },
     "devDependencies": {
