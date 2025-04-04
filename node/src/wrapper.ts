@@ -16,4 +16,13 @@ export class Wrapper {
 
         return await parent[methodKey].call(parent, args)
     }
+
+    public async callMethodAndStringify(method: string, args: unknown) {
+        try {
+            const result = await this.callMethod(method, args)
+            return JSON.stringify(result, null, 2)
+        } catch (error) {
+            return JSON.stringify(error, null, 2)
+        }
+    }
 }
