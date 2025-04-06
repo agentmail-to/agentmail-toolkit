@@ -10,7 +10,7 @@ export class AgentMailToolkit extends ListToolkit<StructuredTool> {
     }
 
     protected buildTool(tool: Tool): StructuredTool {
-        return langchainTool((args) => this.callMethodAndStringify(tool.method, args), {
+        return langchainTool(async (args) => JSON.stringify((await this.safeCall(tool.method, args)).result, null, 2), {
             name: tool.name,
             description: tool.description,
             schema: tool.schema,

@@ -5,7 +5,7 @@ export class Wrapper {
         if (!this.client) this.client = new AgentMailClient()
     }
 
-    public async callMethod(method: string, args: unknown) {
+    public async call(method: string, args: any) {
         const parts = method.split('.')
         const methodKey = parts.pop()
 
@@ -14,15 +14,18 @@ export class Wrapper {
         let parent: any = this.client
         for (const part of parts) parent = parent[part]
 
-        return await parent[methodKey].call(parent, args)
+        const { inboxId, ...options } = args
+
+        if (inboxId) return await parent[methodKey].call(parent, inboxId, options)
+        else return await parent[methodKey].call(parent, options)
     }
 
-    public async callMethodAndStringify(method: string, args: unknown) {
+    public async safeCall(method: string, args: any) {
         try {
-            const result = await this.callMethod(method, args)
-            return JSON.stringify(result, null, 2)
+            return { isError: false, result: await this.call(method, args) }
         } catch (error) {
-            return JSON.stringify(error, null, 2)
+            if (error instanceof Error) return { isError: true, result: error.message }
+            else return { isError: true, result: 'Unknown error' }
         }
     }
 }

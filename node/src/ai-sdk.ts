@@ -13,7 +13,7 @@ export class AgentMailToolkit extends MapToolkit<AiSdkTool> {
         return {
             description: tool.description,
             parameters: tool.schema,
-            execute: (args) => this.callMethod(tool.method, args),
+            execute: async (args) => (await this.safeCall(tool.method, args)).result,
         }
     }
 }

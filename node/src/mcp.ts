@@ -16,14 +16,10 @@ export class AgentMailMcpServer extends McpServer {
         this.wrapper = new Wrapper(client)
 
         for (const tool of tools) {
-            this.tool(tool.name, tool.description, tool.schema.shape, async (args: unknown) => ({
-                content: [
-                    {
-                        type: 'text' as const,
-                        text: await this.wrapper.callMethodAndStringify(tool.method, args),
-                    },
-                ],
-            }))
+            this.tool(tool.name, tool.description, tool.schema.shape, async (args: unknown) => {
+                const { isError, result } = await this.wrapper.safeCall(tool.method, args)
+                return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }], isError }
+            })
         }
     }
 }
