@@ -5,6 +5,12 @@ resolution-markers = [
     "python_full_version >= '3.12.4'",
 ]
 
+[manifest]
+members = [
+    "agentmail-toolkit",
+    "agentmail-toolkit-examples",
+]
+
 [[package]]
 name = "agentmail"
 version = "0.0.19"
@@ -22,13 +28,11 @@ wheels = [
 
 [[package]]
 name = "agentmail-toolkit"
-version = "0.1.6"
+version = "0.1.7"
 source = { editable = "." }
 dependencies = [
     { name = "agentmail" },
     { name = "langchain" },
-    { name = "langchain-openai" },
-    { name = "langgraph" },
     { name = "openai-agents" },
     { name = "pydantic" },
 ]
@@ -43,8 +47,6 @@ dev = [
 requires-dist = [
     { name = "agentmail", specifier = ">=0.0.19" },
     { name = "langchain", specifier = ">=0.3.23" },
-    { name = "langchain-openai", specifier = ">=0.3.12" },
-    { name = "langgraph", specifier = ">=0.3.25" },
     { name = "openai-agents", specifier = ">=0.0.3" },
     { name = "pydantic", specifier = ">=2.10.6" },
 ]
@@ -53,6 +55,21 @@ requires-dist = [
 dev = [
     { name = "build", specifier = ">=1.2.2.post1" },
     { name = "twine", specifier = ">=6.1.0" },
+]
+
+[[package]]
+name = "agentmail-toolkit-examples"
+version = "0.1.0"
+source = { virtual = "examples" }
+dependencies = [
+    { name = "langchain-openai" },
+    { name = "langgraph" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "langchain-openai", specifier = ">=0.3.12" },
+    { name = "langgraph", specifier = ">=0.3.25" },
 ]
 
 [[package]]

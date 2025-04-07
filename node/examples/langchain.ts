@@ -10,11 +10,10 @@ const terminal = createInterface({ input: process.stdin, output: process.stdout 
 const agent = createReactAgent({
     llm: new ChatOpenAI({ model: 'gpt-4o' }),
     tools: new AgentMailToolkit().getTools(),
+    prompt: 'You are an email agent created by AgentMail that can create and manage inboxes as well as send and receive emails.',
 })
 
-const messages: (SystemMessage | HumanMessage | AIMessage)[] = [
-    new SystemMessage('You are an email agent created by AgentMail that can create and manage inboxes as well as send and receive emails.'),
-]
+const messages: (SystemMessage | HumanMessage | AIMessage)[] = []
 
 async function main() {
     while (true) {
@@ -29,10 +28,11 @@ async function main() {
         const result = await agent.stream({ messages }, { streamMode: 'messages' })
 
         let response = ''
-        for await (const [message, _] of result) {
-            if (!isAIMessageChunk(message)) continue
-            process.stdout.write(message.text)
-            response += message.text
+        for await (const [chunk, _] of result) {
+            if (!isAIMessageChunk(chunk)) continue
+
+            process.stdout.write(chunk.text)
+            response += chunk.text
         }
         process.stdout.write('\n')
 

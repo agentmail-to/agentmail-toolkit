@@ -1,16 +1,14 @@
 [project]
 name = "agentmail-toolkit"
-version = "0.1.7"
+version = "0.1.8"
 description = "AgentMail Toolkit"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "agentmail>=0.0.19",
-    "langchain-openai>=0.3.12",
     "langchain>=0.3.23",
     "openai-agents>=0.0.3",
     "pydantic>=2.10.6",
-    "langgraph>=0.3.25",
 ]
 
 [build-system]
@@ -22,3 +20,6 @@ dev = [
     "build>=1.2.2.post1",
     "twine>=6.1.0",
 ]
+
+[tool.uv.workspace]
+members = ["examples"]
