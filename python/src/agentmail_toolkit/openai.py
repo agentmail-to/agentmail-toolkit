@@ -1,6 +1,6 @@
 from typing import Optional
-from agentmail import AgentMail
 from agents import FunctionTool, RunContextWrapper
+from agentmail import AgentMail
 
 from .toolkit import Toolkit
 from .tools import Tool

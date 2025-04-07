@@ -12,7 +12,7 @@ agent = Agent(
 
 
 async def main():
-    items = []
+    messages = []
 
     while True:
         prompt = input("\n\nUser:\n\n")
@@ -20,7 +20,7 @@ async def main():
             break
 
         result = Runner.run_streamed(
-            agent, items + [{"role": "user", "content": prompt}]
+            agent, messages + [{"role": "user", "content": prompt}]
         )
 
         print("\nAssistant:\n")
@@ -31,7 +31,7 @@ async def main():
             ):
                 print(event.data.delta, end="", flush=True)
 
-        items = result.to_input_list()
+        messages = result.to_input_list()
 
 
 if __name__ == "__main__":
