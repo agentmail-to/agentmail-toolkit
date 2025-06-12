@@ -1,59 +1,53 @@
 import { z } from 'zod'
 
 export const ListItemsParams = z.object({
-    limit: z.number().optional().describe('The maximum number of items to return'),
-    last_key: z.string().optional().describe('The last key to use for pagination'),
+    limit: z.number().optional().describe('Max number of items to return'),
+    page_token: z.string().optional().describe('Page token for pagination'),
 })
 
 export const GetInboxParams = z.object({
-    inbox_id: z.string().describe('The ID of the inbox to get'),
+    inbox_id: z.string().describe('ID of inbox to get'),
 })
 
 export const CreateInboxParams = z.object({
-    username: z.string().optional().describe('The username of the inbox to create'),
-    domain: z.string().optional().describe('The domain of the inbox to create'),
-    display_name: z.string().optional().describe('The display name of the inbox to create'),
+    username: z.string().optional().describe('Username of inbox to create'),
+    domain: z.string().optional().describe('Domain of inbox to create'),
+    display_name: z.string().optional().describe('Display name of inbox to create'),
 })
 
 export const ListThreadsParams = ListItemsParams.extend({
-    inbox_id: z.string().describe('The ID of the inbox to list threads for'),
-    labels: z.array(z.string()).optional().describe('The labels to filter threads by'),
+    inbox_id: z.string().describe('ID of inbox to list threads from'),
+    labels: z.array(z.string()).optional().describe('Labels to filter threads by'),
 })
 
 export const GetThreadParams = z.object({
-    inbox_id: z.string().describe('The ID of the inbox to get the thread for'),
-    thread_id: z.string().describe('The ID of the thread to get'),
+    inbox_id: z.string().describe('ID of inbox to get thread from'),
+    thread_id: z.string().describe('ID of thread to get'),
 })
 
 export const ListMessagesParams = ListItemsParams.extend({
-    inbox_id: z.string().describe('The ID of the inbox to list messages for'),
-    labels: z.array(z.string()).optional().describe('The labels to filter messages by'),
+    inbox_id: z.string().describe('ID of inbox to list messages from'),
+    labels: z.array(z.string()).optional().describe('Labels to filter messages by'),
 })
 
 export const GetMessageParams = z.object({
-    inbox_id: z.string().describe('The ID of the inbox to get the message for'),
-    message_id: z.string().describe('The ID of the message to get'),
-})
-
-export const GetAttachmentParams = z.object({
-    inbox_id: z.string().describe('The ID of the inbox to get the attachment for'),
-    message_id: z.string().describe('The ID of the message to get the attachment for'),
-    attachment_id: z.string().describe('The ID of the attachment to get'),
+    inbox_id: z.string().describe('ID of inbox to get message from'),
+    message_id: z.string().describe('ID of message to get'),
 })
 
 export const SendMessageParams = z.object({
-    inbox_id: z.string().describe('The ID of the inbox to send the message from'),
-    to: z.array(z.string()).describe('The list of recipients'),
-    cc: z.array(z.string()).optional().describe('The list of CC recipients'),
-    bcc: z.array(z.string()).optional().describe('The list of BCC recipients'),
-    subject: z.string().optional().describe('The subject of the message'),
-    text: z.string().optional().describe('The plain text body of the message'),
-    html: z.string().optional().describe('The HTML body of the message'),
+    inbox_id: z.string().describe('ID of inbox to send message from'),
+    to: z.array(z.string()).describe('Recipients of message'),
+    cc: z.array(z.string()).optional().describe('CC recipients of message'),
+    bcc: z.array(z.string()).optional().describe('BCC recipients of message'),
+    subject: z.string().optional().describe('Subject of message'),
+    text: z.string().optional().describe('Plain text body of message'),
+    html: z.string().optional().describe('HTML body of message'),
 })
 
 export const ReplyToMessageParams = z.object({
-    inbox_id: z.string().describe('The inbox ID of the inbox to reply to the message from'),
-    message_id: z.string().describe('The message ID of the message you wish to reply to'),
-    text: z.string().optional().describe('The plain text body of the reply'),
-    html: z.string().optional().describe('The HTML body of the reply'),
+    inbox_id: z.string().describe('ID of inbox to reply to message from'),
+    message_id: z.string().describe('ID of message to reply to'),
+    text: z.string().optional().describe('Plain text body of reply'),
+    html: z.string().optional().describe('HTML body of reply'),
 })

@@ -1,6 +1,6 @@
 {
     "name": "agentmail-toolkit",
-    "version": "0.1.20",
+    "version": "0.1.21",
     "description": "AgentMail Toolkit",
     "scripts": {
         "build": "tsup",
@@ -12,7 +12,7 @@
         "AgentMail",
         "Toolkit"
     ],
-    "author": "AgentMail <support@agentmail.to>",
+    "author": "AgentMail <support@agentmail.cc>",
     "license": "MIT",
     "repository": {
         "type": "git",
@@ -45,24 +45,24 @@
         }
     },
     "devDependencies": {
-        "@eslint/js": "^9.22.0",
-        "@types/node": "^22.13.10",
-        "eslint": "^9.22.0",
-        "eslint-config-prettier": "^10.1.1",
-        "globals": "^16.0.0",
+        "@eslint/js": "^9.28.0",
+        "@types/node": "^24.0.1",
+        "eslint": "^9.28.0",
+        "eslint-config-prettier": "^10.1.5",
+        "globals": "^16.2.0",
         "prettier": "3.5.3",
         "ts-node": "^10.9.2",
-        "tsup": "^8.4.0",
-        "typescript": "^5.8.2",
-        "typescript-eslint": "^8.26.1"
+        "tsup": "^8.5.0",
+        "typescript": "^5.8.3",
+        "typescript-eslint": "^8.34.0"
     },
     "dependencies": {
-        "agentmail": "^0.0.23",
-        "zod": "^3.24.2"
+        "agentmail": "^0.0.34",
+        "zod": "^3.25.63"
     },
     "peerDependencies": {
-        "@langchain/core": "^0.3.43",
-        "@modelcontextprotocol/sdk": "^1.8.0",
-        "ai": "^4.2.8"
+        "@langchain/core": "^0.3.58",
+        "@modelcontextprotocol/sdk": "^1.12.1",
+        "ai": "^4.3.16"
     }
 }

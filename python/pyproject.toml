@@ -1,14 +1,14 @@
 [project]
 name = "agentmail-toolkit"
-version = "0.1.8"
+version = "0.1.9"
 description = "AgentMail Toolkit"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "agentmail>=0.0.19",
-    "langchain>=0.3.23",
-    "openai-agents>=0.0.3",
-    "pydantic>=2.10.6",
+    "agentmail>=0.0.28",
+    "langchain>=0.3.25",
+    "openai-agents>=0.0.17",
+    "pydantic>=2.11.5",
 ]
 
 [build-system]
