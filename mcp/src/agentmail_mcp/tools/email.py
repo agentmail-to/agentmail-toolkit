@@ -10,7 +10,7 @@ client = None
 def setup_client(api_key: Optional[str] = None):
     """Setup the API client with authentication."""
     global client
-    
+
     headers = {}
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
@@ -226,7 +226,7 @@ def register_tools(mcp):
         
         Args:
             inbox_id: ID of the sending inbox
-            to: Recipient email addresses
+            to: List of recipient email addresses
             subject: Email subject
             body: Email body content
             cc: CC recipients
