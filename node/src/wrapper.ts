@@ -1,9 +1,7 @@
 import { AgentMailClient } from 'agentmail'
 
 export class Wrapper {
-    constructor(private readonly client?: AgentMailClient) {
-        if (!this.client) this.client = new AgentMailClient()
-    }
+    constructor(private readonly client = new AgentMailClient()) {}
 
     public async call(method: string, args: any) {
         const parts = method.split('.')

@@ -3,23 +3,7 @@ import { AgentMailClient } from 'agentmail'
 import { Wrapper } from './wrapper'
 import { type Tool, tools } from './tools'
 
-export abstract class ListToolkit<T> extends Wrapper {
-    protected readonly tools: T[] = []
-
-    constructor(client?: AgentMailClient) {
-        super(client)
-
-        this.tools = tools.map((tool) => this.buildTool(tool))
-    }
-
-    protected abstract buildTool(tool: Tool): T
-
-    public getTools() {
-        return this.tools
-    }
-}
-
-export abstract class MapToolkit<T> extends Wrapper {
+export abstract class BaseToolkit<T> extends Wrapper {
     protected readonly tools: Record<string, T> = {}
 
     constructor(client?: AgentMailClient) {
@@ -35,8 +19,29 @@ export abstract class MapToolkit<T> extends Wrapper {
     }
 
     protected abstract buildTool(tool: Tool): T
+}
 
-    public getTools() {
-        return this.tools
+export abstract class ListToolkit<T> extends BaseToolkit<T> {
+    public getTools(names?: string[]) {
+        if (!names) return Object.values(this.tools)
+
+        return names.reduce((acc, name) => {
+            if (name in this.tools) acc.push(this.tools[name])
+            return acc
+        }, [] as T[])
+    }
+}
+
+export abstract class MapToolkit<T> extends BaseToolkit<T> {
+    public getTools(names?: string[]) {
+        if (!names) return this.tools
+
+        return names.reduce(
+            (acc, name) => {
+                if (name in this.tools) acc[name] = this.tools[name]
+                return acc
+            },
+            {} as Record<string, T>
+        )
     }
 }
