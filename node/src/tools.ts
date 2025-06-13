@@ -12,7 +12,7 @@ import {
     ReplyToMessageParams,
 } from './schemas'
 
-export type Tool = {
+export interface Tool {
     name: string
     method: string
     description: string

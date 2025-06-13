@@ -25,7 +25,7 @@ async function main() {
 
         process.stdout.write('\nAssistant:\n\n')
 
-        const result = await agent.stream({ messages }, { streamMode: 'messages' })
+        const result: any = await agent.stream({ messages }, { streamMode: 'messages' })
 
         let response = ''
         for await (const [chunk, _] of result) {
