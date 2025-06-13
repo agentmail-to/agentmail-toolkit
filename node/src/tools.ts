@@ -2,6 +2,7 @@ import { AnyZodObject } from 'zod'
 
 import {
     ListItemsParams,
+    ListInboxItemsParams,
     GetInboxParams,
     CreateInboxParams,
     ListThreadsParams,
@@ -10,6 +11,11 @@ import {
     GetMessageParams,
     SendMessageParams,
     ReplyToMessageParams,
+    UpdateMessageParams,
+    ListDraftsParams,
+    GetDraftParams,
+    CreateDraftParams,
+    SendDraftParams,
 } from './schemas'
 
 export interface Tool {
@@ -35,7 +41,7 @@ export const tools: Tool[] = [
     {
         name: 'create_inbox',
         method: 'inboxes.create',
-        description: 'Create inbox. Use default username, domain, and display name unless otherwise specified.',
+        description: 'Create inbox',
         schema: CreateInboxParams,
     },
     {
@@ -45,8 +51,14 @@ export const tools: Tool[] = [
         schema: ListThreadsParams,
     },
     {
+        name: 'list_all_threads',
+        method: 'threads.list',
+        description: 'List threads in all inboxes',
+        schema: ListInboxItemsParams,
+    },
+    {
         name: 'get_thread',
-        method: 'inboxes.threads.get',
+        method: 'threads.get',
         description: 'Get thread',
         schema: GetThreadParams,
     },
@@ -57,8 +69,14 @@ export const tools: Tool[] = [
         schema: ListMessagesParams,
     },
     {
+        name: 'list_all_messages',
+        method: 'messages.list',
+        description: 'List messages in all inboxes',
+        schema: ListInboxItemsParams,
+    },
+    {
         name: 'get_message',
-        method: 'inboxes.messages.get',
+        method: 'messages.get',
         description: 'Get message',
         schema: GetMessageParams,
     },
@@ -73,5 +91,41 @@ export const tools: Tool[] = [
         method: 'inboxes.messages.reply',
         description: 'Reply to message',
         schema: ReplyToMessageParams,
+    },
+    {
+        name: 'update_message',
+        method: 'inboxes.messages.update',
+        description: 'Update message',
+        schema: UpdateMessageParams,
+    },
+    {
+        name: 'list_drafts',
+        method: 'inboxes.drafts.list',
+        description: 'List drafts in inbox',
+        schema: ListDraftsParams,
+    },
+    {
+        name: 'list_all_drafts',
+        method: 'drafts.list',
+        description: 'List drafts in all inboxes',
+        schema: ListInboxItemsParams,
+    },
+    {
+        name: 'get_draft',
+        method: 'drafts.get',
+        description: 'Get draft',
+        schema: GetDraftParams,
+    },
+    {
+        name: 'create_draft',
+        method: 'inboxes.drafts.create',
+        description: 'Create draft',
+        schema: CreateDraftParams,
+    },
+    {
+        name: 'send_draft',
+        method: 'inboxes.drafts.send',
+        description: 'Send draft',
+        schema: SendDraftParams,
     },
 ]

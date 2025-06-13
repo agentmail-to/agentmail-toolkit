@@ -3,6 +3,7 @@ from pydantic import BaseModel
 
 from .schemas import (
     ListItemsParams,
+    ListInboxItemsParams,
     GetInboxParams,
     CreateInboxParams,
     ListThreadsParams,
@@ -11,6 +12,11 @@ from .schemas import (
     GetMessageParams,
     SendMessageParams,
     ReplyToMessageParams,
+    UpdateMessageParams,
+    ListDraftsParams,
+    GetDraftParams,
+    CreateDraftParams,
+    SendDraftParams,
 )
 
 
@@ -37,7 +43,7 @@ tools: List[Tool] = [
     Tool(
         name="create_inbox",
         method_name="inboxes.create",
-        description="Create inbox. Use default username, domain, and display name unless otherwise specified.",
+        description="Create inbox",
         params_schema=CreateInboxParams,
     ),
     Tool(
@@ -47,9 +53,15 @@ tools: List[Tool] = [
         params_schema=ListThreadsParams,
     ),
     Tool(
+        name="list_all_threads",
+        method_name="threads.list",
+        description="List threads in all inboxes",
+        params_schema=ListInboxItemsParams,
+    ),
+    Tool(
         name="get_thread",
-        method_name="inboxes.threads.get",
-        description="Get thread in inbox",
+        method_name="threads.get",
+        description="Get thread",
         params_schema=GetThreadParams,
     ),
     Tool(
@@ -59,9 +71,15 @@ tools: List[Tool] = [
         params_schema=ListMessagesParams,
     ),
     Tool(
+        name="list_all_messages",
+        method_name="messages.list",
+        description="List messages in all inboxes",
+        params_schema=ListInboxItemsParams,
+    ),
+    Tool(
         name="get_message",
-        method_name="inboxes.messages.get",
-        description="Get message in inbox",
+        method_name="messages.get",
+        description="Get message",
         params_schema=GetMessageParams,
     ),
     Tool(
@@ -75,5 +93,41 @@ tools: List[Tool] = [
         method_name="inboxes.messages.reply",
         description="Reply to message",
         params_schema=ReplyToMessageParams,
+    ),
+    Tool(
+        name="update_message",
+        method_name="inboxes.messages.update",
+        description="Update message",
+        params_schema=UpdateMessageParams,
+    ),
+    Tool(
+        name="list_drafts",
+        method_name="inboxes.drafts.list",
+        description="List drafts in inbox",
+        params_schema=ListDraftsParams,
+    ),
+    Tool(
+        name="list_all_drafts",
+        method_name="drafts.list",
+        description="List drafts in all inboxes",
+        params_schema=ListInboxItemsParams,
+    ),
+    Tool(
+        name="get_draft",
+        method_name="drafts.get",
+        description="Get draft",
+        params_schema=GetDraftParams,
+    ),
+    Tool(
+        name="create_draft",
+        method_name="inboxes.drafts.create",
+        description="Create draft",
+        params_schema=CreateDraftParams,
+    ),
+    Tool(
+        name="send_draft",
+        method_name="inboxes.drafts.send",
+        description="Send draft",
+        params_schema=SendDraftParams,
     ),
 ]
