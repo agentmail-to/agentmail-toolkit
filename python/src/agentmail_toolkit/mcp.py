@@ -1,5 +1,6 @@
 from mcp.server.fastmcp.tools.base import Tool as McpTool
-from mcp.server.fastmcp.utilities.func_metadata import FuncMetadata
+from mcp.server.fastmcp.utilities.func_metadata import FuncMetadata, ArgModelBase
+from pydantic import create_model
 from typing import Optional
 from agentmail import AgentMail
 
@@ -15,15 +16,22 @@ class AgentMailToolkit(Toolkit[McpTool]):
         def fn(**kwargs):
             return self.call_method(tool.method_name, tool.params_schema(**kwargs))
 
-        fn.__annotations__ = tool.params_schema.model_json_schema()
+        params = {
+            name: (field.annotation, field)
+            for name, field in tool.params_schema.model_fields.items()
+        }
+
+        arg_model = create_model(
+            f"{tool.name}Arguments",
+            **params,
+            __base__=ArgModelBase,
+        )
 
         return McpTool(
             name=tool.name,
             description=tool.description,
             parameters=tool.params_schema.model_json_schema(),
-            fn_metadata=FuncMetadata(
-                arg_model=tool.params_schema,
-            ),
+            fn_metadata=FuncMetadata(arg_model=arg_model),
             is_async=False,
             fn=fn,
         )

@@ -1,6 +1,6 @@
 [project]
 name = "agentmail-toolkit"
-version = "0.1.10"
+version = "0.1.11"
 description = "AgentMail Toolkit"
 readme = "README.md"
 requires-python = ">=3.11"

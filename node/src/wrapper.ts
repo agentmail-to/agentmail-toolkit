@@ -12,10 +12,10 @@ export class Wrapper {
         let parent: any = this.client
         for (const part of parts) parent = parent[part]
 
-        const { inboxId, ...options } = args
+        const { inbox_id, thread_id, message_id, draft_id, attachment_id, ...options } = args
+        const methodArgs = [inbox_id, thread_id, message_id, draft_id, attachment_id, options].filter(Boolean)
 
-        if (inboxId) return await parent[methodKey].call(parent, inboxId, options)
-        else return await parent[methodKey].call(parent, options)
+        return await parent[methodKey].call(parent, ...methodArgs)
     }
 
     public async safeCall(method: string, args: any) {
