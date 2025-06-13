@@ -1,25 +1,26 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { AgentMailClient } from 'agentmail'
+import { type ToolCallback } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { type ZodRawShape } from 'zod'
 
-import { Wrapper } from './wrapper'
-import { tools } from './tools'
+import { ListToolkit } from './toolkit'
+import { type Tool } from './tools'
 
-export class AgentMailMcpServer extends McpServer {
-    private wrapper: Wrapper
+interface McpTool {
+    name: string
+    description: string
+    paramsSchema: ZodRawShape
+    callback: ToolCallback<ZodRawShape>
+}
 
-    constructor(client?: AgentMailClient) {
-        super({
-            name: 'AgentMail',
-            version: '0.1.0',
-        })
-
-        this.wrapper = new Wrapper(client)
-
-        for (const tool of tools) {
-            this.tool(tool.name, tool.description, tool.schema.shape, async (args: unknown) => {
-                const { isError, result } = await this.wrapper.safeCall(tool.method, args)
+export class AgentMailToolkit extends ListToolkit<McpTool> {
+    protected buildTool(tool: Tool): McpTool {
+        return {
+            name: tool.name,
+            description: tool.description,
+            paramsSchema: tool.schema.shape,
+            callback: async (args) => {
+                const { isError, result } = await this.safeCall(tool.method, args)
                 return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }], isError }
-            })
+            },
         }
     }
 }
