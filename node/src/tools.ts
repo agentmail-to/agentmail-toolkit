@@ -69,14 +69,8 @@ export const tools: Tool[] = [
         schema: ListMessagesParams,
     },
     {
-        name: 'list_all_messages',
-        method: 'messages.list',
-        description: 'List messages in all inboxes',
-        schema: ListInboxItemsParams,
-    },
-    {
         name: 'get_message',
-        method: 'messages.get',
+        method: 'inboxes.messages.get',
         description: 'Get message',
         schema: GetMessageParams,
     },

@@ -71,14 +71,8 @@ tools: List[Tool] = [
         params_schema=ListMessagesParams,
     ),
     Tool(
-        name="list_all_messages",
-        method_name="messages.list",
-        description="List messages in all inboxes",
-        params_schema=ListInboxItemsParams,
-    ),
-    Tool(
         name="get_message",
-        method_name="messages.get",
+        method_name="inboxes.messages.get",
         description="Get message",
         params_schema=GetMessageParams,
     ),
