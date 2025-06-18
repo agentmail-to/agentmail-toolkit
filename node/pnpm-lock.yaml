@@ -15,8 +15,8 @@ importers:
         specifier: ^1.8.0
         version: 1.12.1
       agentmail:
-        specifier: ^0.0.34
-        version: 0.0.34
+        specifier: ^0.0.37
+        version: 0.0.37
       ai:
         specifier: ^4.2.8
         version: 4.3.16(react@19.1.0)(zod@3.24.2)
@@ -569,8 +569,8 @@ packages:
     engines: {node: '>=0.4.0'}
     hasBin: true
 
-  agentmail@0.0.34:
-    resolution: {integrity: sha512-L5t3Owmkc+bBQgUcxQLO2HBVVLkBm0mWYLbhN4lc9OZZ9lgQ06z+PSqcFR99SFs47xH/qmc5s621Sp1y987VfA==}
+  agentmail@0.0.37:
+    resolution: {integrity: sha512-/JiwqeTrRQQOUrrVGQIm1/sHLN0YCVSBRZeEfueSsAx6LxtbnDZ4WIebIZHZ7JGegOWoXRA9y/Da0ZH3NKDSPQ==}
 
   ai@4.3.16:
     resolution: {integrity: sha512-KUDwlThJ5tr2Vw0A1ZkbDKNME3wzWhuVfAOwIvFUzl1TPVDFAXDFTXio3p+jaKneB+dKNCvFFlolYmmgHttG1g==}
@@ -2165,7 +2165,7 @@ snapshots:
 
   acorn@8.15.0: {}
 
-  agentmail@0.0.34:
+  agentmail@0.0.37:
     dependencies:
       form-data: 4.0.3
       formdata-node: 6.0.3
