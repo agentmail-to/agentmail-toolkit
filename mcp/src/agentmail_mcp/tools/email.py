@@ -153,7 +153,8 @@ def register_tools(mcp):
             
         result = await make_api_request("GET", f"/inboxes/{inbox_id}/threads", params=params)
         return str(result)
-    
+
+    # modified to be slimmer and easier to understand
     @mcp.tool(description="Get thread by ID")
     async def getThread(inbox_id: str, thread_id: str) -> str:
         """
@@ -164,6 +165,20 @@ def register_tools(mcp):
             thread_id: ID of the thread to retrieve
         """
         result = await make_api_request("GET", f"/inboxes/{inbox_id}/threads/{thread_id}")
+        # Clean up messages in the result
+        if isinstance(result, dict) and "messages" in result:
+            cleaned_messages = []
+            for msg in result["messages"]:
+                cleaned_msg = {
+                    "message_id": msg.get("message_id"),
+                    "timestamp": msg.get("timestamp"),
+                    "from": msg.get("from"),
+                    "to": msg.get("to"),
+                    "subject": msg.get("subject"),
+                    "text": msg.get("text"),
+                }
+                cleaned_messages.append(cleaned_msg)
+            result["messages"] = cleaned_messages
         return str(result)
     
     # Message operations
