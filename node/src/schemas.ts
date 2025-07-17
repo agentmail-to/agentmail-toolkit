@@ -28,15 +28,6 @@ export const GetThreadParams = z.object({
     thread_id: z.string().describe('ID of thread to get'),
 })
 
-export const ListMessagesParams = ListInboxItemsParams.extend({
-    inbox_id: z.string().describe('ID of inbox to list messages from'),
-})
-
-export const GetMessageParams = z.object({
-    inbox_id: z.string().describe('ID of inbox to get message from'),
-    message_id: z.string().describe('ID of message to get'),
-})
-
 export const SendMessageParams = z.object({
     inbox_id: z.string().describe('ID of inbox to send message from'),
     to: z.array(z.string()).describe('Recipients of message'),

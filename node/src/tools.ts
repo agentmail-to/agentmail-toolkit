@@ -7,8 +7,6 @@ import {
     CreateInboxParams,
     ListThreadsParams,
     GetThreadParams,
-    ListMessagesParams,
-    GetMessageParams,
     SendMessageParams,
     ReplyToMessageParams,
     UpdateMessageParams,
@@ -61,18 +59,6 @@ export const tools: Tool[] = [
         method: 'threads.get',
         description: 'Get thread',
         schema: GetThreadParams,
-    },
-    {
-        name: 'list_messages',
-        method: 'inboxes.messages.list',
-        description: 'List messages in inbox',
-        schema: ListMessagesParams,
-    },
-    {
-        name: 'get_message',
-        method: 'inboxes.messages.get',
-        description: 'Get message',
-        schema: GetMessageParams,
     },
     {
         name: 'send_message',

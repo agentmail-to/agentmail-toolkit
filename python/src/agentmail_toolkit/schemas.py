@@ -30,14 +30,6 @@ class GetThreadParams(BaseModel):
     thread_id: str = Field(description="ID of thread to get")
 
 
-class ListMessagesParams(ListInboxItemsParams):
-    inbox_id: str = Field(description="ID of inbox to list messages from")
-
-
-class GetMessageParams(BaseModel):
-    message_id: str = Field(description="ID of message to get")
-
-
 class SendMessageParams(BaseModel):
     inbox_id: str = Field(description="ID of inbox to send message from")
     to: List[str] = Field(description="Recipients of message")

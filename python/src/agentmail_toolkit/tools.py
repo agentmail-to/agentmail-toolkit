@@ -8,8 +8,6 @@ from .schemas import (
     CreateInboxParams,
     ListThreadsParams,
     GetThreadParams,
-    ListMessagesParams,
-    GetMessageParams,
     SendMessageParams,
     ReplyToMessageParams,
     UpdateMessageParams,
@@ -63,18 +61,6 @@ tools: List[Tool] = [
         method_name="threads.get",
         description="Get thread",
         params_schema=GetThreadParams,
-    ),
-    Tool(
-        name="list_messages",
-        method_name="inboxes.messages.list",
-        description="List messages in inbox",
-        params_schema=ListMessagesParams,
-    ),
-    Tool(
-        name="get_message",
-        method_name="inboxes.messages.get",
-        description="Get message",
-        params_schema=GetMessageParams,
     ),
     Tool(
         name="send_message",
