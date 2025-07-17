@@ -1,6 +1,6 @@
 {
     "name": "agentmail-toolkit",
-    "version": "0.1.26",
+    "version": "0.1.27",
     "description": "AgentMail Toolkit",
     "scripts": {
         "build": "tsup",
@@ -57,7 +57,7 @@
         "typescript-eslint": "^8.34.0"
     },
     "dependencies": {
-        "agentmail": "^0.0.37",
+        "agentmail": "^0.0.44",
         "zod": "^3.25.63"
     },
     "peerDependencies": {

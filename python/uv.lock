@@ -13,7 +13,7 @@ members = [
 
 [[package]]
 name = "agentmail"
-version = "0.0.32"
+version = "0.0.42"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
@@ -21,14 +21,14 @@ dependencies = [
     { name = "pydantic-core" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/42/37/d0825742c470fcf04fe37af03fe813edffaec17daba3c2c412e212adc19e/agentmail-0.0.32.tar.gz", hash = "sha256:05f3f2c96800f5025941f7b40ac787d5cdd0bd70483ac4cb4edf88bfae18d572", size = 45570 }
+sdist = { url = "https://files.pythonhosted.org/packages/c2/6a/23e32ecc7663b11d115e87a0e06db472bafbde94ef8fca06df086f8883fe/agentmail-0.0.42.tar.gz", hash = "sha256:11b0cd43ec745568f34f5f3b0302720747365192fad111ee37af016cec7d243f", size = 47056 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/1c/78/6c62f798040d8ad50652a128cb796acaba36c9e3f69abb01f67eb471ffcb/agentmail-0.0.32-py3-none-any.whl", hash = "sha256:7e50f1d040899372f10f0d54757c990336be56adbf1a9653d215ea8223fe3d91", size = 98411 },
+    { url = "https://files.pythonhosted.org/packages/7b/d3/ce4f583935d0418963d63a08437d679657ed9c356155d726c9e64effd953/agentmail-0.0.42-py3-none-any.whl", hash = "sha256:53011c1976cf6619e357834d31826fc508cc23b320b5ef65801658424b6c0468", size = 106336 },
 ]
 
 [[package]]
 name = "agentmail-toolkit"
-version = "0.1.13"
+version = "0.1.15"
 source = { editable = "." }
 dependencies = [
     { name = "agentmail" },
@@ -45,7 +45,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "agentmail", specifier = ">=0.0.32" },
+    { name = "agentmail", specifier = ">=0.0.42" },
     { name = "langchain", specifier = ">=0.3.25" },
     { name = "openai-agents", specifier = ">=0.0.17" },
     { name = "pydantic", specifier = ">=2.11.5" },
