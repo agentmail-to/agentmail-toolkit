@@ -1,3 +1,4 @@
+import json
 from typing import Optional
 from agents import FunctionTool, RunContextWrapper
 from agentmail import AgentMail
@@ -15,7 +16,7 @@ class AgentMailToolkit(Toolkit[FunctionTool]):
             try:
                 result = self.call_method(
                     tool.method_name,
-                    tool.params_schema.model_validate_json(input_str),
+                    json.loads(input_str),
                 )
                 return result.model_dump_json()
             except Exception as e:

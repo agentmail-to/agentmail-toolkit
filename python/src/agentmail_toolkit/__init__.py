@@ -19,7 +19,7 @@ class AgentMailToolkit(Toolkit[Tool]):
 
     def _build_tool(self, tool: BaseTool):
         def fn(**kwargs):
-            return self.call_method(tool.method_name, tool.params_schema(**kwargs))
+            return self.call_method(tool.method_name, kwargs)
 
         return Tool(
             name=tool.name,

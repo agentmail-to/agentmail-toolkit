@@ -14,7 +14,7 @@ class AgentMailToolkit(Toolkit[FunctionTool]):
         async def f(raw_arguments: dict[str, object], context: RunContext):
             try:
                 return self.call_method(
-                    tool.method_name, tool.params_schema(**raw_arguments)
+                    tool.method_name, raw_arguments
                 ).model_dump_json()
             except Exception as e:
                 raise ToolError(str(e))

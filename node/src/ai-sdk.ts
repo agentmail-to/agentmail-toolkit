@@ -7,7 +7,7 @@ export class AgentMailToolkit extends MapToolkit<AiSdkTool> {
     protected buildTool(tool: Tool): AiSdkTool {
         return {
             description: tool.description,
-            parameters: tool.schema,
+            parameters: tool.params_schema,
             execute: async (args) => (await this.safeCall(tool.method, args)).result,
         }
     }

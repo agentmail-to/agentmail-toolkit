@@ -16,7 +16,7 @@ export class AgentMailToolkit extends ListToolkit<McpTool> {
         return {
             name: tool.name,
             description: tool.description,
-            paramsSchema: tool.schema.shape,
+            paramsSchema: tool.params_schema.shape,
             callback: async (args) => {
                 const { isError, result } = await this.safeCall(tool.method, args)
                 return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }], isError }

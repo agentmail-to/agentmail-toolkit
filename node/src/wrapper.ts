@@ -3,7 +3,7 @@ import { AgentMailClient } from 'agentmail'
 export class Wrapper {
     constructor(private readonly client = new AgentMailClient()) {}
 
-    public async call(method: string, args: any) {
+    public async call(method: string, args: Record<string, any>) {
         const parts = method.split('.')
         const methodKey = parts.pop()
 
@@ -18,7 +18,7 @@ export class Wrapper {
         return await parent[methodKey].call(parent, ...methodArgs)
     }
 
-    public async safeCall(method: string, args: any) {
+    public async safeCall(method: string, args: Record<string, any>) {
         try {
             return { isError: false, result: await this.call(method, args) }
         } catch (error) {
