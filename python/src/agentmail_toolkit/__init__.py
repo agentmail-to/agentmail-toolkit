@@ -9,7 +9,7 @@ from .tools import Tool as BaseTool
 class Tool(BaseModel):
     name: str
     description: str
-    schema: Type[BaseModel]
+    params_schema: Type[BaseModel]
     fn: Callable
 
 
@@ -19,11 +19,11 @@ class AgentMailToolkit(Toolkit[Tool]):
 
     def _build_tool(self, tool: BaseTool):
         def fn(**kwargs):
-            return self.call_method(tool.method_name, tool.schema(**kwargs))
+            return self.call_method(tool.method_name, tool.params_schema(**kwargs))
 
         return Tool(
             name=tool.name,
             description=tool.description,
-            schema=tool.schema,
+            params_schema=tool.params_schema,
             fn=fn,
         )

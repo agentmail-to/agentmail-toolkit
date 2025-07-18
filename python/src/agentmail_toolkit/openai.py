@@ -15,13 +15,13 @@ class AgentMailToolkit(Toolkit[FunctionTool]):
             try:
                 result = self.call_method(
                     tool.method_name,
-                    tool.schema.model_validate_json(input_str),
+                    tool.params_schema.model_validate_json(input_str),
                 )
                 return result.model_dump_json()
             except Exception as e:
                 return str(e)
 
-        params_json_schema = tool.schema.model_json_schema()
+        params_json_schema = tool.params_schema.model_json_schema()
         params_json_schema["additionalProperties"] = False
 
         return FunctionTool(

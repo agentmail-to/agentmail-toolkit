@@ -1,5 +1,5 @@
 from typing import Optional
-from livekit.agents import FunctionTool, RunContext, function_tool
+from livekit.agents import FunctionTool, RunContext, ToolError, function_tool
 from agentmail import AgentMail
 
 from .toolkit import Toolkit
@@ -12,7 +12,12 @@ class AgentMailToolkit(Toolkit[FunctionTool]):
 
     def _build_tool(self, tool: Tool):
         async def f(raw_arguments: dict[str, object], context: RunContext):
-            return tool.fn(**raw_arguments).json()
+            try:
+                return self.call_method(
+                    tool.method_name, tool.params_schema(**raw_arguments)
+                ).model_dump_json()
+            except Exception as e:
+                raise ToolError(str(e))
 
         return function_tool(
             f=f,
@@ -22,6 +27,6 @@ class AgentMailToolkit(Toolkit[FunctionTool]):
                 "type": "function",
                 "name": tool.name,
                 "description": tool.description,
-                "parameters": tool.schema.model_json_schema(),
+                "parameters": tool.params_schema.model_json_schema(),
             },
         )
