@@ -30,6 +30,11 @@ class GetThreadParams(BaseModel):
     thread_id: str = Field(description="ID of thread to get")
 
 
+class GetAttachmentParams(BaseModel):
+    thread_id: str = Field(description="ID of thread to get attachment from")
+    attachment_id: str = Field(description="ID of attachment to get")
+
+
 class SendMessageParams(BaseModel):
     inbox_id: str = Field(description="ID of inbox to send message from")
     to: List[str] = Field(description="Recipients of message")

@@ -3,6 +3,15 @@ from abc import ABC
 from pydantic import BaseModel
 from agentmail import AgentMail
 
+import filetype
+import pymupdf
+
+
+class Attachment(BaseModel):
+    text: Optional[str] = None
+    error: Optional[str] = None
+    file_type: Optional[str] = None
+
 
 class Wrapper(ABC):
     _client: AgentMail = None
@@ -11,8 +20,32 @@ class Wrapper(ABC):
         self._client = client or AgentMail()
 
     def call_method(self, method_name: str, args: dict[str, Any]) -> BaseModel:
-        method = self._client
-        for part in method_name.split("."):
-            method = getattr(method, part)
+        try:
+            return getattr(self, method_name)(**args)
+        except AttributeError:
+            method = self._client
+            for part in method_name.split("."):
+                method = getattr(method, part)
 
-        return method(**args)
+            return method(**args)
+
+    def get_attachment(self, thread_id: str, attachment_id: str):
+        it = self._client.threads.get_attachment(
+            thread_id=thread_id, attachment_id=attachment_id
+        )
+        file_bytes = b"".join(it)
+
+        file_kind = filetype.guess(file_bytes)
+        file_type = file_kind.mime if file_kind else None
+
+        text = ""
+        if file_type == "application/pdf":
+            for page in pymupdf.Document(stream=file_bytes):
+                text += page.get_text() + "\n"
+        else:
+            return Attachment(
+                error=f"Unsupported file type: {file_type or 'unknown'}",
+                file_type=file_type,
+            )
+
+        return Attachment(text=text, file_type=file_type)
