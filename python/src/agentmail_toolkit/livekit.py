@@ -13,9 +13,17 @@ class AgentMailToolkit(Toolkit[FunctionTool]):
     def _build_tool(self, tool: Tool):
         async def f(raw_arguments: dict[str, object], context: RunContext):
             try:
-                return self.call_method(
+                handle = context.session.generate_reply(
+                    instructions=f"Inform the user that you performing the following operation: {tool.description}"
+                )
+
+                result = self.call_method(
                     tool.method_name, raw_arguments
                 ).model_dump_json()
+
+                await handle
+
+                return result
             except Exception as e:
                 raise ToolError(str(e))
 
