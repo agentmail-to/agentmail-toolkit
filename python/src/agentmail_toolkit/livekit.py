@@ -22,8 +22,6 @@ class AgentMailToolkit(Toolkit[FunctionTool]):
 
                 status_update_task = asyncio.create_task(_status_update())
 
-                print(f"Starting {tool.name}...")
-
                 result = self.call_method(
                     tool.method_name, raw_arguments
                 ).model_dump_json()
