@@ -1,0 +1,22 @@
+# Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
+
+startCommand:
+  type: stdio
+  configSchema:
+    # JSON Schema defining the configuration options for the MCP.
+    type: object
+    required: []
+    properties:
+      apiKey:
+        type: string
+        description: AgentMail API key to use for authenticating with AgentMail
+          services. If not provided, certain functionality may be limited.
+  commandFunction:
+    # A JS function that produces the CLI command based on the given config to start the MCP on stdio.
+    |-
+    (config) => ({
+      command: 'agentmail-mcp',
+      args: config.apiKey ? ['--api-key', config.apiKey] : []
+    })
+  exampleConfig:
+    apiKey: YOUR_AGENTMAIL_API_KEY
