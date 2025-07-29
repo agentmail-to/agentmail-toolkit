@@ -29,7 +29,7 @@ wheels = [
 
 [[package]]
 name = "agentmail-toolkit"
-version = "0.1.21"
+version = "0.1.30"
 source = { editable = "." }
 dependencies = [
     { name = "agentmail" },
