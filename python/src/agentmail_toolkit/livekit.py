@@ -13,18 +13,24 @@ class AgentMailToolkit(Toolkit[FunctionTool]):
 
     def _build_tool(self, tool: Tool):
         async def f(raw_arguments: dict[str, object], context: RunContext):
-            async def _status_update():
-                await context.session.generate_reply(
-                    instructions=f"Inform the user that you are doing the following: {tool.description}"
-                )
+            try:
 
-            status_update_task = asyncio.create_task(_status_update())
+                async def _status_update():
+                    await context.session.generate_reply(
+                        instructions=f"Inform the user that you are doing the following: {tool.description}"
+                    )
 
-            result = self.call_method(tool.method_name, raw_arguments).model_dump_json()
+                status_update_task = asyncio.create_task(_status_update())
 
-            status_update_task.cancel()
+                result = self.call_method(
+                    tool.method_name, raw_arguments
+                ).model_dump_json()
 
-            return result
+                status_update_task.cancel()
+
+                return result
+            except Exception as e:
+                raise ToolError(str(e))
 
         return function_tool(
             f=f,
