@@ -6,13 +6,10 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "agentmail>=0.0.42",
-    "filetype>=1.2.0",
     "langchain>=0.3.25",
     "livekit-agents>=1.2.1",
     "openai-agents>=0.0.17",
     "pydantic>=2.11.5",
-    "pymupdf>=1.26.3",
-    "python-docx>=1.2.0",
 ]
 
 [build-system]
