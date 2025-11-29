@@ -4,12 +4,6 @@ from pydantic import BaseModel
 from agentmail import AgentMail
 
 
-class Attachment(BaseModel):
-    text: Optional[str] = None
-    error: Optional[str] = None
-    file_type: Optional[str] = None
-
-
 class Wrapper(ABC):
     _client: AgentMail = None
 
