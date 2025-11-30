@@ -1,12 +1,11 @@
-from langchain_openai import ChatOpenAI
-from langgraph.prebuilt import create_react_agent
-from langchain.schema import AIMessage, HumanMessage
+from langchain.agents import create_agent
+from langchain.messages import AIMessage, HumanMessage
 
 from agentmail_toolkit.langchain import AgentMailToolkit
 
-agent = create_react_agent(
-    model=ChatOpenAI(model="gpt-4o"),
-    prompt="You are an email agent created by AgentMail that can create and manage inboxes as well as send and receive emails.",
+agent = create_agent(
+    model="gpt-4o",
+    system_prompt="You are an email agent created by AgentMail that can create and manage inboxes as well as send and receive emails.",
     tools=AgentMailToolkit().get_tools(),
 )
 
