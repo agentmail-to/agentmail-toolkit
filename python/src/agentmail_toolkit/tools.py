@@ -6,16 +6,11 @@ from .schemas import (
     ListInboxItemsParams,
     GetInboxParams,
     CreateInboxParams,
-    ListThreadsParams,
     GetThreadParams,
     GetAttachmentParams,
     SendMessageParams,
     ReplyToMessageParams,
     UpdateMessageParams,
-    ListDraftsParams,
-    GetDraftParams,
-    CreateDraftParams,
-    SendDraftParams,
 )
 
 
@@ -46,20 +41,20 @@ tools: List[Tool] = [
         params_schema=CreateInboxParams,
     ),
     Tool(
+        name="delete_inbox",
+        method_name="inboxes.delete",
+        description="Delete inbox",
+        params_schema=GetInboxParams,
+    ),
+    Tool(
         name="list_threads",
         method_name="inboxes.threads.list",
         description="List threads in inbox",
-        params_schema=ListThreadsParams,
-    ),
-    Tool(
-        name="list_all_threads",
-        method_name="threads.list",
-        description="List threads in all inboxes",
         params_schema=ListInboxItemsParams,
     ),
     Tool(
         name="get_thread",
-        method_name="threads.get",
+        method_name="inboxes.threads.get",
         description="Get thread",
         params_schema=GetThreadParams,
     ),
@@ -86,35 +81,5 @@ tools: List[Tool] = [
         method_name="inboxes.messages.update",
         description="Update message",
         params_schema=UpdateMessageParams,
-    ),
-    Tool(
-        name="list_drafts",
-        method_name="inboxes.drafts.list",
-        description="List drafts in inbox",
-        params_schema=ListDraftsParams,
-    ),
-    Tool(
-        name="list_all_drafts",
-        method_name="drafts.list",
-        description="List drafts in all inboxes",
-        params_schema=ListInboxItemsParams,
-    ),
-    Tool(
-        name="get_draft",
-        method_name="drafts.get",
-        description="Get draft",
-        params_schema=GetDraftParams,
-    ),
-    Tool(
-        name="create_draft",
-        method_name="inboxes.drafts.create",
-        description="Create draft",
-        params_schema=CreateDraftParams,
-    ),
-    Tool(
-        name="send_draft",
-        method_name="inboxes.drafts.send",
-        description="Send draft",
-        params_schema=SendDraftParams,
     ),
 ]
