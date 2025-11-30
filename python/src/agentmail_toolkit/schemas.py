@@ -9,7 +9,9 @@ AttachmentIdField = Annotated[str, Field(description="ID of attachment")]
 
 
 class ListItemsParams(BaseModel):
-    limit: Optional[int] = Field(description="Max number of items to return")
+    limit: Optional[int] = Field(
+        default=10, description="Max number of items to return"
+    )
     page_token: Optional[str] = Field(description="Pagination page token")
 
 
