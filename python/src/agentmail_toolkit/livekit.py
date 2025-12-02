@@ -22,9 +22,7 @@ class AgentMailToolkit(Toolkit[FunctionTool]):
 
                 status_update_task = asyncio.create_task(_status_update())
 
-                result = self.call_method(
-                    tool.method_name, raw_arguments
-                ).model_dump_json()
+                result = tool.func(self.client, raw_arguments).model_dump_json()
 
                 status_update_task.cancel()
 

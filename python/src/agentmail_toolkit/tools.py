@@ -1,5 +1,6 @@
-from typing import List, Type
+from typing import List, Type, Callable
 from pydantic import BaseModel
+from agentmail import AgentMail
 
 from .schemas import (
     ListItemsParams,
@@ -12,74 +13,87 @@ from .schemas import (
     ReplyToMessageParams,
     UpdateMessageParams,
 )
+from .functions import (
+    Kwargs,
+    list_inboxes,
+    get_inbox,
+    create_inbox,
+    delete_inbox,
+    list_threads,
+    get_thread,
+    get_attachment,
+    send_message,
+    reply_to_message,
+    update_message,
+)
 
 
 class Tool(BaseModel):
     name: str
-    method_name: str
     description: str
     params_schema: Type[BaseModel]
+    func: Callable[[AgentMail, Kwargs], BaseModel]
 
 
 tools: List[Tool] = [
     Tool(
         name="list_inboxes",
-        method_name="inboxes.list",
         description="List inboxes",
         params_schema=ListItemsParams,
+        func=list_inboxes,
     ),
     Tool(
         name="get_inbox",
-        method_name="inboxes.get",
         description="Get inbox",
         params_schema=GetInboxParams,
+        func=get_inbox,
     ),
     Tool(
         name="create_inbox",
-        method_name="inboxes.create",
         description="Create inbox",
         params_schema=CreateInboxParams,
+        func=create_inbox,
     ),
     Tool(
         name="delete_inbox",
-        method_name="inboxes.delete",
         description="Delete inbox",
         params_schema=GetInboxParams,
+        func=delete_inbox,
     ),
     Tool(
         name="list_threads",
-        method_name="inboxes.threads.list",
         description="List threads in inbox",
         params_schema=ListInboxItemsParams,
+        func=list_threads,
     ),
     Tool(
         name="get_thread",
-        method_name="inboxes.threads.get",
         description="Get thread",
         params_schema=GetThreadParams,
+        func=get_thread,
     ),
     Tool(
         name="get_attachment",
-        method_name="get_attachment",
         description="Get attachment",
         params_schema=GetAttachmentParams,
+        func=get_attachment,
     ),
     Tool(
         name="send_message",
-        method_name="inboxes.messages.send",
         description="Send message",
         params_schema=SendMessageParams,
+        func=send_message,
     ),
     Tool(
         name="reply_to_message",
-        method_name="inboxes.messages.reply",
         description="Reply to message",
         params_schema=ReplyToMessageParams,
+        func=reply_to_message,
     ),
     Tool(
         name="update_message",
-        method_name="inboxes.messages.update",
         description="Update message",
         params_schema=UpdateMessageParams,
+        func=update_message,
     ),
 ]

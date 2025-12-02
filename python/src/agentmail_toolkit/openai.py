@@ -14,10 +14,7 @@ class AgentMailToolkit(Toolkit[FunctionTool]):
     def _build_tool(self, tool: Tool):
         async def on_invoke_tool(ctx: RunContextWrapper, input_str: str):
             try:
-                result = self.call_method(
-                    tool.method_name,
-                    json.loads(input_str),
-                )
+                result = tool.func(self.client, json.loads(input_str))
                 return result.model_dump_json()
             except Exception as e:
                 return str(e)

@@ -2,19 +2,17 @@ from typing import TypeVar, Generic, Optional, Dict, List
 from abc import ABC, abstractmethod
 from agentmail import AgentMail
 
-from .wrapper import Wrapper
 from .tools import Tool, tools
 
 
 T = TypeVar("T")
 
 
-class Toolkit(Wrapper, Generic[T], ABC):
+class Toolkit(Generic[T], ABC):
     _tools: Dict[str, T] = None
 
     def __init__(self, client: Optional[AgentMail] = None):
-        super().__init__(client)
-
+        self.client = client or AgentMail()
         self._tools = {tool.name: self._build_tool(tool) for tool in tools}
 
     @abstractmethod

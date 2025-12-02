@@ -12,7 +12,7 @@ class AgentMailToolkit(Toolkit[BaseTool]):
 
     def _build_tool(self, tool: Tool):
         def runnable(**kwargs):
-            return self.call_method(tool.method_name, kwargs)
+            return tool.func(self.client, kwargs)
 
         return langchain_tool(
             name_or_callable=tool.name,

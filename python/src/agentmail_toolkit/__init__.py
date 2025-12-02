@@ -10,7 +10,7 @@ class Tool(BaseModel):
     name: str
     description: str
     params_schema: Type[BaseModel]
-    fn: Callable
+    func: Callable
 
 
 class AgentMailToolkit(Toolkit[Tool]):
@@ -18,12 +18,12 @@ class AgentMailToolkit(Toolkit[Tool]):
         super().__init__(client)
 
     def _build_tool(self, tool: BaseTool):
-        def fn(**kwargs):
-            return self.call_method(tool.method_name, kwargs)
+        def func(**kwargs):
+            return tool.func(self.client, kwargs)
 
         return Tool(
             name=tool.name,
             description=tool.description,
             params_schema=tool.params_schema,
-            fn=fn,
+            func=func,
         )
