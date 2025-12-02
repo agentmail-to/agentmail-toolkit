@@ -3,7 +3,7 @@ import { ChatOpenAI } from '@langchain/openai'
 import { createReactAgent } from '@langchain/langgraph/prebuilt'
 import { HumanMessage, AIMessage, SystemMessage, isAIMessageChunk } from '@langchain/core/messages'
 
-import { AgentMailToolkit } from '../src/langchain'
+import { AgentMailToolkit } from '../src/langchain.js'
 
 const terminal = createInterface({ input: process.stdin, output: process.stdout })
 

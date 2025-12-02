@@ -1,11 +1,12 @@
 import { type StructuredTool, tool as langchainTool } from '@langchain/core/tools'
 
-import { ListToolkit } from './toolkit'
-import { type Tool } from './tools'
+import { ListToolkit } from './toolkit.js'
+import { type Tool } from './tools.js'
+import { safeFunc } from './util.js'
 
 export class AgentMailToolkit extends ListToolkit<StructuredTool> {
     protected buildTool(tool: Tool): StructuredTool {
-        return langchainTool(async (args) => JSON.stringify((await this.safeCall(tool.method, args)).result, null, 2), {
+        return langchainTool(async (args) => JSON.stringify((await safeFunc(tool.func, this.client, args)).result, null, 2), {
             name: tool.name,
             description: tool.description,
             schema: tool.params_schema,

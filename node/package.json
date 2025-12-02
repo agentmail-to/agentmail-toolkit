@@ -14,6 +14,7 @@
     ],
     "author": "AgentMail <support@agentmail.cc>",
     "license": "MIT",
+    "type": "module",
     "repository": {
         "type": "git",
         "url": "git+https://github.com/agentmail-to/agentmail-toolkit.git"
@@ -47,6 +48,7 @@
     "devDependencies": {
         "@eslint/js": "^9.28.0",
         "@types/node": "^24.0.1",
+        "@types/pdf-parse": "^1.1.4",
         "eslint": "^9.28.0",
         "eslint-config-prettier": "^10.1.5",
         "globals": "^16.2.0",
@@ -57,7 +59,10 @@
         "typescript-eslint": "^8.34.0"
     },
     "dependencies": {
-        "agentmail": "^0.0.44",
+        "agentmail": "^0.1.8",
+        "file-type": "^20.0.0",
+        "mammoth": "^1.8.0",
+        "pdf-parse": "^1.1.1",
         "zod": "^3.25.63"
     },
     "peerDependencies": {

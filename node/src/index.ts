@@ -1,13 +1,13 @@
 import { z } from 'zod'
 
-import { ListToolkit } from './toolkit'
-import { type Tool as BaseTool } from './tools'
+import { ListToolkit } from './toolkit.js'
+import { type Tool as BaseTool } from './tools.js'
 
 type Tool = {
     name: string
     description: string
     params_schema: z.AnyZodObject
-    fn: (args: any) => Promise<any>
+    func: (args: any) => Promise<any>
 }
 
 export class AgentMailToolkit extends ListToolkit<Tool> {
@@ -16,7 +16,7 @@ export class AgentMailToolkit extends ListToolkit<Tool> {
             name: tool.name,
             description: tool.description,
             params_schema: tool.params_schema,
-            fn: (args: z.infer<typeof tool.params_schema>) => this.call(tool.method, args),
+            func: (args: z.infer<typeof tool.params_schema>) => tool.func(this.client, args),
         }
     }
 }

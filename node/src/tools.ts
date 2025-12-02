@@ -1,111 +1,96 @@
 import { AnyZodObject } from 'zod'
+import { AgentMailClient } from 'agentmail'
 
 import {
     ListItemsParams,
     ListInboxItemsParams,
     GetInboxParams,
     CreateInboxParams,
-    ListThreadsParams,
     GetThreadParams,
+    GetAttachmentParams,
     SendMessageParams,
     ReplyToMessageParams,
     UpdateMessageParams,
-    ListDraftsParams,
-    GetDraftParams,
-    CreateDraftParams,
-    SendDraftParams,
-} from './schemas'
-
+} from './schemas.js'
+import {
+    type Args,
+    listInboxes,
+    getInbox,
+    createInbox,
+    deleteInbox,
+    listThreads,
+    getThread,
+    getAttachment,
+    sendMessage,
+    replyToMessage,
+    updateMessage,
+} from './functions.js'
 export interface Tool {
     name: string
-    method: string
     description: string
     params_schema: AnyZodObject
+    func: (client: AgentMailClient, args: Args) => Promise<any>
 }
 
 export const tools: Tool[] = [
     {
         name: 'list_inboxes',
-        method: 'inboxes.list',
         description: 'List inboxes',
         params_schema: ListItemsParams,
+        func: listInboxes,
     },
     {
         name: 'get_inbox',
-        method: 'inboxes.get',
         description: 'Get inbox',
         params_schema: GetInboxParams,
+        func: getInbox,
     },
     {
         name: 'create_inbox',
-        method: 'inboxes.create',
         description: 'Create inbox',
         params_schema: CreateInboxParams,
+        func: createInbox,
+    },
+    {
+        name: 'delete_inbox',
+        description: 'Delete inbox',
+        params_schema: GetInboxParams,
+        func: deleteInbox,
     },
     {
         name: 'list_threads',
-        method: 'inboxes.threads.list',
         description: 'List threads in inbox',
-        params_schema: ListThreadsParams,
-    },
-    {
-        name: 'list_all_threads',
-        method: 'threads.list',
-        description: 'List threads in all inboxes',
         params_schema: ListInboxItemsParams,
+        func: listThreads,
     },
     {
         name: 'get_thread',
-        method: 'threads.get',
         description: 'Get thread',
         params_schema: GetThreadParams,
+        func: getThread,
+    },
+    {
+        name: 'get_attachment',
+        description: 'Get attachment',
+        params_schema: GetAttachmentParams,
+        func: getAttachment,
     },
     {
         name: 'send_message',
-        method: 'inboxes.messages.send',
         description: 'Send message',
         params_schema: SendMessageParams,
+        func: sendMessage,
     },
     {
         name: 'reply_to_message',
-        method: 'inboxes.messages.reply',
         description: 'Reply to message',
         params_schema: ReplyToMessageParams,
+        func: replyToMessage,
     },
     {
         name: 'update_message',
-        method: 'inboxes.messages.update',
         description: 'Update message',
         params_schema: UpdateMessageParams,
-    },
-    {
-        name: 'list_drafts',
-        method: 'inboxes.drafts.list',
-        description: 'List drafts in inbox',
-        params_schema: ListDraftsParams,
-    },
-    {
-        name: 'list_all_drafts',
-        method: 'drafts.list',
-        description: 'List drafts in all inboxes',
-        params_schema: ListInboxItemsParams,
-    },
-    {
-        name: 'get_draft',
-        method: 'drafts.get',
-        description: 'Get draft',
-        params_schema: GetDraftParams,
-    },
-    {
-        name: 'create_draft',
-        method: 'inboxes.drafts.create',
-        description: 'Create draft',
-        params_schema: CreateDraftParams,
-    },
-    {
-        name: 'send_draft',
-        method: 'inboxes.drafts.send',
-        description: 'Send draft',
-        params_schema: SendDraftParams,
+        func: updateMessage,
     },
 ]

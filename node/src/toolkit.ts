@@ -1,13 +1,13 @@
 import { AgentMailClient } from 'agentmail'
 
-import { Wrapper } from './wrapper'
-import { type Tool, tools } from './tools'
+import { type Tool, tools } from './tools.js'
 
-export abstract class BaseToolkit<T> extends Wrapper {
+export abstract class BaseToolkit<T> {
+    protected readonly client: AgentMailClient
     protected readonly tools: Record<string, T> = {}
 
     constructor(client?: AgentMailClient) {
-        super(client)
+        this.client = client ?? new AgentMailClient()
 
         this.tools = tools.reduce(
             (acc, tool) => {
