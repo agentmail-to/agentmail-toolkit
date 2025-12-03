@@ -8,8 +8,8 @@ import { safeFunc } from './util.js'
 interface McpTool {
     name: string
     description: string
-    paramsSchema: z.ZodRawShape
-    callback: (args: Record<string, unknown>) => Promise<CallToolResult>
+    inputSchema: z.ZodRawShape
+    cb: (args: Record<string, unknown>) => Promise<CallToolResult>
 }
 
 export class AgentMailToolkit extends ListToolkit<McpTool> {
@@ -17,8 +17,8 @@ export class AgentMailToolkit extends ListToolkit<McpTool> {
         return {
             name: tool.name,
             description: tool.description,
-            paramsSchema: tool.params_schema.shape,
-            callback: async (args) => {
+            inputSchema: tool.params_schema.shape,
+            cb: async (args) => {
                 const { isError, result } = await safeFunc(tool.func, this.client, args)
                 return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }], isError }
             },
