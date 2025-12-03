@@ -1,5 +1,5 @@
-import { type ToolCallback } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { type ZodRawShape } from 'zod'
+import { type CallToolResult } from '@modelcontextprotocol/sdk/types.js'
+import { z } from 'zod'
 
 import { ListToolkit } from './toolkit.js'
 import { type Tool } from './tools.js'
@@ -8,8 +8,8 @@ import { safeFunc } from './util.js'
 interface McpTool {
     name: string
     description: string
-    paramsSchema: ZodRawShape
-    callback: ToolCallback<ZodRawShape>
+    paramsSchema: z.ZodRawShape
+    callback: (args: Record<string, unknown>) => Promise<CallToolResult>
 }
 
 export class AgentMailToolkit extends ListToolkit<McpTool> {

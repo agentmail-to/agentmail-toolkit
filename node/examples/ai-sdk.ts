@@ -1,12 +1,12 @@
 import { createInterface } from 'node:readline/promises'
-import { type CoreMessage, streamText } from 'ai'
+import { type ModelMessage, streamText, stepCountIs } from 'ai'
 import { openai } from '@ai-sdk/openai'
 
 import { AgentMailToolkit } from '../src/ai-sdk.js'
 
 const terminal = createInterface({ input: process.stdin, output: process.stdout })
 
-const messages: CoreMessage[] = []
+const messages: ModelMessage[] = []
 
 async function main() {
     while (true) {
@@ -21,7 +21,7 @@ async function main() {
             messages,
             system: 'You are an email agent created by AgentMail that can create and manage inboxes as well as send and receive emails.',
             tools: new AgentMailToolkit().getTools(),
-            maxSteps: 4,
+            stopWhen: stepCountIs(4),
         })
 
         process.stdout.write('\nAssistant:\n\n')

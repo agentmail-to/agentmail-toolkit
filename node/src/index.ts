@@ -6,7 +6,7 @@ import { type Tool as BaseTool } from './tools.js'
 type Tool = {
     name: string
     description: string
-    params_schema: z.AnyZodObject
+    params_schema: z.ZodObject<any>
     func: (args: any) => Promise<any>
 }
 

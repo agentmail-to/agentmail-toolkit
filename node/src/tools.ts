@@ -1,4 +1,4 @@
-import { AnyZodObject } from 'zod'
+import { z } from 'zod'
 import { AgentMailClient } from 'agentmail'
 
 import {
@@ -28,7 +28,7 @@ import {
 export interface Tool {
     name: string
     description: string
-    params_schema: AnyZodObject
+    params_schema: z.ZodObject<any>
     func: (client: AgentMailClient, args: Args) => Promise<any>
 }
 

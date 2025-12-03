@@ -1,5 +1,5 @@
 import { AgentMailClient } from 'agentmail'
-import pdf from 'pdf-parse'
+import { PDFParse } from 'pdf-parse'
 import mammoth from 'mammoth'
 import { fileTypeFromBuffer } from 'file-type'
 
@@ -51,7 +51,8 @@ export async function getAttachment(client: AgentMailClient, args: Args): Promis
     let text = undefined
 
     if (fileType === 'application/pdf') {
-        const pdfData = await pdf(fileBytes)
+        const parser = new PDFParse({ data: fileBytes })
+        const pdfData = await parser.getText()
         text = pdfData.text
     } else if (fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
         const result = await mammoth.extractRawText({ buffer: fileBytes })
