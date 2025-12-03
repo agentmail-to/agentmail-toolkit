@@ -1,6 +1,6 @@
 {
     "name": "agentmail-toolkit",
-    "version": "0.1.31",
+    "version": "0.1.33",
     "description": "AgentMail Toolkit",
     "scripts": {
         "build": "tsup",
@@ -26,23 +26,23 @@
     "exports": {
         ".": {
             "types": "./dist/index.d.ts",
-            "import": "./dist/index.mjs",
-            "require": "./dist/index.js"
+            "import": "./dist/index.js",
+            "require": "./dist/index.cjs"
         },
         "./ai-sdk": {
             "types": "./dist/ai-sdk.d.ts",
-            "import": "./dist/ai-sdk.mjs",
-            "require": "./dist/ai-sdk.js"
+            "import": "./dist/ai-sdk.js",
+            "require": "./dist/ai-sdk.cjs"
         },
         "./langchain": {
             "types": "./dist/langchain.d.ts",
-            "import": "./dist/langchain.mjs",
-            "require": "./dist/langchain.js"
+            "import": "./dist/langchain.js",
+            "require": "./dist/langchain.cjs"
         },
         "./mcp": {
             "types": "./dist/mcp.d.ts",
-            "import": "./dist/mcp.mjs",
-            "require": "./dist/mcp.js"
+            "import": "./dist/mcp.js",
+            "require": "./dist/mcp.cjs"
         }
     },
     "devDependencies": {
