@@ -7,6 +7,7 @@ import { safeFunc } from './util.js'
 
 interface McpTool {
     name: string
+    title: string
     description: string
     inputSchema: z.ZodRawShape
     cb: (args: Record<string, unknown>) => Promise<CallToolResult>
@@ -16,6 +17,10 @@ export class AgentMailToolkit extends ListToolkit<McpTool> {
     protected buildTool(tool: Tool): McpTool {
         return {
             name: tool.name,
+            title: tool.name
+                .split('_')
+                .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(' '),
             description: tool.description,
             inputSchema: tool.params_schema.shape,
             cb: async (args) => {
