@@ -22,7 +22,7 @@ export class AgentMailToolkit extends ListToolkit<McpTool> {
                 .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
                 .join(' '),
             description: tool.description,
-            inputSchema: tool.params_schema.shape,
+            inputSchema: tool.paramsSchema.shape,
             cb: async (args) => {
                 const { isError, result } = await safeFunc(tool.func, this.client, args)
                 return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }], isError }

@@ -6,7 +6,7 @@ import { type Tool as BaseTool } from './tools.js'
 type Tool = {
     name: string
     description: string
-    params_schema: z.ZodObject<any>
+    paramsSchema: z.ZodObject<any>
     func: (args: any) => Promise<any>
 }
 
@@ -15,8 +15,8 @@ export class AgentMailToolkit extends ListToolkit<Tool> {
         return {
             name: tool.name,
             description: tool.description,
-            params_schema: tool.params_schema,
-            func: (args: z.infer<typeof tool.params_schema>) => tool.func(this.client, args),
+            paramsSchema: tool.paramsSchema,
+            func: (args: z.infer<typeof tool.paramsSchema>) => tool.func(this.client, args),
         }
     }
 }
