@@ -53,7 +53,6 @@
         "eslint-config-prettier": "^10.1.8",
         "globals": "^16.5.0",
         "prettier": "3.5.3",
-        "ts-node": "^10.9.2",
         "tsup": "^8.5.1",
         "typescript": "^5.9.3",
         "typescript-eslint": "^8.48.1"
