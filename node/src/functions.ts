@@ -9,7 +9,7 @@ export type Args = Record<string, any>
 interface Attachment {
     text?: string
     error?: string
-    file_type?: string
+    fileType?: string
 }
 
 export async function listInboxes(client: AgentMailClient, args: Args) {
@@ -17,8 +17,8 @@ export async function listInboxes(client: AgentMailClient, args: Args) {
 }
 
 export async function getInbox(client: AgentMailClient, args: Args) {
-    const { inbox_id, ...options } = args
-    return client.inboxes.get(inbox_id, options)
+    const { inboxId, ...options } = args
+    return client.inboxes.get(inboxId, options)
 }
 
 export async function createInbox(client: AgentMailClient, args: Args) {
@@ -26,24 +26,24 @@ export async function createInbox(client: AgentMailClient, args: Args) {
 }
 
 export async function deleteInbox(client: AgentMailClient, args: Args) {
-    const { inbox_id } = args
-    return client.inboxes.delete(inbox_id)
+    const { inboxId } = args
+    return client.inboxes.delete(inboxId)
 }
 
 export async function listThreads(client: AgentMailClient, args: Args) {
-    const { inbox_id, ...options } = args
-    return client.inboxes.threads.list(inbox_id, options)
+    const { inboxId, ...options } = args
+    return client.inboxes.threads.list(inboxId, options)
 }
 
 export async function getThread(client: AgentMailClient, args: Args) {
-    const { inbox_id, thread_id, ...options } = args
-    return client.inboxes.threads.get(inbox_id, thread_id, options)
+    const { inboxId, threadId, ...options } = args
+    return client.inboxes.threads.get(inboxId, threadId, options)
 }
 
 export async function getAttachment(client: AgentMailClient, args: Args): Promise<Attachment> {
-    const { thread_id, attachment_id } = args
+    const { threadId, attachmentId } = args
 
-    const response = await client.threads.getAttachment(thread_id, attachment_id)
+    const response = await client.threads.getAttachment(threadId, attachmentId)
     const fileBytes = Buffer.from(await response.arrayBuffer())
 
     const fileKind = await fileTypeFromBuffer(fileBytes)
@@ -59,26 +59,23 @@ export async function getAttachment(client: AgentMailClient, args: Args): Promis
         const result = await mammoth.extractRawText({ buffer: fileBytes })
         text = result.value
     } else {
-        return {
-            error: `Unsupported file type: ${fileType || 'unknown'}`,
-            file_type: fileType,
-        }
+        return { error: `Unsupported file type: ${fileType || 'unknown'}`, fileType }
     }
 
-    return { text, file_type: fileType }
+    return { text, fileType }
 }
 
 export async function sendMessage(client: AgentMailClient, args: Args) {
-    const { inbox_id, ...options } = args
-    return client.inboxes.messages.send(inbox_id, options)
+    const { inboxId, ...options } = args
+    return client.inboxes.messages.send(inboxId, options)
 }
 
 export async function replyToMessage(client: AgentMailClient, args: Args) {
-    const { inbox_id, message_id, ...options } = args
-    return client.inboxes.messages.reply(inbox_id, message_id, options)
+    const { inboxId, messageId, ...options } = args
+    return client.inboxes.messages.reply(inboxId, messageId, options)
 }
 
 export async function updateMessage(client: AgentMailClient, args: Args) {
-    const { inbox_id, message_id, ...options } = args
-    return client.inboxes.messages.update(inbox_id, message_id, options)
+    const { inboxId, messageId, ...options } = args
+    return client.inboxes.messages.update(inboxId, messageId, options)
 }

@@ -7,39 +7,39 @@ const AttachmentIdSchema = z.string().describe('ID of attachment')
 
 export const ListItemsParams = z.object({
     limit: z.number().optional().default(10).describe('Max number of items to return'),
-    page_token: z.string().optional().describe('Page token for pagination'),
+    pageToken: z.string().optional().describe('Page token for pagination'),
 })
 
 export const GetInboxParams = z.object({
-    inbox_id: InboxIdSchema,
+    inboxId: InboxIdSchema,
 })
 
 export const CreateInboxParams = z.object({
     username: z.string().optional().describe('Username'),
     domain: z.string().optional().describe('Domain'),
-    display_name: z.string().optional().describe('Display name'),
+    displayName: z.string().optional().describe('Display name'),
 })
 
 export const ListInboxItemsParams = ListItemsParams.extend({
-    inbox_id: InboxIdSchema,
+    inboxId: InboxIdSchema,
     labels: z.array(z.string()).optional().describe('Labels to filter items by'),
     before: z.string().optional().describe('Filter items before datetime'),
     after: z.string().optional().describe('Filter items after datetime'),
 })
 
 export const GetThreadParams = z.object({
-    inbox_id: InboxIdSchema,
-    thread_id: ThreadIdSchema,
+    inboxId: InboxIdSchema,
+    threadId: ThreadIdSchema,
 })
 
 export const GetAttachmentParams = z.object({
-    inbox_id: InboxIdSchema,
-    thread_id: ThreadIdSchema,
-    attachment_id: AttachmentIdSchema,
+    inboxId: InboxIdSchema,
+    threadId: ThreadIdSchema,
+    attachmentId: AttachmentIdSchema,
 })
 
 const BaseMessageParams = z.object({
-    inbox_id: InboxIdSchema,
+    inboxId: InboxIdSchema,
     text: z.string().optional().describe('Plain text body'),
     html: z.string().optional().describe('HTML body'),
     labels: z.array(z.string()).optional().describe('Labels'),
@@ -53,12 +53,12 @@ export const SendMessageParams = BaseMessageParams.extend({
 })
 
 export const ReplyToMessageParams = BaseMessageParams.extend({
-    message_id: MessageIdSchema,
+    messageId: MessageIdSchema,
 })
 
 export const UpdateMessageParams = z.object({
-    inbox_id: InboxIdSchema,
-    message_id: MessageIdSchema,
-    add_labels: z.array(z.string()).optional().describe('Labels to add'),
-    remove_labels: z.array(z.string()).optional().describe('Labels to remove'),
+    inboxId: InboxIdSchema,
+    messageId: MessageIdSchema,
+    addLabels: z.array(z.string()).optional().describe('Labels to add'),
+    removeLabels: z.array(z.string()).optional().describe('Labels to remove'),
 })
