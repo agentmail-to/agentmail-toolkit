@@ -15,8 +15,5 @@
         "@langchain/openai": "^1.2.0",
         "ai": "6.0.0-beta.150",
         "langchain": "^1.2.0"
-    },
-    "devDependencies": {
-        "ts-node": "^10.9.2"
     }
 }
