@@ -1,4 +1,4 @@
-import { type StructuredTool, tool as langchainTool } from '@langchain/core/tools'
+import { type StructuredTool, tool as langchainTool } from 'langchain'
 
 import { ListToolkit } from './toolkit.js'
 import { type Tool } from './tools.js'

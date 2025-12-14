@@ -58,11 +58,11 @@
         "typescript-eslint": "^8.48.1"
     },
     "dependencies": {
-        "@langchain/core": "^1.1.1",
         "@modelcontextprotocol/sdk": "^1.24.1",
         "agentmail": "^0.1.8",
-        "ai": "^5.0.106",
+        "ai": "6.0.0-beta.150",
         "file-type": "^21.1.1",
+        "langchain": "^1.2.0",
         "mammoth": "^1.11.0",
         "pdf-parse": "^2.4.5",
         "zod": "^4.1.13"

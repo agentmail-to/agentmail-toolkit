@@ -1,16 +1,14 @@
 import { createInterface } from 'node:readline/promises'
-import { ChatOpenAI } from '@langchain/openai'
-import { createReactAgent } from '@langchain/langgraph/prebuilt'
-import { HumanMessage, AIMessage, SystemMessage, isAIMessageChunk } from '@langchain/core/messages'
+import { createAgent, SystemMessage, HumanMessage, AIMessage } from 'langchain'
 
 import { AgentMailToolkit } from '../src/langchain.js'
 
 const terminal = createInterface({ input: process.stdin, output: process.stdout })
 
-const agent = createReactAgent({
-    llm: new ChatOpenAI({ model: 'gpt-4o' }),
+const agent = createAgent({
+    model: 'openai:gpt-4o',
     tools: new AgentMailToolkit().getTools(),
-    prompt: 'You are an email agent created by AgentMail that can create and manage inboxes as well as send and receive emails.',
+    systemPrompt: 'You are an email agent created by AgentMail that can create and manage inboxes as well as send and receive emails.',
 })
 
 const messages: (SystemMessage | HumanMessage | AIMessage)[] = []
@@ -25,11 +23,11 @@ async function main() {
 
         process.stdout.write('\nAssistant:\n\n')
 
-        const result: any = await agent.stream({ messages }, { streamMode: 'messages' })
+        const result = await agent.stream({ messages }, { streamMode: 'messages' })
 
         let response = ''
         for await (const [chunk, _] of result) {
-            if (!isAIMessageChunk(chunk)) continue
+            if (chunk.type !== 'ai') continue
 
             process.stdout.write(chunk.text)
             response += chunk.text
