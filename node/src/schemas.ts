@@ -23,8 +23,8 @@ export const CreateInboxParams = z.object({
 export const ListInboxItemsParams = ListItemsParams.extend({
     inboxId: InboxIdSchema,
     labels: z.array(z.string()).optional().describe('Labels to filter items by'),
-    before: z.string().optional().describe('Filter items before datetime'),
-    after: z.string().optional().describe('Filter items after datetime'),
+    before: z.string().pipe(z.coerce.date()).optional().describe('Filter items before datetime'),
+    after: z.string().pipe(z.coerce.date()).optional().describe('Filter items after datetime'),
 })
 
 export const GetThreadParams = z.object({
