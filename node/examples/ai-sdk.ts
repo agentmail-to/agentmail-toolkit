@@ -2,7 +2,7 @@ import { createInterface } from 'node:readline/promises'
 import { type ModelMessage, streamText, stepCountIs } from 'ai'
 import { openai } from '@ai-sdk/openai'
 
-import { AgentMailToolkit } from '../src/ai-sdk.js'
+import { AgentMailToolkit } from 'agentmail-toolkit/ai-sdk'
 
 const terminal = createInterface({ input: process.stdin, output: process.stdout })
 

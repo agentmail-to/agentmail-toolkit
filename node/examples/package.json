@@ -11,6 +11,7 @@
     "packageManager": "pnpm@10.6.4",
     "type": "module",
     "dependencies": {
+        "agentmail-toolkit": "workspace:*",
         "@ai-sdk/openai": "2.0.86",
         "@langchain/openai": "^1.2.0",
         "ai": "6.0.0-beta.150",

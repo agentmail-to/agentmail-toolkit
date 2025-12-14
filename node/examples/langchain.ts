@@ -1,7 +1,7 @@
 import { createInterface } from 'node:readline/promises'
 import { createAgent, SystemMessage, HumanMessage, AIMessage } from 'langchain'
 
-import { AgentMailToolkit } from '../src/langchain.js'
+import { AgentMailToolkit } from 'agentmail-toolkit/langchain'
 
 const terminal = createInterface({ input: process.stdin, output: process.stdout })
 
