@@ -1,13 +1,7 @@
 {
     "name": "agentmail-toolkit-examples",
     "version": "0.1.0",
-    "description": "AgentMail Toolkit examples",
-    "scripts": {
-        "test": "echo \"Error: no test specified\" && exit 1"
-    },
-    "keywords": [],
-    "author": "",
-    "license": "MIT",
+    "description": "AgentMail Toolkit Examples",
     "packageManager": "pnpm@10.6.4",
     "type": "module",
     "dependencies": {
