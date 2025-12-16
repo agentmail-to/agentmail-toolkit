@@ -26,5 +26,10 @@ dev = [
     "twine>=6.1.0",
 ]
 
+[tool.hatch.envs.default.scripts]
+clean = "rm -rf dist/ build/ *.egg-info src/*.egg-info"
+build = ["clean", "python -m build"]
+publish = "twine upload dist/*"
+
 [tool.uv.workspace]
 members = ["examples"]
