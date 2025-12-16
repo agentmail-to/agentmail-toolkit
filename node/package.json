@@ -7,7 +7,14 @@
         "lint": "eslint .",
         "prettier": "prettier --write ."
     },
-    "keywords": ["agentmail", "toolkit", "tools", "ai", "vercel", "langchain"],
+    "keywords": [
+        "agentmail",
+        "toolkit",
+        "tools",
+        "ai",
+        "vercel",
+        "langchain"
+    ],
     "author": "AgentMail <support@agentmail.cc>",
     "license": "MIT",
     "homepage": "https://agentmail.to",
@@ -17,7 +24,9 @@
     },
     "packageManager": "pnpm@10.6.4",
     "type": "module",
-    "files": ["dist"],
+    "files": [
+        "dist"
+    ],
     "exports": {
         ".": {
             "types": "./dist/index.d.ts",
@@ -53,9 +62,15 @@
         "langchain": "^1.2.0"
     },
     "peerDependenciesMeta": {
-        "@modelcontextprotocol/sdk": { "optional": true },
-        "ai": { "optional": true },
-        "langchain": { "optional": true }
+        "@modelcontextprotocol/sdk": {
+            "optional": true
+        },
+        "ai": {
+            "optional": true
+        },
+        "langchain": {
+            "optional": true
+        }
     },
     "devDependencies": {
         "@eslint/js": "^9.39.1",
