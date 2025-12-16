@@ -50,7 +50,7 @@
         }
     },
     "dependencies": {
-        "agentmail": "^0.1.8",
+        "agentmail": "^0.1.11",
         "file-type": "^21.1.1",
         "mammoth": "^1.11.0",
         "pdf-parse": "^2.4.5",
