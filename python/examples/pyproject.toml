@@ -1,9 +1,12 @@
 [project]
 name = "agentmail-toolkit-examples"
 version = "0.1.0"
-description = "AgentMail Toolkit examples"
+description = "AgentMail Toolkit Examples"
 requires-python = ">=3.11"
 dependencies = [
-    "langchain-openai>=0.3.22",
-    "langgraph>=0.4.8",
+    "agentmail-toolkit",
+    "langchain-openai>=1.1.0",
 ]
+
+[tool.uv.sources]
+agentmail-toolkit = { workspace = true }
