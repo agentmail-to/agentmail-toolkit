@@ -59,6 +59,7 @@ class SendMessageParams(BaseMessageParams):
 
 class ReplyToMessageParams(BaseMessageParams):
     message_id: MessageIdField
+    reply_all: Optional[bool] = Field(description="Reply to all recipients")
 
 
 class UpdateMessageParams(BaseModel):
