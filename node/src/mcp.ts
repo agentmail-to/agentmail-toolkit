@@ -11,7 +11,7 @@ interface McpTool {
     title: string
     description: string
     inputSchema: z.ZodRawShape
-    callback: ToolCallback
+    callback: ToolCallback<z.ZodRawShape>
     annotations?: ToolAnnotations
 }
 
