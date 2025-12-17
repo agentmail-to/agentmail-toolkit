@@ -1,20 +1,12 @@
-import { type CallToolResult } from '@modelcontextprotocol/sdk/types.js'
-import { z } from 'zod'
+import { type Tool as McpTool } from '@modelcontextprotocol/sdk/types.js'
+import { type ToolCallback } from '@modelcontextprotocol/sdk/server/mcp.js'
 
 import { ListToolkit } from './toolkit.js'
 import { type Tool } from './tools.js'
 import { safeFunc } from './util.js'
 
-interface McpTool {
-    name: string
-    title: string
-    description: string
-    inputSchema: z.ZodRawShape
-    cb: (args: Record<string, unknown>) => Promise<CallToolResult>
-}
-
 export class AgentMailToolkit extends ListToolkit<McpTool> {
-    protected buildTool(tool: Tool): McpTool {
+    protected buildTool(tool: Tool): McpTool & { callback: ToolCallback } {
         return {
             name: tool.name,
             title: tool.name
@@ -23,7 +15,7 @@ export class AgentMailToolkit extends ListToolkit<McpTool> {
                 .join(' '),
             description: tool.description,
             inputSchema: tool.paramsSchema.shape,
-            cb: async (args) => {
+            callback: async (args) => {
                 const { isError, result } = await safeFunc(tool.func, this.client, args)
                 return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }], isError }
             },
