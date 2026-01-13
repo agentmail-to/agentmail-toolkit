@@ -1,7 +1,7 @@
 import { AgentMailClient } from 'agentmail'
 import { fileTypeFromBuffer } from 'file-type'
 import { extractText, getDocumentProxy } from 'unpdf'
-import mammoth from 'mammoth'
+import JSZip from 'jszip'
 
 export type Args = Record<string, any>
 
@@ -56,10 +56,21 @@ export async function getAttachment(client: AgentMailClient, args: Args): Promis
         const { text: pdfText } = await extractText(pdf)
         text = Array.isArray(pdfText) ? pdfText.join('\n') : pdfText
     } else if (fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-        // Use buffer for Node.js, arrayBuffer for browser/edge
-        const input = typeof Buffer !== 'undefined' ? { buffer: Buffer.from(arrayBuffer) } : { arrayBuffer }
-        const result = await mammoth.extractRawText(input)
-        text = result.value
+        const zip = await JSZip.loadAsync(fileBytes)
+        const documentXml = await zip.file('word/document.xml')?.async('string')
+        if (!documentXml) {
+            return { error: 'Invalid DOCX: missing word/document.xml', fileType }
+        }
+        text = documentXml
+            .replace(/<w:p[^>]*>/g, '\n')
+            .replace(/<[^>]+>/g, '')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&amp;/g, '&')
+            .replace(/&quot;/g, '"')
+            .replace(/&apos;/g, "'")
+            .replace(/\n{3,}/g, '\n\n')
+            .trim()
     } else {
         return { error: `Unsupported file type: ${fileType || 'unknown'}`, fileType }
     }
