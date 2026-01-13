@@ -1,6 +1,6 @@
 {
     "name": "agentmail-toolkit",
-    "version": "0.1.42",
+    "version": "0.1.43",
     "description": "AgentMail Toolkit",
     "scripts": {
         "build": "tsup",
@@ -53,7 +53,7 @@
         "agentmail": "^0.1.11",
         "file-type": "^21.1.1",
         "mammoth": "^1.11.0",
-        "pdf-parse": "^2.4.5",
+        "unpdf": "^1.4.0",
         "zod": "^4.1.13"
     },
     "peerDependencies": {
@@ -75,7 +75,6 @@
     "devDependencies": {
         "@eslint/js": "^9.39.1",
         "@types/node": "^24.10.1",
-        "@types/pdf-parse": "^1.1.5",
         "eslint": "^9.39.1",
         "eslint-config-prettier": "^10.1.8",
         "globals": "^16.5.0",

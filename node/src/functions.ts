@@ -1,8 +1,7 @@
 import { AgentMailClient } from 'agentmail'
-import { CanvasFactory } from 'pdf-parse/worker'
-import { PDFParse } from 'pdf-parse'
-import mammoth from 'mammoth'
 import { fileTypeFromBuffer } from 'file-type'
+import { extractText, getDocumentProxy } from 'unpdf'
+import mammoth from 'mammoth'
 
 export type Args = Record<string, any>
 
@@ -44,7 +43,8 @@ export async function getAttachment(client: AgentMailClient, args: Args): Promis
     const { threadId, attachmentId } = args
 
     const response = await client.threads.getAttachment(threadId, attachmentId)
-    const fileBytes = Buffer.from(await response.arrayBuffer())
+    const arrayBuffer = await response.arrayBuffer()
+    const fileBytes = new Uint8Array(arrayBuffer)
 
     const fileKind = await fileTypeFromBuffer(fileBytes)
     const fileType = fileKind?.mime
@@ -52,11 +52,13 @@ export async function getAttachment(client: AgentMailClient, args: Args): Promis
     let text = undefined
 
     if (fileType === 'application/pdf') {
-        const parser = new PDFParse({ data: fileBytes, CanvasFactory })
-        const pdfData = await parser.getText()
-        text = pdfData.text
+        const pdf = await getDocumentProxy(fileBytes)
+        const { text: pdfText } = await extractText(pdf)
+        text = Array.isArray(pdfText) ? pdfText.join('\n') : pdfText
     } else if (fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-        const result = await mammoth.extractRawText({ buffer: fileBytes })
+        // Use buffer for Node.js, arrayBuffer for browser/edge
+        const input = typeof Buffer !== 'undefined' ? { buffer: Buffer.from(arrayBuffer) } : { arrayBuffer }
+        const result = await mammoth.extractRawText(input)
         text = result.value
     } else {
         return { error: `Unsupported file type: ${fileType || 'unknown'}`, fileType }
