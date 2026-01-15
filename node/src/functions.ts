@@ -1,7 +1,5 @@
 import { AgentMailClient } from 'agentmail'
-import { fileTypeFromBuffer } from 'file-type'
-import { extractText, getDocumentProxy } from 'unpdf'
-import JSZip from 'jszip'
+import { detectFileType, extractPdfText, extractDocxText } from './util.js'
 
 export type Args = Record<string, any>
 
@@ -46,36 +44,16 @@ export async function getAttachment(client: AgentMailClient, args: Args): Promis
     const arrayBuffer = await response.arrayBuffer()
     const fileBytes = new Uint8Array(arrayBuffer)
 
-    const fileKind = await fileTypeFromBuffer(fileBytes)
-    const fileType = fileKind?.mime
+    const detectedType = detectFileType(fileBytes)
 
-    let text = undefined
-
-    if (fileType === 'application/pdf') {
-        const pdf = await getDocumentProxy(fileBytes)
-        const { text: pdfText } = await extractText(pdf)
-        text = Array.isArray(pdfText) ? pdfText.join('\n') : pdfText
-    } else if (fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-        const zip = await JSZip.loadAsync(fileBytes)
-        const documentXml = await zip.file('word/document.xml')?.async('string')
-        if (!documentXml) {
-            return { error: 'Invalid DOCX: missing word/document.xml', fileType }
-        }
-        text = documentXml
-            .replace(/<w:p[^>]*>/g, '\n')
-            .replace(/<[^>]+>/g, '')
-            .replace(/&lt;/g, '<')
-            .replace(/&gt;/g, '>')
-            .replace(/&amp;/g, '&')
-            .replace(/&quot;/g, '"')
-            .replace(/&apos;/g, "'")
-            .replace(/\n{3,}/g, '\n\n')
-            .trim()
-    } else {
-        return { error: `Unsupported file type: ${fileType || 'unknown'}`, fileType }
+    if (detectedType === 'application/pdf') {
+        return { text: await extractPdfText(fileBytes), fileType: detectedType }
+    } else if (detectedType === 'application/zip') {
+        const text = await extractDocxText(fileBytes)
+        if (text) return { text, fileType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }
     }
 
-    return { text, fileType }
+    return { error: 'Unsupported file type', fileType: detectedType || 'unknown' }
 }
 
 export async function sendMessage(client: AgentMailClient, args: Args) {
