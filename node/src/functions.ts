@@ -40,7 +40,8 @@ export async function getThread(client: AgentMailClient, args: Args) {
 export async function getAttachment(client: AgentMailClient, args: Args): Promise<Attachment> {
     const { threadId, attachmentId } = args
 
-    const response = await client.threads.getAttachment(threadId, attachmentId)
+    const { downloadUrl } = await client.threads.getAttachment(threadId, attachmentId)
+    const response = await fetch(downloadUrl)
     const arrayBuffer = await response.arrayBuffer()
     const fileBytes = new Uint8Array(arrayBuffer)
 

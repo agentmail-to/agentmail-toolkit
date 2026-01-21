@@ -1,6 +1,7 @@
 from typing import Any, Optional
 from pydantic import BaseModel
 from agentmail import AgentMail
+from urllib.request import urlopen
 
 import io
 import filetype
@@ -42,10 +43,10 @@ def get_thread(client: AgentMail, kwargs: Kwargs):
 
 
 def get_attachment(client: AgentMail, kwargs: Kwargs):
-    it = client.threads.get_attachment(
+    attachment = client.threads.get_attachment(
         thread_id=kwargs["thread_id"], attachment_id=kwargs["attachment_id"]
     )
-    file_bytes = b"".join(it)
+    file_bytes = urlopen(attachment.download_url).read()
 
     file_kind = filetype.guess(file_bytes)
     file_type = file_kind.mime if file_kind else None
