@@ -57,6 +57,10 @@ export const ReplyToMessageParams = BaseMessageParams.extend({
     replyAll: z.boolean().optional().describe('Reply to all recipients'),
 })
 
+export const ForwardMessageParams = SendMessageParams.extend({
+    messageId: MessageIdSchema,
+})
+
 export const UpdateMessageParams = z.object({
     inboxId: InboxIdSchema,
     messageId: MessageIdSchema,

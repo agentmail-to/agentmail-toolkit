@@ -67,6 +67,11 @@ export async function replyToMessage(client: AgentMailClient, args: Args) {
     return client.inboxes.messages.reply(inboxId, messageId, options)
 }
 
+export async function forwardMessage(client: AgentMailClient, args: Args) {
+    const { inboxId, messageId, ...options } = args
+    return client.inboxes.messages.forward(inboxId, messageId, options)
+}
+
 export async function updateMessage(client: AgentMailClient, args: Args) {
     const { inboxId, messageId, ...options } = args
     return client.inboxes.messages.update(inboxId, messageId, options)

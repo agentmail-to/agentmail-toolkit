@@ -62,6 +62,10 @@ class ReplyToMessageParams(BaseMessageParams):
     reply_all: Optional[bool] = Field(description="Reply to all recipients")
 
 
+class ForwardMessageParams(SendMessageParams):
+    message_id: MessageIdField
+
+
 class UpdateMessageParams(BaseModel):
     inbox_id: InboxIdField
     message_id: MessageIdField

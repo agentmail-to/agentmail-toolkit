@@ -12,6 +12,7 @@ import {
     SendMessageParams,
     ReplyToMessageParams,
     UpdateMessageParams,
+    ForwardMessageParams,
 } from './schemas.js'
 import {
     type Args,
@@ -25,6 +26,7 @@ import {
     sendMessage,
     replyToMessage,
     updateMessage,
+    forwardMessage,
 } from './functions.js'
 export interface Tool {
     name: string
@@ -126,6 +128,18 @@ export const tools: Tool[] = [
         description: 'Reply to message',
         paramsSchema: ReplyToMessageParams,
         func: replyToMessage,
+        annotations: {
+            readOnlyHint: false,
+            destructiveHint: false,
+            idempotentHint: false,
+            openWorldHint: true,
+        },
+    },
+    {
+        name: 'forward_message',
+        description: 'Forward message',
+        paramsSchema: ForwardMessageParams,
+        func: forwardMessage,
         annotations: {
             readOnlyHint: false,
             destructiveHint: false,

@@ -12,6 +12,7 @@ from .schemas import (
     SendMessageParams,
     ReplyToMessageParams,
     UpdateMessageParams,
+    ForwardMessageParams,
 )
 from .functions import (
     Kwargs,
@@ -25,6 +26,7 @@ from .functions import (
     send_message,
     reply_to_message,
     update_message,
+    forward_message,
 )
 
 
@@ -89,6 +91,12 @@ tools: List[Tool] = [
         description="Reply to message",
         params_schema=ReplyToMessageParams,
         func=reply_to_message,
+    ),
+    Tool(
+        name="forward_message",
+        description="Forward message",
+        params_schema=ForwardMessageParams,
+        func=forward_message,
     ),
     Tool(
         name="update_message",

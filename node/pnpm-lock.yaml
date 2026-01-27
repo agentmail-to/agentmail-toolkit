@@ -12,8 +12,8 @@ importers:
         specifier: ^1.24.1
         version: 1.25.1(@cfworker/json-schema@4.1.1)(hono@4.11.1)(zod@4.2.1)
       agentmail:
-        specifier: ^0.2.1
-        version: 0.2.1
+        specifier: ^0.2.5
+        version: 0.2.5
       ai:
         specifier: ^6.0.0-beta.150
         version: 6.0.0-beta.150(zod@4.2.1)
@@ -612,8 +612,8 @@ packages:
     engines: {node: '>=0.4.0'}
     hasBin: true
 
-  agentmail@0.2.1:
-    resolution: {integrity: sha512-yxvQMsF96tZpuAO+4S0bMmEiBpjxzlbX4hzo818yJ6Mm6vW+Y9k8ONKlt3QSitUJNRbHYovNNYmcwGDWTAnvFw==}
+  agentmail@0.2.5:
+    resolution: {integrity: sha512-Hl68zE0xAgLRF9h+IKo5nQ4u1PMdCPwQEq6DF7ewfHmmmDCfUCnvIzRvkKi/2uOEK5VLAvxnv4+VWeHVXQoMRQ==}
     engines: {node: '>=18.0.0'}
 
   ai@6.0.0-beta.150:
@@ -2026,7 +2026,7 @@ snapshots:
 
   acorn@8.15.0: {}
 
-  agentmail@0.2.1:
+  agentmail@0.2.5:
     dependencies:
       ws: 8.18.3
     transitivePeerDependencies:

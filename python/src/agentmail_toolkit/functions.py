@@ -75,7 +75,15 @@ def send_message(client: AgentMail, kwargs: Kwargs):
 
 
 def reply_to_message(client: AgentMail, kwargs: Kwargs):
-    return client.inboxes.messages.reply(**kwargs)
+    inbox_id = kwargs.pop("inbox_id")
+    message_id = kwargs.pop("message_id")
+    return client.inboxes.messages.reply(inbox_id, message_id, **kwargs)
+
+
+def forward_message(client: AgentMail, kwargs: Kwargs):
+    inbox_id = kwargs.pop("inbox_id")
+    message_id = kwargs.pop("message_id")
+    return client.inboxes.messages.forward(inbox_id, message_id, **kwargs)
 
 
 def update_message(client: AgentMail, kwargs: Kwargs):
