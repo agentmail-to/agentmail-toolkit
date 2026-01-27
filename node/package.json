@@ -1,6 +1,6 @@
 {
     "name": "agentmail-toolkit",
-    "version": "0.2.1",
+    "version": "0.2.3",
     "description": "AgentMail Toolkit",
     "scripts": {
         "build": "tsup",
@@ -47,6 +47,11 @@
             "types": "./dist/mcp.d.ts",
             "import": "./dist/mcp.js",
             "require": "./dist/mcp.cjs"
+        },
+        "./clawdbot": {
+            "types": "./dist/clawdbot.d.ts",
+            "import": "./dist/clawdbot.js",
+            "require": "./dist/clawdbot.cjs"
         }
     },
     "dependencies": {
@@ -58,6 +63,7 @@
     "peerDependencies": {
         "@modelcontextprotocol/sdk": "^1.24.1",
         "ai": "^6.0.0-beta.150",
+        "clawdbot": "*",
         "langchain": "^1.2.0"
     },
     "peerDependenciesMeta": {
@@ -67,13 +73,19 @@
         "ai": {
             "optional": true
         },
+        "clawdbot": {
+            "optional": true
+        },
         "langchain": {
             "optional": true
         }
     },
     "devDependencies": {
         "@eslint/js": "^9.39.1",
+        "@mariozechner/pi-agent-core": "^0.50.1",
+        "@sinclair/typebox": "^0.34.47",
         "@types/node": "^24.10.1",
+        "clawdbot": "2026.1.24-3",
         "eslint": "^9.39.1",
         "eslint-config-prettier": "^10.1.8",
         "globals": "^16.5.0",
