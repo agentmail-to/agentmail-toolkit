@@ -1,5 +1,4 @@
-from typing import Any, Optional
-from pydantic import BaseModel
+from typing import Any
 from agentmail import AgentMail
 from urllib.request import urlopen
 
@@ -10,12 +9,6 @@ import docx
 
 
 type Kwargs = dict[str, Any]
-
-
-class Attachment(BaseModel):
-    text: Optional[str] = None
-    error: Optional[str] = None
-    file_type: Optional[str] = None
 
 
 def list_inboxes(client: AgentMail, kwargs: Kwargs):
@@ -46,28 +39,28 @@ def get_attachment(client: AgentMail, kwargs: Kwargs):
     attachment = client.threads.get_attachment(
         thread_id=kwargs["thread_id"], attachment_id=kwargs["attachment_id"]
     )
-    file_bytes = urlopen(attachment.download_url).read()
 
-    file_kind = filetype.guess(file_bytes)
-    file_type = file_kind.mime if file_kind else None
+    try:
+        file_bytes = urlopen(attachment.download_url).read()
+        file_kind = filetype.guess(file_bytes)
+        file_type = file_kind.mime if file_kind else None
 
-    text = ""
-    if file_type == "application/pdf":
-        for page in pymupdf.Document(stream=file_bytes):
-            text += page.get_text() + "\n"
-    elif (
-        file_type
-        == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    ):
-        for paragraph in docx.Document(io.BytesIO(file_bytes)).paragraphs:
-            text += paragraph.text + "\n"
-    else:
-        return Attachment(
-            error=f"Unsupported file type: {file_type or 'unknown'}",
-            file_type=file_type,
-        )
+        text = None
+        if file_type == "application/pdf":
+            text = ""
+            for page in pymupdf.Document(stream=file_bytes):
+                text += page.get_text() + "\n"
+        if file_type == "application/zip":
+            text = ""
+            for paragraph in docx.Document(io.BytesIO(file_bytes)).paragraphs:
+                text += paragraph.text + "\n"
 
-    return Attachment(text=text, file_type=file_type)
+        if text is not None:
+            return attachment.model_copy(update={"text": text})
+    except:
+        pass
+
+    return attachment
 
 
 def send_message(client: AgentMail, kwargs: Kwargs):

@@ -3,12 +3,6 @@ import { detectFileType, extractPdfText, extractDocxText } from './util.js'
 
 export type Args = Record<string, any>
 
-interface Attachment {
-    text?: string
-    error?: string
-    fileType?: string
-}
-
 export async function listInboxes(client: AgentMailClient, args: Args) {
     return client.inboxes.list(args)
 }
@@ -37,24 +31,26 @@ export async function getThread(client: AgentMailClient, args: Args) {
     return client.inboxes.threads.get(inboxId, threadId, options)
 }
 
-export async function getAttachment(client: AgentMailClient, args: Args): Promise<Attachment> {
+export async function getAttachment(client: AgentMailClient, args: Args) {
     const { threadId, attachmentId } = args
 
-    const { downloadUrl } = await client.threads.getAttachment(threadId, attachmentId)
-    const response = await fetch(downloadUrl)
-    const arrayBuffer = await response.arrayBuffer()
-    const fileBytes = new Uint8Array(arrayBuffer)
+    const attachment = await client.threads.getAttachment(threadId, attachmentId)
 
-    const detectedType = detectFileType(fileBytes)
+    try {
+        const response = await fetch(attachment.downloadUrl)
+        const arrayBuffer = await response.arrayBuffer()
+        const fileBytes = new Uint8Array(arrayBuffer)
 
-    if (detectedType === 'application/pdf') {
-        return { text: await extractPdfText(fileBytes), fileType: detectedType }
-    } else if (detectedType === 'application/zip') {
-        const text = await extractDocxText(fileBytes)
-        if (text) return { text, fileType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }
-    }
+        const detectedType = detectFileType(fileBytes)
 
-    return { error: 'Unsupported file type', fileType: detectedType || 'unknown' }
+        if (detectedType === 'application/pdf') {
+            return { ...attachment, text: await extractPdfText(fileBytes) }
+        } else if (detectedType === 'application/zip') {
+            return { ...attachment, text: await extractDocxText(fileBytes) }
+        }
+    } catch {}
+
+    return attachment
 }
 
 export async function sendMessage(client: AgentMailClient, args: Args) {

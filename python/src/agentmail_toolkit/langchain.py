@@ -4,6 +4,7 @@ from agentmail import AgentMail
 
 from .toolkit import Toolkit
 from .tools import Tool
+from .util import safe_func
 
 
 class AgentMailToolkit(Toolkit[BaseTool]):
@@ -12,7 +13,7 @@ class AgentMailToolkit(Toolkit[BaseTool]):
 
     def _build_tool(self, tool: Tool):
         def runnable(**kwargs):
-            return tool.func(self.client, kwargs)
+            return safe_func(tool.func, self.client, kwargs)
 
         return langchain_tool(
             name_or_callable=tool.name,
