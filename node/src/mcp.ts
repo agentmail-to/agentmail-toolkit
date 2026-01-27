@@ -29,7 +29,11 @@ export class AgentMailToolkit extends ListToolkit<McpTool> {
             inputSchema: tool.paramsSchema.shape,
             callback: async (args) => {
                 const { isError, result } = await safeFunc(tool.func, this.client, args)
-                return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }], isError }
+                return {
+                    content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
+                    structuredContent: result,
+                    isError,
+                }
             },
             annotations: { title, ...tool.annotations },
         }

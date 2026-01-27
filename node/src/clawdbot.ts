@@ -27,10 +27,10 @@ export class AgentMailToolkit extends ListToolkit<AgentTool> {
             description: tool.description,
             parameters: zodToJSONSchema(tool),
             execute: async (_toolCallId, args) => {
-                const response = await tool.func(this.client, tool.paramsSchema.parse(args))
+                const result = await tool.func(this.client, tool.paramsSchema.parse(args))
                 return {
-                    content: [{ type: 'text', text: JSON.stringify(response) }],
-                    details: response,
+                    content: [{ type: 'text', text: JSON.stringify(result) }],
+                    details: result,
                 }
             },
         }
