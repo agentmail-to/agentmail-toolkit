@@ -14,7 +14,7 @@ members = [
 
 [[package]]
 name = "agentmail"
-version = "0.2.5"
+version = "0.2.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
@@ -23,14 +23,14 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/33/d8/571b4fe2cc4602c5d981487b10031a55160bf3800fc4459e0f488b582e75/agentmail-0.2.5.tar.gz", hash = "sha256:77941bc061ff99594dd9cb359dc253465d3adedc0d83caeb928d4555f1bac425", size = 83477 }
+sdist = { url = "https://files.pythonhosted.org/packages/31/8e/87aa48de7bedba1d40ed03830de34ee47330643e9ff699332af73acfcb63/agentmail-0.2.6.tar.gz", hash = "sha256:b69083fa1fd61c42e51d8932bf0e0c52e399bb6fca2b1723690f0819458d7db4", size = 83542 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7a/e6/529e5eaa204b4af84e1fafa6048c6e97aab806a0ae506ef348fd8a121d23/agentmail-0.2.5-py3-none-any.whl", hash = "sha256:e074346cd2154ffdfe1ee674526f6e2fa4c97dd63fc7e21ca0d259b82900c298", size = 191682 },
+    { url = "https://files.pythonhosted.org/packages/4a/31/cc8a4ea0a2d63e45899d991e77ab3bfb4da9ccd3a833dc44c43f19191eb2/agentmail-0.2.6-py3-none-any.whl", hash = "sha256:09abab2918e739fdc866ff0b874a1dd7e709a152d6a10fd0407f71cc664362b1", size = 191412 },
 ]
 
 [[package]]
 name = "agentmail-toolkit"
-version = "0.2.2"
+version = "0.2.5"
 source = { editable = "." }
 dependencies = [
     { name = "agentmail" },
@@ -51,7 +51,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "agentmail", specifier = ">=0.2.5" },
+    { name = "agentmail", specifier = ">=0.2.6" },
     { name = "filetype", specifier = ">=1.2.0" },
     { name = "langchain", specifier = ">=1.1.0" },
     { name = "livekit-agents", specifier = ">=1.3.5" },

@@ -43,11 +43,19 @@ class GetAttachmentParams(BaseModel):
     attachment_id: AttachmentIdField
 
 
+class Attachment(BaseModel):
+    filename: Optional[str] = Field(default=None, description="Filename")
+    content_id: Optional[str] = Field(default=None, description="Content ID for inline attachments")
+    content: Optional[str] = Field(default=None, description="Base64 encoded content")
+    url: Optional[str] = Field(default=None, description="URL")
+
+
 class BaseMessageParams(BaseModel):
     inbox_id: InboxIdField
     text: Optional[str] = Field(description="Plain text body")
     html: Optional[str] = Field(description="HTML body")
     labels: Optional[List[str]] = Field(description="Labels")
+    attachments: Optional[List[Attachment]] = Field(default=None, description="Attachments")
 
 
 class SendMessageParams(BaseMessageParams):

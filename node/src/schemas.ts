@@ -38,11 +38,19 @@ export const GetAttachmentParams = z.object({
     attachmentId: AttachmentIdSchema,
 })
 
+const AttachmentSchema = z.object({
+    filename: z.string().optional().describe('Filename'),
+    content_id: z.string().optional().describe('Content ID for inline attachments'),
+    content: z.base64().optional().describe('Base64 encoded content'),
+    url: z.url().optional().describe('URL'),
+})
+
 const BaseMessageParams = z.object({
     inboxId: InboxIdSchema,
     text: z.string().optional().describe('Plain text body'),
     html: z.string().optional().describe('HTML body'),
     labels: z.array(z.string()).optional().describe('Labels'),
+    attachments: z.array(AttachmentSchema).optional().describe('Attachments'),
 })
 
 export const SendMessageParams = BaseMessageParams.extend({

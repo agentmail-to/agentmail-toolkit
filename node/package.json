@@ -1,6 +1,6 @@
 {
     "name": "agentmail-toolkit",
-    "version": "0.2.5",
+    "version": "0.2.6",
     "description": "AgentMail Toolkit",
     "scripts": {
         "build": "tsup",
@@ -55,7 +55,7 @@
         }
     },
     "dependencies": {
-        "agentmail": "^0.2.5",
+        "agentmail": "^0.2.6",
         "jszip": "^3.10.1",
         "unpdf": "^1.4.0",
         "zod": "^4.1.13"
