@@ -60,8 +60,8 @@ async function main() {
   console.log(`Recipient ${recipient.name}.agent — credit: ${credit?.score ?? 'unknown'}/100`)
 
   // 3. Only email agents with sufficient trust score
-  if (credit && credit.score < 50) {
-    console.log(`Credit score too low (${credit.score}), not emailing this agent`)
+  if (!credit || credit.score < 50) {
+    console.log(`Credit score ${credit ? `too low (${credit.score})` : 'unavailable'}, not emailing this agent`)
     return
   }
 
