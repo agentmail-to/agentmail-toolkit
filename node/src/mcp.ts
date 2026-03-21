@@ -31,7 +31,6 @@ export class AgentMailToolkit extends ListToolkit<McpTool> {
                 const { isError, result } = await safeFunc(tool.func, this.client, args)
                 return {
                     content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
-                    structuredContent: result,
                     isError,
                 }
             },
