@@ -72,3 +72,35 @@ export async function updateMessage(client: AgentMailClient, args: Args) {
     const { inboxId, messageId, ...options } = args
     return client.inboxes.messages.update(inboxId, messageId, options)
 }
+
+// Draft functions
+
+export async function createDraft(client: AgentMailClient, args: Args) {
+    const { inboxId, ...options } = args
+    return client.inboxes.drafts.create(inboxId, options)
+}
+
+export async function listDrafts(client: AgentMailClient, args: Args) {
+    const { inboxId, ...options } = args
+    return client.inboxes.drafts.list(inboxId, options)
+}
+
+export async function getDraft(client: AgentMailClient, args: Args) {
+    const { inboxId, draftId } = args
+    return client.inboxes.drafts.get(inboxId, draftId)
+}
+
+export async function updateDraft(client: AgentMailClient, args: Args) {
+    const { inboxId, draftId, ...options } = args
+    return client.inboxes.drafts.update(inboxId, draftId, options)
+}
+
+export async function sendDraft(client: AgentMailClient, args: Args) {
+    const { inboxId, draftId } = args
+    return client.inboxes.drafts.send(inboxId, draftId, {})
+}
+
+export async function deleteDraft(client: AgentMailClient, args: Args) {
+    const { inboxId, draftId } = args
+    return client.inboxes.drafts.delete(inboxId, draftId)
+}

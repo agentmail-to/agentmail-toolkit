@@ -13,6 +13,12 @@ import {
     ReplyToMessageParams,
     UpdateMessageParams,
     ForwardMessageParams,
+    CreateDraftParams,
+    ListDraftsParams,
+    GetDraftParams,
+    UpdateDraftParams,
+    SendDraftParams,
+    DeleteDraftParams,
 } from './schemas.js'
 import {
     type Args,
@@ -27,6 +33,12 @@ import {
     replyToMessage,
     updateMessage,
     forwardMessage,
+    createDraft,
+    listDrafts,
+    getDraft,
+    updateDraft,
+    sendDraft,
+    deleteDraft,
 } from './functions.js'
 export interface Tool {
     name: string
@@ -155,6 +167,74 @@ export const tools: Tool[] = [
         annotations: {
             readOnlyHint: false,
             destructiveHint: false,
+            idempotentHint: true,
+            openWorldHint: false,
+        },
+    },
+    {
+        name: 'create_draft',
+        description: 'Create a draft email. Use send_at (ISO 8601 datetime) to schedule it for later sending.',
+        paramsSchema: CreateDraftParams,
+        func: createDraft,
+        annotations: {
+            readOnlyHint: false,
+            destructiveHint: false,
+            idempotentHint: false,
+            openWorldHint: false,
+        },
+    },
+    {
+        name: 'list_drafts',
+        description: 'List drafts in inbox. Filter by labels (e.g. "scheduled") to find scheduled drafts.',
+        paramsSchema: ListDraftsParams,
+        func: listDrafts,
+        annotations: {
+            readOnlyHint: true,
+            openWorldHint: false,
+        },
+    },
+    {
+        name: 'get_draft',
+        description: 'Get draft',
+        paramsSchema: GetDraftParams,
+        func: getDraft,
+        annotations: {
+            readOnlyHint: true,
+            openWorldHint: false,
+        },
+    },
+    {
+        name: 'update_draft',
+        description: 'Update a draft. Use send_at to reschedule a scheduled draft.',
+        paramsSchema: UpdateDraftParams,
+        func: updateDraft,
+        annotations: {
+            readOnlyHint: false,
+            destructiveHint: false,
+            idempotentHint: true,
+            openWorldHint: false,
+        },
+    },
+    {
+        name: 'send_draft',
+        description: 'Send a draft immediately. The draft is converted to a sent message and deleted.',
+        paramsSchema: SendDraftParams,
+        func: sendDraft,
+        annotations: {
+            readOnlyHint: false,
+            destructiveHint: false,
+            idempotentHint: false,
+            openWorldHint: true,
+        },
+    },
+    {
+        name: 'delete_draft',
+        description: 'Delete a draft. Also used to cancel a scheduled send.',
+        paramsSchema: DeleteDraftParams,
+        func: deleteDraft,
+        annotations: {
+            readOnlyHint: false,
+            destructiveHint: true,
             idempotentHint: true,
             openWorldHint: false,
         },
