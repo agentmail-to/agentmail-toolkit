@@ -79,18 +79,14 @@ export const UpdateMessageParams = z.object({
 
 // Draft schemas
 
-export const CreateDraftParams = z.object({
-    inboxId: InboxIdSchema,
+export const CreateDraftParams = BaseMessageParams.extend({
     to: z.array(z.string()).optional().describe('Recipients'),
     cc: z.array(z.string()).optional().describe('CC recipients'),
     bcc: z.array(z.string()).optional().describe('BCC recipients'),
     subject: z.string().optional().describe('Subject'),
-    text: z.string().optional().describe('Plain text body'),
-    html: z.string().optional().describe('HTML body'),
     replyTo: z.array(z.string()).optional().describe('Reply-to addresses'),
     inReplyTo: z.string().optional().describe('Message ID this draft is replying to'),
     sendAt: z.string().pipe(z.coerce.date()).optional().describe('ISO 8601 datetime to schedule sending (e.g. 2026-04-01T09:00:00Z)'),
-    labels: z.array(z.string()).optional().describe('Labels'),
 })
 
 export const ListDraftsParams = ListInboxItemsParams

@@ -195,7 +195,7 @@ export const tools: Tool[] = [
     },
     {
         name: 'get_draft',
-        description: 'Get draft',
+        description: 'Get a draft by ID, including its content, status, and scheduled send time.',
         paramsSchema: GetDraftParams,
         func: getDraft,
         annotations: {
