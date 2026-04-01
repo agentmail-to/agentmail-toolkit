@@ -89,7 +89,7 @@ export const CreateDraftParams = z.object({
     html: z.string().optional().describe('HTML body'),
     replyTo: z.array(z.string()).optional().describe('Reply-to addresses'),
     inReplyTo: z.string().optional().describe('Message ID this draft is replying to'),
-    sendAt: z.string().optional().describe('ISO 8601 datetime to schedule sending (e.g. 2026-04-01T09:00:00Z)'),
+    sendAt: z.string().pipe(z.coerce.date()).optional().describe('ISO 8601 datetime to schedule sending (e.g. 2026-04-01T09:00:00Z)'),
     labels: z.array(z.string()).optional().describe('Labels'),
 })
 
@@ -110,7 +110,7 @@ export const UpdateDraftParams = z.object({
     text: z.string().optional().describe('Plain text body'),
     html: z.string().optional().describe('HTML body'),
     replyTo: z.array(z.string()).optional().describe('Reply-to addresses'),
-    sendAt: z.string().optional().describe('ISO 8601 datetime to reschedule sending'),
+    sendAt: z.string().pipe(z.coerce.date()).optional().describe('ISO 8601 datetime to reschedule sending'),
 })
 
 export const SendDraftParams = z.object({
