@@ -4,6 +4,7 @@ const InboxIdSchema = z.string().describe('ID of inbox')
 const ThreadIdSchema = z.string().describe('ID of thread')
 const MessageIdSchema = z.string().describe('ID of message')
 const AttachmentIdSchema = z.string().describe('ID of attachment')
+const DraftIdSchema = z.string().describe('ID of draft')
 
 export const ListItemsParams = z.object({
     limit: z.number().optional().default(10).describe('Max number of items to return'),
@@ -74,4 +75,46 @@ export const UpdateMessageParams = z.object({
     messageId: MessageIdSchema,
     addLabels: z.array(z.string()).optional().describe('Labels to add'),
     removeLabels: z.array(z.string()).optional().describe('Labels to remove'),
+})
+
+// Draft schemas
+
+export const CreateDraftParams = BaseMessageParams.extend({
+    to: z.array(z.string()).optional().describe('Recipients'),
+    cc: z.array(z.string()).optional().describe('CC recipients'),
+    bcc: z.array(z.string()).optional().describe('BCC recipients'),
+    subject: z.string().optional().describe('Subject'),
+    replyTo: z.array(z.string()).optional().describe('Reply-to addresses'),
+    inReplyTo: z.string().optional().describe('Message ID this draft is replying to'),
+    sendAt: z.string().pipe(z.coerce.date()).optional().describe('ISO 8601 datetime to schedule sending (e.g. 2026-04-01T09:00:00Z)'),
+})
+
+export const ListDraftsParams = ListInboxItemsParams
+
+export const GetDraftParams = z.object({
+    inboxId: InboxIdSchema,
+    draftId: DraftIdSchema,
+})
+
+export const UpdateDraftParams = z.object({
+    inboxId: InboxIdSchema,
+    draftId: DraftIdSchema,
+    to: z.array(z.string()).optional().describe('Recipients'),
+    cc: z.array(z.string()).optional().describe('CC recipients'),
+    bcc: z.array(z.string()).optional().describe('BCC recipients'),
+    subject: z.string().optional().describe('Subject'),
+    text: z.string().optional().describe('Plain text body'),
+    html: z.string().optional().describe('HTML body'),
+    replyTo: z.array(z.string()).optional().describe('Reply-to addresses'),
+    sendAt: z.string().pipe(z.coerce.date()).optional().describe('ISO 8601 datetime to reschedule sending'),
+})
+
+export const SendDraftParams = z.object({
+    inboxId: InboxIdSchema,
+    draftId: DraftIdSchema,
+})
+
+export const DeleteDraftParams = z.object({
+    inboxId: InboxIdSchema,
+    draftId: DraftIdSchema,
 })
