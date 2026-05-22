@@ -5,3 +5,11 @@ The AgentMail Toolkit integrates popular agent frameworks and protocols includin
 ## Setup & Usage
 
 See the [Python](/python) and [Node](/node) packages for language specific setup and usage.
+
+## Roadmap
+
+- [ ] Multi-agent coordination support
+- [ ] Advanced message queuing and persistence
+- [ ] Webhook event streaming
+- [ ] Rate limiting and quota management
+- [ ] Language-specific SDK improvements
