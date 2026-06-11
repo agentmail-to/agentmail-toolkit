@@ -51,7 +51,7 @@ export interface Tool {
 export const tools: Tool[] = [
     {
         name: 'list_inboxes',
-        description: 'List inboxes',
+        description: 'List email inboxes, paginated.',
         paramsSchema: ListItemsParams,
         func: listInboxes,
         annotations: {
@@ -61,7 +61,7 @@ export const tools: Tool[] = [
     },
     {
         name: 'get_inbox',
-        description: 'Get inbox',
+        description: 'Get an inbox by ID.',
         paramsSchema: GetInboxParams,
         func: getInbox,
         annotations: {
@@ -71,7 +71,7 @@ export const tools: Tool[] = [
     },
     {
         name: 'create_inbox',
-        description: 'Create inbox',
+        description: 'Create a new email inbox. Optionally specify username, domain, and display name.',
         paramsSchema: CreateInboxParams,
         func: createInbox,
         annotations: {
@@ -83,7 +83,7 @@ export const tools: Tool[] = [
     },
     {
         name: 'delete_inbox',
-        description: 'Delete inbox',
+        description: 'Delete an inbox by ID.',
         paramsSchema: GetInboxParams,
         func: deleteInbox,
         annotations: {
@@ -95,7 +95,7 @@ export const tools: Tool[] = [
     },
     {
         name: 'list_threads',
-        description: 'List threads in inbox',
+        description: 'List email threads in an inbox. Filter by labels or before/after datetime, paginated.',
         paramsSchema: ListInboxItemsParams,
         func: listThreads,
         annotations: {
@@ -105,7 +105,7 @@ export const tools: Tool[] = [
     },
     {
         name: 'get_thread',
-        description: 'Get thread',
+        description: 'Get a thread by ID, including its messages.',
         paramsSchema: GetThreadParams,
         func: getThread,
         annotations: {
@@ -115,7 +115,7 @@ export const tools: Tool[] = [
     },
     {
         name: 'get_attachment',
-        description: 'Get attachment',
+        description: 'Get an attachment from a thread. Returns metadata and a download URL, plus extracted text for PDF and DOCX files.',
         paramsSchema: GetAttachmentParams,
         func: getAttachment,
         annotations: {
@@ -125,55 +125,55 @@ export const tools: Tool[] = [
     },
     {
         name: 'send_message',
-        description: 'Send message',
+        description: 'Send an email from an inbox to one or more recipients.',
         paramsSchema: SendMessageParams,
         func: sendMessage,
         annotations: {
             readOnlyHint: false,
-            destructiveHint: false,
+            destructiveHint: true,
             idempotentHint: false,
             openWorldHint: true,
         },
     },
     {
         name: 'reply_to_message',
-        description: 'Reply to message',
+        description: 'Reply to a message in its thread. Set replyAll to include all original recipients.',
         paramsSchema: ReplyToMessageParams,
         func: replyToMessage,
         annotations: {
             readOnlyHint: false,
-            destructiveHint: false,
+            destructiveHint: true,
             idempotentHint: false,
             openWorldHint: true,
         },
     },
     {
         name: 'forward_message',
-        description: 'Forward message',
+        description: 'Forward a message to new recipients.',
         paramsSchema: ForwardMessageParams,
         func: forwardMessage,
         annotations: {
             readOnlyHint: false,
-            destructiveHint: false,
+            destructiveHint: true,
             idempotentHint: false,
             openWorldHint: true,
         },
     },
     {
         name: 'update_message',
-        description: 'Update message',
+        description: "Update a message's labels (add or remove).",
         paramsSchema: UpdateMessageParams,
         func: updateMessage,
         annotations: {
             readOnlyHint: false,
-            destructiveHint: false,
+            destructiveHint: true,
             idempotentHint: true,
             openWorldHint: false,
         },
     },
     {
         name: 'create_draft',
-        description: 'Create a draft email. Use send_at (ISO 8601 datetime) to schedule it for later sending.',
+        description: 'Create a draft email. Use sendAt (ISO 8601 datetime) to schedule it for later sending.',
         paramsSchema: CreateDraftParams,
         func: createDraft,
         annotations: {
@@ -205,12 +205,12 @@ export const tools: Tool[] = [
     },
     {
         name: 'update_draft',
-        description: 'Update a draft. Use send_at to reschedule a scheduled draft.',
+        description: 'Update a draft. Use sendAt to reschedule a scheduled draft.',
         paramsSchema: UpdateDraftParams,
         func: updateDraft,
         annotations: {
             readOnlyHint: false,
-            destructiveHint: false,
+            destructiveHint: true,
             idempotentHint: true,
             openWorldHint: false,
         },
@@ -222,7 +222,7 @@ export const tools: Tool[] = [
         func: sendDraft,
         annotations: {
             readOnlyHint: false,
-            destructiveHint: false,
+            destructiveHint: true,
             idempotentHint: false,
             openWorldHint: true,
         },
