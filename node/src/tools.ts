@@ -5,6 +5,7 @@ import { type ToolAnnotations } from '@modelcontextprotocol/sdk/types.js'
 import {
     ListItemsParams,
     ListInboxItemsParams,
+    ListThreadsParams,
     GetInboxParams,
     CreateInboxParams,
     GetThreadParams,
@@ -95,8 +96,8 @@ export const tools: Tool[] = [
     },
     {
         name: 'list_threads',
-        description: 'List email threads in an inbox. Filter by labels or before/after datetime, paginated.',
-        paramsSchema: ListInboxItemsParams,
+        description: 'List email threads in an inbox. Filter by labels, sender, recipient, subject, or before/after datetime, paginated.',
+        paramsSchema: ListThreadsParams,
         func: listThreads,
         annotations: {
             readOnlyHint: true,
