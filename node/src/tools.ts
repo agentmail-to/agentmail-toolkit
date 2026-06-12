@@ -4,7 +4,6 @@ import { type ToolAnnotations } from '@modelcontextprotocol/sdk/types.js'
 
 import {
     ListItemsParams,
-    ListInboxItemsParams,
     ListThreadsParams,
     SearchInboxItemsParams,
     GetInboxParams,
@@ -160,7 +159,7 @@ export const tools: Tool[] = [
     },
     {
         name: 'update_thread',
-        description: "Update a thread's labels (add or remove).",
+        description: "Update a thread's labels (add or remove). System labels cannot be modified.",
         paramsSchema: UpdateThreadParams,
         func: updateThread,
         annotations: {

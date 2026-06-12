@@ -45,9 +45,9 @@ export const ListInboxItemsParams = ListItemsParams.extend({
 })
 
 export const ListThreadsParams = ListInboxItemsParams.extend({
-    senders: z.array(z.string()).optional().describe('Filter to threads whose senders match these values'),
-    recipients: z.array(z.string()).optional().describe('Filter to threads whose recipients match these values'),
-    subject: z.array(z.string()).optional().describe('Filter to threads whose subject matches these values'),
+    senders: z.array(z.string()).optional().describe('Filter threads by senders (substring match; all values must match)'),
+    recipients: z.array(z.string()).optional().describe('Filter threads by recipients (substring match; all values must match)'),
+    subject: z.array(z.string()).optional().describe('Filter threads by subject (substring match; all values must match)'),
     includeSpam: z.boolean().optional().describe('Include threads in spam'),
     includeTrash: z.boolean().optional().describe('Include threads in trash'),
 })
@@ -119,9 +119,9 @@ export const UpdateMessageParams = z.object({
 })
 
 export const ListMessagesParams = ListInboxItemsParams.extend({
-    from: z.array(z.string()).optional().describe('Filter to messages whose sender matches these values'),
-    to: z.array(z.string()).optional().describe('Filter to messages whose recipients match these values'),
-    subject: z.array(z.string()).optional().describe('Filter to messages whose subject matches these values'),
+    from: z.array(z.string()).optional().describe('Filter messages by sender (substring match; all values must match)'),
+    to: z.array(z.string()).optional().describe('Filter messages by recipients (substring match; all values must match)'),
+    subject: z.array(z.string()).optional().describe('Filter messages by subject (substring match; all values must match)'),
     includeSpam: z.boolean().optional().describe('Include messages in spam'),
     includeTrash: z.boolean().optional().describe('Include messages in trash'),
 })
