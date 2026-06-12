@@ -172,7 +172,7 @@ export const tools: Tool[] = [
     },
     {
         name: 'delete_thread',
-        description: 'Delete a thread. Moves it to trash, or permanently deletes it if already in trash.',
+        description: 'Delete a thread from an inbox.',
         paramsSchema: GetThreadParams,
         func: deleteThread,
         annotations: {
