@@ -16,6 +16,11 @@ export async function createInbox(client: AgentMailClient, args: Args) {
     return client.inboxes.create(args)
 }
 
+export async function updateInbox(client: AgentMailClient, args: Args) {
+    const { inboxId, ...options } = args
+    return client.inboxes.update(inboxId, options)
+}
+
 export async function deleteInbox(client: AgentMailClient, args: Args) {
     const { inboxId } = args
     return client.inboxes.delete(inboxId)
@@ -26,15 +31,30 @@ export async function listThreads(client: AgentMailClient, args: Args) {
     return client.inboxes.threads.list(inboxId, options)
 }
 
+export async function searchThreads(client: AgentMailClient, args: Args) {
+    const { inboxId, q, ...options } = args
+    return client.inboxes.threads.search(inboxId, { q, ...options })
+}
+
 export async function getThread(client: AgentMailClient, args: Args) {
     const { inboxId, threadId, ...options } = args
     return client.inboxes.threads.get(inboxId, threadId, options)
 }
 
-export async function getAttachment(client: AgentMailClient, args: Args) {
-    const { threadId, attachmentId } = args
+export async function updateThread(client: AgentMailClient, args: Args) {
+    const { inboxId, threadId, ...options } = args
+    return client.inboxes.threads.update(inboxId, threadId, options)
+}
 
-    const attachment = await client.threads.getAttachment(threadId, attachmentId)
+export async function deleteThread(client: AgentMailClient, args: Args) {
+    const { inboxId, threadId } = args
+    return client.inboxes.threads.delete(inboxId, threadId)
+}
+
+export async function getAttachment(client: AgentMailClient, args: Args) {
+    const { inboxId, threadId, attachmentId } = args
+
+    const attachment = await client.inboxes.threads.getAttachment(inboxId, threadId, attachmentId)
 
     try {
         const response = await fetch(attachment.downloadUrl)
@@ -51,6 +71,16 @@ export async function getAttachment(client: AgentMailClient, args: Args) {
     } catch {}
 
     return attachment
+}
+
+export async function listMessages(client: AgentMailClient, args: Args) {
+    const { inboxId, ...options } = args
+    return client.inboxes.messages.list(inboxId, options)
+}
+
+export async function searchMessages(client: AgentMailClient, args: Args) {
+    const { inboxId, q, ...options } = args
+    return client.inboxes.messages.search(inboxId, { q, ...options })
 }
 
 export async function sendMessage(client: AgentMailClient, args: Args) {
@@ -103,4 +133,8 @@ export async function sendDraft(client: AgentMailClient, args: Args) {
 export async function deleteDraft(client: AgentMailClient, args: Args) {
     const { inboxId, draftId } = args
     return client.inboxes.drafts.delete(inboxId, draftId)
+}
+
+export async function authMe(client: AgentMailClient) {
+    return client.auth.me()
 }

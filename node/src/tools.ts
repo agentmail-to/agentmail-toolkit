@@ -4,11 +4,15 @@ import { type ToolAnnotations } from '@modelcontextprotocol/sdk/types.js'
 
 import {
     ListItemsParams,
-    ListInboxItemsParams,
+    ListThreadsParams,
+    SearchInboxItemsParams,
     GetInboxParams,
     CreateInboxParams,
+    UpdateInboxParams,
     GetThreadParams,
+    UpdateThreadParams,
     GetAttachmentParams,
+    ListMessagesParams,
     SendMessageParams,
     ReplyToMessageParams,
     UpdateMessageParams,
@@ -19,16 +23,23 @@ import {
     UpdateDraftParams,
     SendDraftParams,
     DeleteDraftParams,
+    AuthMeParams,
 } from './schemas.js'
 import {
     type Args,
     listInboxes,
     getInbox,
     createInbox,
+    updateInbox,
     deleteInbox,
     listThreads,
+    searchThreads,
     getThread,
+    updateThread,
+    deleteThread,
     getAttachment,
+    listMessages,
+    searchMessages,
     sendMessage,
     replyToMessage,
     updateMessage,
@@ -39,6 +50,7 @@ import {
     updateDraft,
     sendDraft,
     deleteDraft,
+    authMe,
 } from './functions.js'
 export interface Tool {
     name: string
@@ -71,13 +83,25 @@ export const tools: Tool[] = [
     },
     {
         name: 'create_inbox',
-        description: 'Create a new email inbox. Optionally specify username, domain, and display name.',
+        description: 'Create a new email inbox. Optionally specify username, domain, display name, and metadata.',
         paramsSchema: CreateInboxParams,
         func: createInbox,
         annotations: {
             readOnlyHint: false,
             destructiveHint: false,
             idempotentHint: false,
+            openWorldHint: false,
+        },
+    },
+    {
+        name: 'update_inbox',
+        description: "Update an inbox's display name or metadata. Metadata keys are merged; set a key to null to remove it, or set metadata to null to clear all.",
+        paramsSchema: UpdateInboxParams,
+        func: updateInbox,
+        annotations: {
+            readOnlyHint: false,
+            destructiveHint: true,
+            idempotentHint: true,
             openWorldHint: false,
         },
     },
@@ -95,9 +119,19 @@ export const tools: Tool[] = [
     },
     {
         name: 'list_threads',
-        description: 'List email threads in an inbox. Filter by labels or before/after datetime, paginated.',
-        paramsSchema: ListInboxItemsParams,
+        description: 'List email threads in an inbox. Filter by labels, sender, recipient, subject, or before/after datetime, paginated.',
+        paramsSchema: ListThreadsParams,
         func: listThreads,
+        annotations: {
+            readOnlyHint: true,
+            openWorldHint: true,
+        },
+    },
+    {
+        name: 'search_threads',
+        description: 'Search threads in an inbox with a full-text query, ranked by relevance. Matches senders, recipients, subject, and message body. Spam and trash are excluded.',
+        paramsSchema: SearchInboxItemsParams,
+        func: searchThreads,
         annotations: {
             readOnlyHint: true,
             openWorldHint: true,
@@ -118,6 +152,50 @@ export const tools: Tool[] = [
         description: 'Get an attachment from a thread. Returns metadata and a download URL, plus extracted text for PDF and DOCX files.',
         paramsSchema: GetAttachmentParams,
         func: getAttachment,
+        annotations: {
+            readOnlyHint: true,
+            openWorldHint: true,
+        },
+    },
+    {
+        name: 'update_thread',
+        description: "Update a thread's labels (add or remove). System labels cannot be modified.",
+        paramsSchema: UpdateThreadParams,
+        func: updateThread,
+        annotations: {
+            readOnlyHint: false,
+            destructiveHint: true,
+            idempotentHint: true,
+            openWorldHint: false,
+        },
+    },
+    {
+        name: 'delete_thread',
+        description: 'Delete a thread from an inbox.',
+        paramsSchema: GetThreadParams,
+        func: deleteThread,
+        annotations: {
+            readOnlyHint: false,
+            destructiveHint: true,
+            idempotentHint: false,
+            openWorldHint: false,
+        },
+    },
+    {
+        name: 'list_messages',
+        description: 'List messages in an inbox. Filter by labels, sender, recipient, subject, or before/after datetime, paginated.',
+        paramsSchema: ListMessagesParams,
+        func: listMessages,
+        annotations: {
+            readOnlyHint: true,
+            openWorldHint: true,
+        },
+    },
+    {
+        name: 'search_messages',
+        description: 'Search messages in an inbox with a full-text query, ranked by relevance. Matches sender, recipients, subject, and message body. Spam and trash are excluded.',
+        paramsSchema: SearchInboxItemsParams,
+        func: searchMessages,
         annotations: {
             readOnlyHint: true,
             openWorldHint: true,
@@ -236,6 +314,16 @@ export const tools: Tool[] = [
             readOnlyHint: false,
             destructiveHint: true,
             idempotentHint: true,
+            openWorldHint: false,
+        },
+    },
+    {
+        name: 'auth_me',
+        description: 'Get the identity and scope of the authenticated credential, including organization, pod, and inbox IDs.',
+        paramsSchema: AuthMeParams,
+        func: authMe,
+        annotations: {
+            readOnlyHint: true,
             openWorldHint: false,
         },
     },
