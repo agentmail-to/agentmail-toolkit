@@ -32,9 +32,9 @@ export async function getThread(client: AgentMailClient, args: Args) {
 }
 
 export async function getAttachment(client: AgentMailClient, args: Args) {
-    const { threadId, attachmentId } = args
+    const { inboxId, threadId, attachmentId } = args
 
-    const attachment = await client.threads.getAttachment(threadId, attachmentId)
+    const attachment = await client.inboxes.threads.getAttachment(inboxId, threadId, attachmentId)
 
     try {
         const response = await fetch(attachment.downloadUrl)
