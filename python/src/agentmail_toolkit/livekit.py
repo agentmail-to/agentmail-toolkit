@@ -22,7 +22,11 @@ class AgentMailToolkit(Toolkit[FunctionTool]):
 
                 status_update_task = asyncio.create_task(_status_update())
 
-                result = tool.func(self.client, raw_arguments).model_dump_json()
+                # Run the synchronous HTTP call in a thread pool so the event
+                # loop stays free and _status_update can actually execute.
+                result = await asyncio.to_thread(
+                    lambda: tool.func(self.client, raw_arguments).model_dump_json()
+                )
 
                 status_update_task.cancel()
 
