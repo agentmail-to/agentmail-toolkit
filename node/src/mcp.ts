@@ -28,7 +28,13 @@ export class AgentMailToolkit extends ListToolkit<McpTool> {
             description: tool.description,
             inputSchema: tool.paramsSchema.shape,
             callback: async (args) => {
-                const { isError, result } = await safeFunc(tool.func, this.client, args)
+                const { isError, result, statusCode, body } = await safeFunc(tool.func, this.client, args)
+                if (isError) {
+                    // Errors are returned as isError tool results (HTTP 200), so they never
+                    // reach the host's error logs on their own. Log here, at the real catch
+                    // site, so failures are actually observable.
+                    console.error('[agentmail-toolkit] tool error', { tool: tool.name, statusCode, body })
+                }
                 const text = result === undefined ? 'OK' : JSON.stringify(result)
                 return {
                     content: [{ type: 'text' as const, text }],
