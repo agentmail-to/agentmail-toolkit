@@ -1,17 +1,36 @@
-import { AgentMailClient } from 'agentmail'
+import { AgentMailClient, AgentMailError } from 'agentmail'
 import { getDocumentProxy, extractText } from 'unpdf'
 import JSZip from 'jszip'
+
+// Pull the API's own explanation out of the error body (e.g. "address already
+// taken") instead of returning the SDK's verbose multi-line "Status code / Body"
+// dump. Generic across every tool.
+function apiErrorMessage(error: AgentMailError): string {
+    const body = error.body as { message?: string; detail?: string; error?: string } | string | undefined
+    const detail =
+        typeof body === 'string' ? body : (body?.message ?? body?.detail ?? body?.error)
+    const base = detail ?? error.message
+    return error.statusCode ? `${base} (HTTP ${error.statusCode})` : base
+}
 
 export const safeFunc = async <T>(
     func: (client: AgentMailClient, args: Record<string, any>) => Promise<T>,
     client: AgentMailClient,
     args: Record<string, any>
-) => {
+): Promise<{ isError: boolean; result: T | string; statusCode?: number; body?: unknown }> => {
     try {
         return { isError: false, result: await func(client, args) }
     } catch (error) {
+        if (error instanceof AgentMailError) {
+            return {
+                isError: true,
+                result: apiErrorMessage(error),
+                statusCode: error.statusCode,
+                body: error.body,
+            }
+        }
         if (error instanceof Error) return { isError: true, result: error.message }
-        else return { isError: true, result: 'Unknown error' }
+        return { isError: true, result: 'Unknown error' }
     }
 }
 
