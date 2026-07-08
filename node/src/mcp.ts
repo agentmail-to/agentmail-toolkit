@@ -33,7 +33,11 @@ export class AgentMailToolkit extends ListToolkit<McpTool> {
                     // Errors are returned as isError tool results (HTTP 200), so they never
                     // reach the host's error logs on their own. Log here, at the real catch
                     // site, so failures are actually observable.
-                    console.error('[agentmail-toolkit] tool error', { tool: tool.name, statusCode, body })
+                    console.error('[agentmail-toolkit] tool error', {
+                        tool: tool.name,
+                        statusCode,
+                        body: typeof body === 'string' ? body.slice(0, 500) : body,
+                    })
                 }
                 const text = result === undefined ? 'OK' : JSON.stringify(result)
                 return {
