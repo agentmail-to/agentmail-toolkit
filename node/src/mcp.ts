@@ -17,14 +17,9 @@ interface McpTool {
 
 export class AgentMailToolkit extends ListToolkit<McpTool> {
     protected buildTool(tool: Tool): McpTool {
-        const title = tool.name
-            .split('_')
-            .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-            .join(' ')
-
         return {
             name: tool.name,
-            title,
+            title: tool.title,
             description: tool.description,
             inputSchema: tool.paramsSchema.shape,
             callback: async (args) => {
@@ -45,7 +40,7 @@ export class AgentMailToolkit extends ListToolkit<McpTool> {
                     isError,
                 }
             },
-            annotations: { title, ...tool.annotations },
+            annotations: tool.annotations,
         }
     }
 }
