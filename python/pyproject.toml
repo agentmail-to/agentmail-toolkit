@@ -22,6 +22,7 @@ build-backend = "hatchling.build"
 [dependency-groups]
 dev = [
     "build>=1.2.2.post1",
+    "pytest>=8.0.0",
     "twine>=6.1.0",
 ]
 
