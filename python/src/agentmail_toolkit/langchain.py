@@ -18,10 +18,14 @@ class AgentMailToolkit(Toolkit[BaseTool]):
             except Exception as e:
                 raise ToolException(api_error_message(e)) from e
 
-        return langchain_tool(
+        built = langchain_tool(
             name_or_callable=tool.name,
             description=tool.description,
             args_schema=tool.params_schema,
             runnable=runnable,
-            handle_tool_error=True,
         )
+        # handle_tool_error is a BaseTool field, not a tool()-factory kwarg —
+        # passing it to tool() above raises TypeError on the installed
+        # langchain version, so it's set post-construction instead.
+        built.handle_tool_error = True
+        return built
