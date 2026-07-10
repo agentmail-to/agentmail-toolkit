@@ -125,3 +125,30 @@ def test_extraction_failure_does_not_propagate_exception(mock_client, make_attac
         result = functions.get_attachment(mock_client, _kwargs())
 
     assert result.attachment_id == "att_1"
+
+
+def test_redirects_are_refused():
+    """functions.urlopen is a no-redirect opener: a redirect response must not be
+    followed (it could downgrade the https-only check to any target scheme)."""
+    from agentmail_toolkit.functions import _NoRedirectHandler
+
+    handler = _NoRedirectHandler()
+    assert handler.redirect_request(None, None, 302, "Found", {}, "http://attacker.example/") is None
+
+
+def test_api_error_message_is_bounded():
+    from agentmail.core import ApiError
+
+    from agentmail_toolkit.util import api_error_message
+
+    error = ApiError(status_code=422, body={"message": "x" * 5000})
+    message = api_error_message(error)
+    assert len(message) < 600
+    assert "(HTTP 422)" in message
+
+
+def test_non_api_error_message_is_bounded():
+    from agentmail_toolkit.util import api_error_message
+
+    message = api_error_message(RuntimeError("y" * 5000))
+    assert len(message) < 600

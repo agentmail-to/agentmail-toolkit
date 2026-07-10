@@ -1,6 +1,6 @@
 from typing import Any, Dict
 from urllib.parse import urlparse
-from urllib.request import urlopen
+from urllib.request import HTTPRedirectHandler, build_opener
 from agentmail import AgentMail
 from agentmail.inboxes import CreateInboxRequest
 
@@ -12,6 +12,19 @@ import docx
 
 
 logger = logging.getLogger(__name__)
+
+
+class _NoRedirectHandler(HTTPRedirectHandler):
+    """Refuse redirects: following one could silently downgrade the https-only
+    check on the attachment download URL to an arbitrary target scheme."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+# Same call signature as urllib.request.urlopen; kept under the same name so it
+# stays the single patch point for tests.
+urlopen = build_opener(_NoRedirectHandler).open
 
 Kwargs = Dict[str, Any]
 
