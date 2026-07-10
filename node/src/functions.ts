@@ -75,14 +75,39 @@ export async function deleteThread(client: AgentMailClient, args: z.infer<typeof
     return { success: true as const }
 }
 
+// 25 MB matches common provider inbound attachment ceilings (e.g. Gmail); generous
+// for legitimate mail while bounding worst-case memory for text extraction.
+const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024
+
 export async function getAttachment(client: AgentMailClient, args: z.infer<typeof GetAttachmentParams>) {
     const { inboxId, threadId, attachmentId } = args
 
     const attachment = await client.inboxes.threads.getAttachment(inboxId, threadId, attachmentId)
 
+    if (!attachment.downloadUrl.startsWith('https://')) {
+        console.error('[agentmail-toolkit] attachment download URL is not https, skipping extraction', { attachmentId })
+        return attachment
+    }
+
+    if (attachment.size > MAX_ATTACHMENT_BYTES) {
+        console.error('[agentmail-toolkit] attachment too large to extract, skipping', { attachmentId, size: attachment.size })
+        return attachment
+    }
+
     try {
-        const response = await fetch(attachment.downloadUrl)
+        const response = await fetch(attachment.downloadUrl, { signal: AbortSignal.timeout(15_000) })
+
+        const contentLength = Number(response.headers.get('content-length'))
+        if (contentLength && contentLength > MAX_ATTACHMENT_BYTES) {
+            console.error('[agentmail-toolkit] content-length exceeds cap, skipping', { attachmentId, contentLength })
+            return attachment
+        }
+
         const arrayBuffer = await response.arrayBuffer()
+        if (arrayBuffer.byteLength > MAX_ATTACHMENT_BYTES) {
+            console.error('[agentmail-toolkit] downloaded attachment exceeds cap, skipping', { attachmentId, size: arrayBuffer.byteLength })
+            return attachment
+        }
         const fileBytes = new Uint8Array(arrayBuffer)
 
         const detectedType = detectFileType(fileBytes)
@@ -92,7 +117,16 @@ export async function getAttachment(client: AgentMailClient, args: z.infer<typeo
         } else if (detectedType === 'application/zip') {
             return { ...attachment, text: await extractDocxText(fileBytes) }
         }
-    } catch {}
+    } catch (err) {
+        // Don't let a blocked fetch, expired signed URL, or a malformed/adversarial
+        // PDF/DOCX silently look identical to "this just isn't a PDF/DOCX" - log it,
+        // consistent with the fix/mcp-error-visibility philosophy, then still degrade
+        // gracefully to the bare attachment.
+        console.error('[agentmail-toolkit] attachment extraction failed', {
+            attachmentId,
+            error: err instanceof Error ? err.message : String(err),
+        })
+    }
 
     return attachment
 }

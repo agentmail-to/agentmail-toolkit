@@ -50,6 +50,19 @@ export const safeFunc = async <T>(
     }
 }
 
+// Bounds error-body *logging* regardless of whether the body is a string or a parsed
+// JSON object - object bodies (e.g. ValidationErrorResponse) can be just as large/
+// sensitive as string ones, so both need the same cap. Exported for adapters (e.g.
+// mcp.ts's console.error call) to use instead of only truncating string bodies.
+export function truncateForLog(body: unknown, max = 500): unknown {
+    if (typeof body === 'string') return body.slice(0, max)
+    if (body && typeof body === 'object') {
+        const json = JSON.stringify(body)
+        return json.length > max ? json.slice(0, max) + '...[truncated]' : body
+    }
+    return body
+}
+
 // JSON-safe a result so it can be checked against a Zod output schema / returned as MCP
 // structuredContent: Date -> ISO string, undefined values stripped from objects.
 export function normalize(value: unknown): unknown {
@@ -77,24 +90,55 @@ export function detectFileType(bytes: Uint8Array): string | undefined {
     return undefined
 }
 
+// ~150-200 dense pages; generous for real documents while bounding a decompression-
+// bomb-style DOCX or a pathological PDF from producing an unbounded string.
+const MAX_EXTRACTED_CHARS = 500_000
+
+function truncateExtracted(text: string): string {
+    return text.length > MAX_EXTRACTED_CHARS ? text.slice(0, MAX_EXTRACTED_CHARS) + '\n...[truncated]' : text
+}
+
+// Note: Promise.race bounds when the caller gets a response, but does not cancel the
+// losing extraction work - it keeps running in the background with its result
+// discarded. Full cancellation would need a worker thread; call this out rather than
+// silently accepting partial protection.
+async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+    return Promise.race([
+        promise,
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`extraction timed out after ${ms}ms`)), ms)),
+    ])
+}
+
 export async function extractPdfText(bytes: Uint8Array): Promise<string> {
-    const pdf = await getDocumentProxy(bytes)
-    const { text } = await extractText(pdf)
-    return Array.isArray(text) ? text.join('\n') : text
+    return withTimeout(
+        (async () => {
+            const pdf = await getDocumentProxy(bytes)
+            const { text } = await extractText(pdf)
+            return truncateExtracted(Array.isArray(text) ? text.join('\n') : text)
+        })(),
+        20_000
+    )
 }
 
 export async function extractDocxText(bytes: Uint8Array): Promise<string | undefined> {
-    const zip = await JSZip.loadAsync(bytes)
-    const documentXml = await zip.file('word/document.xml')?.async('string')
-    if (!documentXml) return undefined
-    return documentXml
-        .replace(/<w:p[^>]*>/g, '\n')
-        .replace(/<[^>]+>/g, '')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&amp;/g, '&')
-        .replace(/&quot;/g, '"')
-        .replace(/&apos;/g, "'")
-        .replace(/\n{3,}/g, '\n\n')
-        .trim()
+    return withTimeout(
+        (async () => {
+            const zip = await JSZip.loadAsync(bytes)
+            const documentXml = await zip.file('word/document.xml')?.async('string')
+            if (!documentXml) return undefined
+            return truncateExtracted(
+                documentXml
+                    .replace(/<w:p[^>]*>/g, '\n')
+                    .replace(/<[^>]+>/g, '')
+                    .replace(/&lt;/g, '<')
+                    .replace(/&gt;/g, '>')
+                    .replace(/&amp;/g, '&')
+                    .replace(/&quot;/g, '"')
+                    .replace(/&apos;/g, "'")
+                    .replace(/\n{3,}/g, '\n\n')
+                    .trim()
+            )
+        })(),
+        20_000
+    )
 }
