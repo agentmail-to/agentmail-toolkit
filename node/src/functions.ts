@@ -86,49 +86,55 @@ export async function getAttachment(client: AgentMailClient, args: z.infer<typeo
 
     if (!attachment.downloadUrl.startsWith('https://')) {
         console.error('[agentmail-toolkit] attachment download URL is not https, skipping extraction', { attachmentId })
-        return attachment
+        return { ...attachment, extractionError: 'download URL is not https' }
     }
 
     if (attachment.size > MAX_ATTACHMENT_BYTES) {
         console.error('[agentmail-toolkit] attachment too large to extract, skipping', { attachmentId, size: attachment.size })
+        return { ...attachment, extractionError: 'attachment exceeds size cap' }
+    }
+
+    // Download failures (network error, timeout, non-2xx) propagate as a tool error -
+    // the attachment couldn't be fetched at all, which is a different failure mode from
+    // a successfully-downloaded file that fails to extract (handled below).
+    const response = await fetch(attachment.downloadUrl, { signal: AbortSignal.timeout(15_000) })
+    if (!response.ok) {
+        throw new Error(`failed to download attachment: HTTP ${response.status}`)
+    }
+
+    const contentLength = Number(response.headers.get('content-length'))
+    if (contentLength && contentLength > MAX_ATTACHMENT_BYTES) {
+        console.error('[agentmail-toolkit] content-length exceeds cap, skipping', { attachmentId, contentLength })
+        return { ...attachment, extractionError: 'content-length exceeds size cap' }
+    }
+
+    const arrayBuffer = await response.arrayBuffer()
+    if (arrayBuffer.byteLength > MAX_ATTACHMENT_BYTES) {
+        console.error('[agentmail-toolkit] downloaded attachment exceeds cap, skipping', { attachmentId, size: arrayBuffer.byteLength })
+        return { ...attachment, extractionError: 'downloaded attachment exceeds size cap' }
+    }
+    const fileBytes = new Uint8Array(arrayBuffer)
+
+    const detectedType = detectFileType(fileBytes)
+    if (detectedType !== 'application/pdf' && detectedType !== 'application/zip') {
         return attachment
     }
 
     try {
-        const response = await fetch(attachment.downloadUrl, { signal: AbortSignal.timeout(15_000) })
-
-        const contentLength = Number(response.headers.get('content-length'))
-        if (contentLength && contentLength > MAX_ATTACHMENT_BYTES) {
-            console.error('[agentmail-toolkit] content-length exceeds cap, skipping', { attachmentId, contentLength })
-            return attachment
-        }
-
-        const arrayBuffer = await response.arrayBuffer()
-        if (arrayBuffer.byteLength > MAX_ATTACHMENT_BYTES) {
-            console.error('[agentmail-toolkit] downloaded attachment exceeds cap, skipping', { attachmentId, size: arrayBuffer.byteLength })
-            return attachment
-        }
-        const fileBytes = new Uint8Array(arrayBuffer)
-
-        const detectedType = detectFileType(fileBytes)
-
-        if (detectedType === 'application/pdf') {
-            return { ...attachment, text: await extractPdfText(fileBytes) }
-        } else if (detectedType === 'application/zip') {
-            return { ...attachment, text: await extractDocxText(fileBytes) }
-        }
+        const text = detectedType === 'application/pdf' ? await extractPdfText(fileBytes) : await extractDocxText(fileBytes)
+        return { ...attachment, text }
     } catch (err) {
-        // Don't let a blocked fetch, expired signed URL, or a malformed/adversarial
-        // PDF/DOCX silently look identical to "this just isn't a PDF/DOCX" - log it,
-        // consistent with the fix/mcp-error-visibility philosophy, then still degrade
-        // gracefully to the bare attachment.
+        // Don't let an expired signed URL response, or a malformed/adversarial PDF/DOCX,
+        // or a bug in unpdf/jszip silently look identical to "extraction wasn't
+        // attempted" - surface it as explicit fallback metadata (previously a bare
+        // `catch {}`), while still degrading gracefully to the bare attachment instead
+        // of failing the whole call.
         console.error('[agentmail-toolkit] attachment extraction failed', {
             attachmentId,
             error: err instanceof Error ? err.message : String(err),
         })
+        return { ...attachment, extractionError: err instanceof Error ? err.message : String(err) }
     }
-
-    return attachment
 }
 
 export async function listMessages(client: AgentMailClient, args: z.infer<typeof ListMessagesParams>) {

@@ -50,6 +50,7 @@ export const AttachmentResponseSchema = AttachmentMetaSchema.extend({
     downloadUrl: z.string().describe('URL to download the attachment'),
     expiresAt: isoDate().describe('Time at which the download URL expires'),
     text: z.string().optional().describe('Extracted text (PDF/DOCX only, toolkit-added)'),
+    extractionError: z.string().optional().describe('Set when PDF/DOCX text extraction failed or was skipped (toolkit-added)'),
 })
 
 // "Item" variants are what list/search endpoints return (a subset of the full
