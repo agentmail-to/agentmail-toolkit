@@ -103,6 +103,36 @@ describe('tools/call', () => {
         expect(result.structuredContent).toBeUndefined()
     })
 
+    it('strips unknown top-level SDK fields so structuredContent matches the advertised strict-root schema', async () => {
+        // The MCP SDK reconstructs a strip-mode z.object from the registered shape and
+        // advertises additionalProperties:false at the root - a future SDK field must be
+        // dropped from structuredContent, not leaked into a payload strict clients reject.
+        const future = mockClient()
+        ;(future.inboxes as { list: unknown }).list = async () => ({ count: 1, inboxes: [], futureSdkField: 'surprise' })
+        const client = await connect(future)
+        await client.listTools()
+
+        const result = await client.callTool({ name: 'list_inboxes', arguments: {} })
+        expect(result.isError ?? false).toBe(false)
+        expect(result.structuredContent).toEqual({ count: 1, inboxes: [] })
+        const content = result.content as Array<{ text: string }>
+        expect(JSON.parse(content[0].text)).toEqual({ count: 1, inboxes: [] })
+    })
+
+    it('advertises a strict root but loose nested objects (regression: SDK shape reconstruction)', async () => {
+        const client = await connect(mockClient())
+        const { tools: listed } = await client.listTools()
+        const listInboxes = listed.find((t) => t.name === 'list_inboxes')!
+        const schema = listInboxes.outputSchema as {
+            additionalProperties?: unknown
+            properties?: { inboxes?: { items?: { additionalProperties?: unknown } } }
+        }
+        // Documented SDK behavior our strip-parse in mcp.ts is aligned with:
+        expect(schema.additionalProperties).toBe(false)
+        // Nested objects keep their looseness, so nested SDK additions still pass.
+        expect(schema.properties?.inboxes?.items?.additionalProperties).not.toBe(false)
+    })
+
     it('fails visibly when a result drifts from its declared output schema', async () => {
         vi.spyOn(console, 'error').mockImplementation(() => {})
         const drifted = mockClient()

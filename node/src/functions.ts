@@ -97,7 +97,10 @@ export async function getAttachment(client: AgentMailClient, args: z.infer<typeo
     // Download failures (network error, timeout, non-2xx) propagate as a tool error -
     // the attachment couldn't be fetched at all, which is a different failure mode from
     // a successfully-downloaded file that fails to extract (handled below).
-    const response = await fetch(attachment.downloadUrl, { signal: AbortSignal.timeout(15_000) })
+    // redirect: 'error' - the signed CDN URL should never redirect; following one could
+    // silently downgrade the https-only check above (fetch follows redirects by default
+    // with no scheme restriction on the target).
+    const response = await fetch(attachment.downloadUrl, { signal: AbortSignal.timeout(15_000), redirect: 'error' })
     if (!response.ok) {
         throw new Error(`failed to download attachment: HTTP ${response.status}`)
     }

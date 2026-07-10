@@ -47,8 +47,16 @@ export class AgentMailToolkit extends ListToolkit<McpTool> {
                 // tool's own output schema before returning structuredContent. Schema
                 // drift (a func/schema mismatch) must fail visibly rather than silently
                 // handing the client malformed structured content.
-                const structuredContent = normalize(result) as Record<string, unknown>
-                const parsed = tool.outputSchema.safeParse(structuredContent)
+                //
+                // Parse in strip mode (z.object of the same shape), not with the loose
+                // schema directly: the MCP SDK reconstructs a plain z.object from the raw
+                // shape we register and advertises it to clients with a strict
+                // (additionalProperties: false) root. Stripping unknown top-level keys
+                // here keeps structuredContent conformant with that ADVERTISED schema, so
+                // a future SDK field is dropped instead of failing validation in strict
+                // clients. Nested objects keep their looseness (they serialize from the
+                // real looseObject instances in the shape).
+                const parsed = z.object(tool.outputSchema.shape).safeParse(normalize(result))
                 if (!parsed.success) {
                     console.error('[agentmail-toolkit] output schema mismatch', {
                         tool: tool.name,
@@ -61,6 +69,7 @@ export class AgentMailToolkit extends ListToolkit<McpTool> {
                 }
 
                 // Backwards compatibility: also serialize the same structuredContent as text.
+                const structuredContent = parsed.data as Record<string, unknown>
                 const text = JSON.stringify(structuredContent)
                 return {
                     structuredContent,

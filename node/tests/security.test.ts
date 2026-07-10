@@ -77,12 +77,14 @@ describe('attachment download bounds', () => {
         await expect(getAttachment(clientWith(attachmentResponse()), ARGS)).rejects.toThrow('HTTP 500')
     })
 
-    it('passes a timeout signal to fetch', async () => {
+    it('passes a timeout signal to fetch and refuses redirects', async () => {
         const fetchSpy = vi.fn(async (_url: string, _options?: RequestInit) => new Response(new Uint8Array([1, 2, 3, 4]), { status: 200 }))
         vi.stubGlobal('fetch', fetchSpy)
 
         await getAttachment(clientWith(attachmentResponse()), ARGS)
         expect(fetchSpy.mock.calls[0][1]?.signal).toBeInstanceOf(AbortSignal)
+        // A redirect could downgrade the https-only check to an arbitrary target scheme.
+        expect(fetchSpy.mock.calls[0][1]?.redirect).toBe('error')
     })
 
     it('returns bare metadata for non-PDF/DOCX bytes', async () => {
