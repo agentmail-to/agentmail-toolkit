@@ -4,6 +4,7 @@ import { toJSONSchema } from 'zod'
 
 import { ListToolkit } from './toolkit.js'
 import type { Tool } from './tools.js'
+import { errorMessage } from './util.js'
 
 /** Convert Zod schema to JSON Schema, handling Date types as ISO datetime strings */
 function zodToJSONSchema(tool: Tool) {
@@ -27,10 +28,20 @@ export class AgentMailToolkit extends ListToolkit<AgentTool> {
             description: tool.description,
             parameters: zodToJSONSchema(tool),
             execute: async (_toolCallId, args) => {
-                const result = await tool.func(this.client, tool.paramsSchema.parse(args))
-                return {
-                    content: [{ type: 'text', text: JSON.stringify(result) }],
-                    details: result,
+                try {
+                    const result = await tool.func(this.client, tool.paramsSchema.parse(args))
+                    return {
+                        content: [{ type: 'text', text: JSON.stringify(result) }],
+                        details: result,
+                    }
+                } catch (err) {
+                    // pi-agent-core's agent loop catches a thrown exception from
+                    // `execute()` and derives `isError: true` from it, using the
+                    // exception's message as the tool result text (agent-loop.js
+                    // executeToolCalls) - previously this threw the raw SDK error
+                    // uncaught with no formatting at all. Rethrow a concise message
+                    // instead of the SDK's verbose dump.
+                    throw new Error(errorMessage(err))
                 }
             },
         }
