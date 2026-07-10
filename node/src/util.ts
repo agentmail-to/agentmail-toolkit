@@ -42,10 +42,10 @@ export function errorMessage(error: unknown): string {
     return 'Unknown error'
 }
 
-export const safeFunc = async <T>(
-    func: (client: AgentMailClient, args: Record<string, any>) => Promise<T>,
+export const safeFunc = async <A, T>(
+    func: (client: AgentMailClient, args: A) => Promise<T>,
     client: AgentMailClient,
-    args: Record<string, any>
+    args: A
 ): Promise<{ isError: boolean; result: T | string; statusCode?: number; body?: unknown }> => {
     try {
         return { isError: false, result: await func(client, args) }

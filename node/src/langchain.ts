@@ -7,7 +7,7 @@ import { errorMessage } from './util.js'
 export class AgentMailToolkit extends ListToolkit<StructuredTool> {
     protected buildTool(tool: Tool): StructuredTool {
         return langchainTool(
-            async (args: Record<string, any>) => {
+            async (args: Record<string, unknown>) => {
                 try {
                     return JSON.stringify(await tool.func(this.client, args), null, 2)
                 } catch (err) {
