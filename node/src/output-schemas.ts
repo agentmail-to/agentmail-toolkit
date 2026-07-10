@@ -11,18 +11,18 @@ const isoDate = () => z.iso.datetime().describe('ISO 8601 datetime')
 
 const MetadataSchema = z.record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
 
-export const PaginationSchema = z.object({
+export const PaginationSchema = z.looseObject({
     count: z.number().describe('Number of items returned'),
     limit: z.number().optional().describe('Limit of number of items returned'),
     nextPageToken: z.string().optional().describe('Page token for pagination'),
 })
 
 // Stable result for tools whose SDK call returns void (deletes).
-export const VoidResultSchema = z.object({
+export const VoidResultSchema = z.looseObject({
     success: z.literal(true),
 })
 
-export const InboxSchema = z.object({
+export const InboxSchema = z.looseObject({
     podId: z.string(),
     inboxId: z.string(),
     email: z.string(),
@@ -37,7 +37,7 @@ export const ListInboxesResponseSchema = PaginationSchema.extend({
     inboxes: z.array(InboxSchema),
 })
 
-const AttachmentMetaSchema = z.object({
+const AttachmentMetaSchema = z.looseObject({
     attachmentId: z.string(),
     filename: z.string().optional(),
     size: z.number(),
@@ -55,7 +55,7 @@ export const AttachmentResponseSchema = AttachmentMetaSchema.extend({
 // "Item" variants are what list/search endpoints return (a subset of the full
 // get-by-id shape). The full shapes extend the item shapes with the extra fields.
 
-export const ThreadItemSchema = z.object({
+export const ThreadItemSchema = z.looseObject({
     inboxId: z.string(),
     threadId: z.string(),
     labels: z.array(z.string()),
@@ -74,7 +74,7 @@ export const ThreadItemSchema = z.object({
     createdAt: isoDate(),
 })
 
-export const MessageItemSchema = z.object({
+export const MessageItemSchema = z.looseObject({
     inboxId: z.string(),
     threadId: z.string(),
     messageId: z.string(),
@@ -119,24 +119,24 @@ export const ListMessagesResponseSchema = PaginationSchema.extend({
 
 export const SearchMessagesResponseSchema = ListMessagesResponseSchema
 
-export const UpdateThreadResponseSchema = z.object({
+export const UpdateThreadResponseSchema = z.looseObject({
     threadId: z.string(),
     labels: z.array(z.string()),
 })
 
-export const UpdateMessageResponseSchema = z.object({
+export const UpdateMessageResponseSchema = z.looseObject({
     messageId: z.string(),
     labels: z.array(z.string()),
 })
 
-export const SendMessageResponseSchema = z.object({
+export const SendMessageResponseSchema = z.looseObject({
     messageId: z.string(),
     threadId: z.string(),
 })
 
 const DraftSendStatusSchema = z.enum(['scheduled', 'sending', 'failed'])
 
-export const DraftItemSchema = z.object({
+export const DraftItemSchema = z.looseObject({
     inboxId: z.string(),
     draftId: z.string(),
     labels: z.array(z.string()),
@@ -167,7 +167,7 @@ export const ListDraftsResponseSchema = PaginationSchema.extend({
 
 const ScopeTypeSchema = z.enum(['organization', 'pod', 'inbox'])
 
-export const IdentitySchema = z.object({
+export const IdentitySchema = z.looseObject({
     scopeType: ScopeTypeSchema,
     scopeId: z.string(),
     organizationId: z.string(),
