@@ -29,6 +29,19 @@ function apiErrorMessage(error: AgentMailError): string {
     return error.statusCode ? `${bounded} (HTTP ${error.statusCode})` : bounded
 }
 
+// Pull a concise, human-readable message out of any thrown value - the API's own
+// explanation for an `AgentMailError` (via `apiErrorMessage`, above) instead of the
+// SDK's verbose multi-line "Status code / Body" dump, `error.message` for a generic
+// `Error`, or a generic fallback otherwise. Used by `safeFunc` below (catch-and-return,
+// for adapters that signal errors via a result flag) and directly by adapters that
+// signal errors by throwing (ai-sdk, langchain, clawdbot) so a concise, bounded message
+// reaches the framework's native error mechanism instead of a raw SDK dump.
+export function errorMessage(error: unknown): string {
+    if (error instanceof AgentMailError) return apiErrorMessage(error)
+    if (error instanceof Error) return error.message
+    return 'Unknown error'
+}
+
 export const safeFunc = async <T>(
     func: (client: AgentMailClient, args: Record<string, any>) => Promise<T>,
     client: AgentMailClient,
@@ -37,16 +50,11 @@ export const safeFunc = async <T>(
     try {
         return { isError: false, result: await func(client, args) }
     } catch (error) {
-        if (error instanceof AgentMailError) {
-            return {
-                isError: true,
-                result: apiErrorMessage(error),
-                statusCode: error.statusCode,
-                body: error.body,
-            }
+        return {
+            isError: true,
+            result: errorMessage(error),
+            ...(error instanceof AgentMailError ? { statusCode: error.statusCode, body: error.body } : {}),
         }
-        if (error instanceof Error) return { isError: true, result: error.message }
-        return { isError: true, result: 'Unknown error' }
     }
 }
 
