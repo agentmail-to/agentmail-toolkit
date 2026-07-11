@@ -1,6 +1,6 @@
 # AgentMail Toolkit
 
-The AgentMail Toolkit integrates popular agent frameworks and protocols including OpenAI Agents SDK, Vercel AI SDK, and Model Context Protocol (MCP) with the AgentMail API.
+The AgentMail Toolkit integrates popular agent frameworks including OpenAI Agents SDK, LangChain, and LiveKit Agents with the AgentMail API.
 
 ## Setup
 
@@ -30,3 +30,18 @@ agent = Agent(
     tools=AgentMailToolkit().get_tools(),
 )
 ```
+
+### Errors
+
+A failed tool call (an AgentMail API error, or any other exception) is surfaced
+as a real failure, not a disguised success — each adapter raises the way its
+framework expects: `RuntimeError` (OpenAI Agents SDK), `ToolException`
+(LangChain, which becomes an error `ToolMessage`), or `ToolError` (LiveKit
+Agents).
+
+### Attachment downloads
+
+`get_attachment`'s text extraction (PDF/DOCX) only follows `https://`
+download URLs, applies a 15-second fetch timeout, and caps the downloaded
+body at 25MB — attachments outside these bounds, or that fail to parse, are
+returned without extracted text instead of raising.

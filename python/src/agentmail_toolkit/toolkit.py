@@ -9,7 +9,7 @@ T = TypeVar("T")
 
 
 class Toolkit(Generic[T], ABC):
-    _tools: Dict[str, T] = None
+    _tools: Optional[Dict[str, T]] = None
 
     def __init__(self, client: Optional[AgentMail] = None):
         self.client = client or AgentMail()
