@@ -109,6 +109,13 @@ function truncateExtracted(text: string): string {
     return text.length > MAX_EXTRACTED_CHARS ? text.slice(0, MAX_EXTRACTED_CHARS) + '\n...[truncated]' : text
 }
 
+// The extraction/fetch timeouts (20s here, 15s in functions.ts) are deliberate
+// client-side choices, NOT derived from an enforced API constant: only this surface can
+// bound how long it waits on a CDN fetch or a local parse, and there is no upstream limit
+// to mirror (unlike the size caps, which mirror the API's RESPONSE_SIZE_LIMIT). A hang on
+// the shared multi-tenant host is worse than a slightly-off timeout, so a bound is needed;
+// the value is judgment, not citation.
+//
 // Note: Promise.race bounds when the caller gets a response, but does not cancel the
 // losing extraction work - it keeps running in the background with its result
 // discarded. Full cancellation would need a worker thread; call this out rather than
