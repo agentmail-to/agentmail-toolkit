@@ -28,8 +28,12 @@ urlopen = build_opener(_NoRedirectHandler).open
 
 Kwargs = Dict[str, Any]
 
-# Matches common provider inbound attachment ceilings (e.g. Gmail's 25MB).
-MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024
+# Mirrors the AgentMail API's own enforced content ceiling (RESPONSE_SIZE_LIMIT in
+# agentmail-api/src/agentmail/utils/limits.ts: 5.95 MB). The API inlines extracted
+# content only up to this size and otherwise returns a URL; the toolkit inlines
+# extracted attachment text into a tool result, so it uses the same ceiling rather
+# than an invented one.
+MAX_ATTACHMENT_BYTES = int(5.95 * 1024 * 1024)
 
 
 def list_inboxes(client: AgentMail, kwargs: Kwargs):
