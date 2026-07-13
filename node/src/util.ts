@@ -98,9 +98,12 @@ export function detectFileType(bytes: Uint8Array): string | undefined {
     return undefined
 }
 
-// ~150-200 dense pages; generous for real documents while bounding a decompression-
-// bomb-style DOCX or a pathological PDF from producing an unbounded string.
-const MAX_EXTRACTED_CHARS = 500_000
+// Mirrors the AgentMail API's enforced content ceiling (RESPONSE_SIZE_LIMIT in
+// agentmail-api/src/agentmail/utils/limits.ts). The API caps returned extracted content
+// by comparing its `.length` to that byte constant (get-message.ts), so the toolkit caps
+// extracted text at the same number of characters - it never returns more inline text
+// than the API itself would.
+const MAX_EXTRACTED_CHARS = 5.95 * 1024 * 1024
 
 function truncateExtracted(text: string): string {
     return text.length > MAX_EXTRACTED_CHARS ? text.slice(0, MAX_EXTRACTED_CHARS) + '\n...[truncated]' : text

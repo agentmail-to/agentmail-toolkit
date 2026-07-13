@@ -125,8 +125,11 @@ describe('attachment extraction bounds', () => {
     })
 
     it('truncates pathologically large extracted text', async () => {
-        const text = await extractDocxText(await docxBytes('a'.repeat(600_000)))
-        expect(text!.length).toBeLessThan(600_000)
+        // Repeated chars zip tiny (a decompression-bomb shape), so the source is a small
+        // docx that extracts to > the API's RESPONSE_SIZE_LIMIT ceiling (5.95 MB chars).
+        const oversized = 7 * 1024 * 1024
+        const text = await extractDocxText(await docxBytes('a'.repeat(oversized)))
+        expect(text!.length).toBeLessThan(oversized)
         expect(text).toContain('[truncated]')
     })
 })

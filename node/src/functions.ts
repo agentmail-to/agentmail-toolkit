@@ -75,9 +75,14 @@ export async function deleteThread(client: AgentMailClient, args: z.infer<typeof
     return { success: true as const }
 }
 
-// 25 MB matches common provider inbound attachment ceilings (e.g. Gmail); generous
-// for legitimate mail while bounding worst-case memory for text extraction.
-const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024
+// Mirrors the AgentMail API's own enforced content ceiling (RESPONSE_SIZE_LIMIT in
+// agentmail-api/src/agentmail/utils/limits.ts: 5.95 MB, the Lambda payload limit less
+// envelope headroom). The API returns extracted message content inline only up to this
+// size and otherwise hands back a URL (get-message.ts); the toolkit inlines extracted
+// attachment text into a tool result, the same class of payload, so it uses the same
+// ceiling rather than an invented one. Larger attachments degrade to metadata + the
+// download URL via extractionError.
+const MAX_ATTACHMENT_BYTES = 5.95 * 1024 * 1024
 
 export async function getAttachment(client: AgentMailClient, args: z.infer<typeof GetAttachmentParams>) {
     const { inboxId, threadId, attachmentId } = args
