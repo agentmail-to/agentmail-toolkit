@@ -1,9 +1,10 @@
 {
     "name": "agentmail-toolkit",
-    "version": "0.4.1",
+    "version": "0.5.0",
     "description": "AgentMail Toolkit",
     "scripts": {
         "build": "tsup",
+        "test": "vitest run",
         "lint": "eslint .",
         "prettier": "prettier --write ."
     },
@@ -61,12 +62,16 @@
         "zod": "^4.1.13"
     },
     "peerDependencies": {
+        "@mariozechner/pi-agent-core": "^0.50.1",
         "@modelcontextprotocol/sdk": "^1.24.1",
         "ai": "^6.0.0-beta.150",
-        "clawdbot": "*",
+        "clawdbot": "^2026.1.24-3",
         "langchain": "^1.2.0"
     },
     "peerDependenciesMeta": {
+        "@mariozechner/pi-agent-core": {
+            "optional": true
+        },
         "@modelcontextprotocol/sdk": {
             "optional": true
         },
@@ -85,6 +90,7 @@
         "@mariozechner/pi-agent-core": "^0.50.1",
         "@sinclair/typebox": "^0.34.47",
         "@types/node": "^24.10.1",
+        "ai": "6.0.224",
         "clawdbot": "2026.1.24-3",
         "eslint": "^9.39.1",
         "eslint-config-prettier": "^10.1.8",
@@ -92,6 +98,7 @@
         "prettier": "3.5.3",
         "tsup": "^8.5.1",
         "typescript": "^5.9.3",
-        "typescript-eslint": "^8.48.1"
+        "typescript-eslint": "^8.48.1",
+        "vitest": "^4.1.10"
     }
 }

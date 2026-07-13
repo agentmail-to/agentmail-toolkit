@@ -77,7 +77,9 @@ export const GetAttachmentParams = z.object({
 
 const AttachmentSchema = z.object({
     filename: z.string().optional().describe('Filename'),
-    content_id: z.string().optional().describe('Content ID for inline attachments'),
+    contentType: z.string().optional().describe('MIME type of the attachment'),
+    contentDisposition: z.enum(['inline', 'attachment']).optional().describe('Content disposition'),
+    contentId: z.string().optional().describe('Content ID for inline attachments'),
     content: z.string().optional().describe('Base64 encoded content'),
     url: z.url().optional().describe('URL'),
 })
