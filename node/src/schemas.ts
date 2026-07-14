@@ -80,8 +80,11 @@ const AttachmentSchema = z.object({
     contentType: z.string().optional().describe('MIME type of the attachment'),
     contentDisposition: z.enum(['inline', 'attachment']).optional().describe('Content disposition'),
     contentId: z.string().optional().describe('Content ID for inline attachments'),
-    content: z.string().optional().describe('Base64 encoded content'),
-    url: z.url().optional().describe('URL'),
+    content: z.string().optional().describe('Base64 encoded content. Exactly one of content or url must be provided'),
+    url: z
+        .url()
+        .optional()
+        .describe('Publicly accessible URL to fetch the attachment from. Exactly one of content or url must be provided'),
 })
 
 const BaseMessageParams = z.object({
@@ -89,7 +92,10 @@ const BaseMessageParams = z.object({
     text: z.string().optional().describe('Plain text body'),
     html: z.string().optional().describe('HTML body'),
     labels: z.array(z.string()).optional().describe('Labels'),
-    attachments: z.array(AttachmentSchema).optional().describe('Attachments'),
+    attachments: z
+        .array(AttachmentSchema)
+        .optional()
+        .describe('Attachments. Each item must specify exactly one of content (base64) or url'),
 })
 
 export const SendMessageParams = BaseMessageParams.extend({
@@ -102,10 +108,16 @@ export const SendMessageParams = BaseMessageParams.extend({
 
 export const ReplyToMessageParams = BaseMessageParams.extend({
     messageId: MessageIdSchema,
-    replyAll: z.boolean().optional().describe('Reply to all recipients'),
-    to: z.array(z.string()).optional().describe('Override reply recipients'),
-    cc: z.array(z.string()).optional().describe('Override CC recipients'),
-    bcc: z.array(z.string()).optional().describe('Override BCC recipients'),
+    replyAll: z
+        .boolean()
+        .optional()
+        .describe('Reply to all original recipients. Mutually exclusive with to, cc, and bcc — the API rejects the request if both are set'),
+    to: z
+        .array(z.string())
+        .optional()
+        .describe('Override reply recipients, replacing the default (the original sender). Omit to reply to the sender only. Cannot be combined with replyAll'),
+    cc: z.array(z.string()).optional().describe('Override CC recipients. Cannot be combined with replyAll'),
+    bcc: z.array(z.string()).optional().describe('Override BCC recipients. Cannot be combined with replyAll'),
     replyTo: z.array(z.string()).optional().describe('Reply-to addresses'),
 })
 
