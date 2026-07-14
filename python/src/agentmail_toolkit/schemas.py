@@ -50,8 +50,13 @@ class GetAttachmentParams(BaseModel):
 class Attachment(BaseModel):
     filename: Optional[str] = Field(default=None, description="Filename")
     content_id: Optional[str] = Field(default=None, description="Content ID for inline attachments")
-    content: Optional[str] = Field(default=None, description="Base64 encoded content")
-    url: Optional[str] = Field(default=None, description="URL")
+    content: Optional[str] = Field(
+        default=None, description="Base64 encoded content. Exactly one of content or url must be provided"
+    )
+    url: Optional[str] = Field(
+        default=None,
+        description="Publicly accessible URL to fetch the attachment from. Exactly one of content or url must be provided",
+    )
 
 
 class BaseMessageParams(BaseModel):
@@ -59,7 +64,9 @@ class BaseMessageParams(BaseModel):
     text: Optional[str] = Field(default=None, description="Plain text body")
     html: Optional[str] = Field(default=None, description="HTML body")
     labels: Optional[List[str]] = Field(default=None, description="Labels")
-    attachments: Optional[List[Attachment]] = Field(default=None, description="Attachments")
+    attachments: Optional[List[Attachment]] = Field(
+        default=None, description="Attachments. Each item must specify exactly one of content (base64) or url"
+    )
 
 
 class SendMessageParams(BaseMessageParams):
@@ -71,7 +78,9 @@ class SendMessageParams(BaseMessageParams):
 
 class ReplyToMessageParams(BaseMessageParams):
     message_id: MessageIdField
-    reply_all: Optional[bool] = Field(default=None, description="Reply to all recipients")
+    reply_all: Optional[bool] = Field(
+        default=None, description="Reply to all original recipients. Omit or set false to reply to the sender only"
+    )
 
 
 class ForwardMessageParams(SendMessageParams):
