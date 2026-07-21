@@ -6,7 +6,7 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 
 import { AgentMailToolkit } from '../src/mcp.js'
 import { tools } from '../src/tools.js'
-import { mockClient, argsByTool } from './fixtures.js'
+import { mockClient, argsByTool, inbox } from './fixtures.js'
 
 // Real MCP SDK client <-> server over an in-memory transport: the same protocol
 // surface (tools/list, tools/call, client-side structuredContent validation
@@ -143,5 +143,58 @@ describe('tools/call', () => {
         expect(result.isError).toBe(true)
         const content = result.content as Array<{ text: string }>
         expect(content[0].text).toMatch(/output schema/)
+    })
+})
+
+// A client whose list_inboxes returns a single inbox tagged with `marker`, so a test
+// can tell which client actually served a call.
+function inboxListClient(marker: string): AgentMailClient {
+    return {
+        inboxes: { list: async () => ({ count: 1, inboxes: [{ ...inbox(), inboxId: marker }] }) },
+    } as unknown as AgentMailClient
+}
+
+describe('invoke (stateless per-call client)', () => {
+    it('runs the tool with the client passed to invoke, not the one bound at construction', async () => {
+        // A host that serves many users builds the toolkit once (bound client is a
+        // placeholder) and hands a real per-request client to each call.
+        const toolkit = new AgentMailToolkit(inboxListClient('BOUND'))
+        const result = await toolkit.invoke('list_inboxes', inboxListClient('PER_CALL'), {})
+
+        expect(result.isError ?? false).toBe(false)
+        const structured = result.structuredContent as { inboxes: Array<{ inboxId: string }> }
+        expect(structured.inboxes[0].inboxId).toBe('PER_CALL')
+        // Same text/structured parity a tools/call returns.
+        const content = result.content as Array<{ type: string; text: string }>
+        expect(JSON.parse(content[0].text)).toEqual(structured)
+    })
+
+    it('returns an isError result for an unknown tool name instead of throwing', async () => {
+        const toolkit = new AgentMailToolkit(mockClient())
+        const result = await toolkit.invoke('does_not_exist', mockClient(), {})
+        expect(result.isError).toBe(true)
+    })
+
+    it('surfaces AgentMail errors as an isError result with a concise, bounded message', async () => {
+        vi.spyOn(console, 'error').mockImplementation(() => {})
+        const failing = {
+            inboxes: {
+                list: async () => {
+                    throw new AgentMailError({
+                        message: 'Status code: 403\nBody: ...',
+                        statusCode: 403,
+                        body: { message: 'Forbidden' },
+                    })
+                },
+            },
+        } as unknown as AgentMailClient
+        const toolkit = new AgentMailToolkit(mockClient())
+        const result = await toolkit.invoke('list_inboxes', failing, {})
+
+        expect(result.isError).toBe(true)
+        const content = result.content as Array<{ text: string }>
+        expect(content[0].text).toContain('Forbidden')
+        expect(content[0].text).toContain('403')
+        expect(result.structuredContent).toBeUndefined()
     })
 })
