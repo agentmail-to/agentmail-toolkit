@@ -94,3 +94,29 @@ describe.each(tools.map((tool) => [tool.name, tool] as const))('%s', (_name, too
         expect(tool.paramsSchema.safeParse(argsByTool[tool.name]).success).toBe(true)
     })
 })
+
+// The attachment content/url exclusivity must be STRUCTURAL in the advertised JSON
+// Schema (anyOf: requires content | requires url) - description-only exclusivity kept
+// tripping OpenAI app review's "Unclear Arguments" analyzer on send/reply/forward/draft.
+describe('attachment content/url exclusivity', () => {
+    const sendMessage = tools.find((t) => t.name === 'send_message')!
+
+    it('advertises an anyOf where each variant requires exactly one of content or url', () => {
+        const json = toInputJsonSchema(sendMessage.paramsSchema) as {
+            properties: { attachments: { items: { anyOf?: Array<{ required?: string[] }> } } }
+        }
+        const variants = json.properties.attachments.items.anyOf!
+        expect(variants).toHaveLength(2)
+        expect(variants[0].required).toContain('content')
+        expect(variants[0].required).not.toContain('url')
+        expect(variants[1].required).toContain('url')
+        expect(variants[1].required).not.toContain('content')
+    })
+
+    it('accepts a content-only or url-only attachment and rejects one with neither', () => {
+        const args = (attachments: unknown[]) => ({ ...argsByTool.send_message, attachments })
+        expect(sendMessage.paramsSchema.safeParse(args([{ filename: 'a.txt', content: 'aGk=' }])).success).toBe(true)
+        expect(sendMessage.paramsSchema.safeParse(args([{ filename: 'a.txt', url: 'https://example.com/a.txt' }])).success).toBe(true)
+        expect(sendMessage.paramsSchema.safeParse(args([{ filename: 'a.txt' }])).success).toBe(false)
+    })
+})
