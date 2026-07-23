@@ -6,28 +6,35 @@ import { z } from 'zod'
 // ISO-8601 strings because MCP structuredContent must be JSON-Schema-representable; the
 // `normalize` helper in util.ts converts real Date objects to ISO strings before a result
 // is checked against these schemas.
+//
+// These schemas are an ALLOWLIST, at every nesting level: plain z.object (strip mode)
+// drops any field not declared here before a result leaves the toolkit. The SDK parses
+// API responses with unrecognizedObjectKeys:"passthrough", so internal/undisclosed API
+// fields (organization_id, pod_id, future debug data) would otherwise flow through to
+// the model — the exact data-minimization failure OpenAI app review rejects. Do not
+// switch these to looseObject; add a field explicitly if a consumer needs it.
 
 const isoDate = () => z.iso.datetime().describe('ISO 8601 datetime')
 
 const MetadataSchema = z.record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
 
-export const PaginationSchema = z.looseObject({
+export const PaginationSchema = z.object({
     count: z.number().describe('Number of items returned'),
     limit: z.number().optional().describe('Limit of number of items returned'),
     nextPageToken: z.string().optional().describe('Page token for pagination'),
 })
 
 // Stable result for tools whose SDK call returns void (deletes).
-export const VoidResultSchema = z.looseObject({
+export const VoidResultSchema = z.object({
     success: z.literal(true),
 })
 
-export const InboxSchema = z.looseObject({
-    podId: z.string(),
+// Internal identifiers (podId, clientId) deliberately excluded — not needed for any
+// email task; flagged by OpenAI app review as undisclosed personal identifiers.
+export const InboxSchema = z.object({
     inboxId: z.string(),
     email: z.string(),
     displayName: z.string().optional(),
-    clientId: z.string().optional(),
     metadata: MetadataSchema.optional().describe('Custom metadata attached to the inbox'),
     updatedAt: isoDate(),
     createdAt: isoDate(),
@@ -37,7 +44,7 @@ export const ListInboxesResponseSchema = PaginationSchema.extend({
     inboxes: z.array(InboxSchema),
 })
 
-const AttachmentMetaSchema = z.looseObject({
+const AttachmentMetaSchema = z.object({
     attachmentId: z.string(),
     filename: z.string().optional(),
     size: z.number(),
@@ -56,7 +63,7 @@ export const AttachmentResponseSchema = AttachmentMetaSchema.extend({
 // "Item" variants are what list/search endpoints return (a subset of the full
 // get-by-id shape). The full shapes extend the item shapes with the extra fields.
 
-export const ThreadItemSchema = z.looseObject({
+export const ThreadItemSchema = z.object({
     inboxId: z.string(),
     threadId: z.string(),
     labels: z.array(z.string()),
@@ -75,7 +82,7 @@ export const ThreadItemSchema = z.looseObject({
     createdAt: isoDate(),
 })
 
-export const MessageItemSchema = z.looseObject({
+export const MessageItemSchema = z.object({
     inboxId: z.string(),
     threadId: z.string(),
     messageId: z.string(),
@@ -90,7 +97,9 @@ export const MessageItemSchema = z.looseObject({
     attachments: z.array(AttachmentMetaSchema).optional(),
     inReplyTo: z.string().optional(),
     references: z.array(z.string()).optional(),
-    headers: z.record(z.string(), z.string()).optional(),
+    // Raw RFC-822 `headers` deliberately excluded: they carry personal identifiers
+    // (Received-chain IPs, Return-Path) a model never needs — flagged by OpenAI app
+    // review. Threading works via inReplyTo/references.
     size: z.number(),
     updatedAt: isoDate(),
     createdAt: isoDate(),
@@ -120,24 +129,24 @@ export const ListMessagesResponseSchema = PaginationSchema.extend({
 
 export const SearchMessagesResponseSchema = ListMessagesResponseSchema
 
-export const UpdateThreadResponseSchema = z.looseObject({
+export const UpdateThreadResponseSchema = z.object({
     threadId: z.string(),
     labels: z.array(z.string()),
 })
 
-export const UpdateMessageResponseSchema = z.looseObject({
+export const UpdateMessageResponseSchema = z.object({
     messageId: z.string(),
     labels: z.array(z.string()),
 })
 
-export const SendMessageResponseSchema = z.looseObject({
+export const SendMessageResponseSchema = z.object({
     messageId: z.string(),
     threadId: z.string(),
 })
 
 const DraftSendStatusSchema = z.enum(['scheduled', 'sending', 'failed'])
 
-export const DraftItemSchema = z.looseObject({
+export const DraftItemSchema = z.object({
     inboxId: z.string(),
     draftId: z.string(),
     labels: z.array(z.string()),
@@ -154,7 +163,6 @@ export const DraftItemSchema = z.looseObject({
 })
 
 export const DraftSchema = DraftItemSchema.extend({
-    clientId: z.string().optional(),
     replyTo: z.array(z.string()).optional(),
     text: z.string().optional(),
     html: z.string().optional(),
@@ -168,7 +176,7 @@ export const ListDraftsResponseSchema = PaginationSchema.extend({
 
 const ScopeTypeSchema = z.enum(['organization', 'pod', 'inbox'])
 
-export const IdentitySchema = z.looseObject({
+export const IdentitySchema = z.object({
     scopeType: ScopeTypeSchema,
     scopeId: z.string(),
     organizationId: z.string(),

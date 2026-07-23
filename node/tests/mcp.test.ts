@@ -89,7 +89,7 @@ describe('tools/call', () => {
             throw new AgentMailError({
                 message: 'Status code: 404\nBody: ...',
                 statusCode: 404,
-                body: { name: 'NotFoundError', message: 'inbox not found' },
+                body: { name: 'NotFoundError', message: 'inbox not found', requestId: 'req_internal_123' },
             })
         }
         const client = await connect(failing)
@@ -100,6 +100,9 @@ describe('tools/call', () => {
         const content = result.content as Array<{ text: string }>
         expect(content[0].text).toContain('inbox not found')
         expect(content[0].text).toContain('404')
+        // The raw error body (internal/debug fields) must never reach the model -
+        // only the concise message extracted by errorMessage() in util.ts.
+        expect(content[0].text).not.toContain('req_internal_123')
         expect(result.structuredContent).toBeUndefined()
     })
 
@@ -119,7 +122,7 @@ describe('tools/call', () => {
         expect(JSON.parse(content[0].text)).toEqual({ count: 1, inboxes: [] })
     })
 
-    it('advertises a strict root but loose nested objects (regression: SDK shape reconstruction)', async () => {
+    it('advertises strict objects at every nesting level', async () => {
         const client = await connect(mockClient())
         const { tools: listed } = await client.listTools()
         const listInboxes = listed.find((t) => t.name === 'list_inboxes')!
@@ -127,10 +130,41 @@ describe('tools/call', () => {
             additionalProperties?: unknown
             properties?: { inboxes?: { items?: { additionalProperties?: unknown } } }
         }
-        // Documented SDK behavior our strip-parse in mcp.ts is aligned with:
         expect(schema.additionalProperties).toBe(false)
-        // Nested objects keep their looseness, so nested SDK additions still pass.
-        expect(schema.properties?.inboxes?.items?.additionalProperties).not.toBe(false)
+        // Nested objects are strict too - the advertised contract matches the
+        // strip-parse in mcp.ts, which drops undeclared nested fields.
+        expect(schema.properties?.inboxes?.items?.additionalProperties).toBe(false)
+    })
+
+    it('strips undeclared NESTED fields (SDK passthrough internals, raw headers, debug data)', async () => {
+        // The Fern SDK parses API responses with unrecognizedObjectKeys:"passthrough",
+        // so internal API fields ride along inside list items. They must be dropped
+        // before structuredContent - returning them is the data-minimization failure
+        // OpenAI app review rejected (personal identifiers / undisclosed nested data).
+        const leaky = mockClient()
+        ;(leaky.inboxes as { list: unknown }).list = async () => ({
+            count: 1,
+            inboxes: [{ ...inbox(), organization_id: 'org_internal', debug: { trace: 'x' } }],
+        })
+        const client = await connect(leaky)
+        await client.listTools()
+
+        const result = await client.callTool({ name: 'list_inboxes', arguments: {} })
+        expect(result.isError ?? false).toBe(false)
+        const item = (result.structuredContent as { inboxes: Record<string, unknown>[] }).inboxes[0]
+        expect(item).not.toHaveProperty('organization_id')
+        expect(item).not.toHaveProperty('debug')
+        expect(item).not.toHaveProperty('podId')
+        expect(item.inboxId).toBe('inbox_1')
+
+        // Same guarantee on messages: raw RFC-822 headers and snake_case internals
+        // (present in the messageItem fixture) never reach structuredContent.
+        const messages = await client.callTool({ name: 'list_messages', arguments: { inboxId: 'inbox_1' } })
+        const msg = (messages.structuredContent as { messages: Record<string, unknown>[] }).messages[0]
+        expect(msg).not.toHaveProperty('headers')
+        expect(msg).not.toHaveProperty('organization_id')
+        expect(msg).not.toHaveProperty('pod_id')
+        expect(msg.messageId).toBe('msg_1')
     })
 
     it('fails visibly when a result drifts from its declared output schema', async () => {

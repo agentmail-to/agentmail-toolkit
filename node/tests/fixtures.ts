@@ -45,6 +45,13 @@ export const messageItem = () => ({
     size: 123,
     updatedAt: NOW,
     createdAt: NOW,
+    // Fields the real pipeline carries but the output schemas must strip: raw RFC-822
+    // headers (personal identifiers) and snake_case internals the SDK passes through
+    // unrecognized (unrecognizedObjectKeys:"passthrough"). Present in the fixture so
+    // every test that round-trips a message proves they never reach structuredContent.
+    headers: { received: 'from mail.example.com ([203.0.113.7])' },
+    organization_id: 'org_internal_1',
+    pod_id: 'pod_internal_1',
 })
 
 export const message = () => ({ ...messageItem(), text: 'Hello there' })

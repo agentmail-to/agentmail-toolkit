@@ -60,10 +60,15 @@ describe.each(tools.map((tool) => [tool.name, tool] as const))('%s', (_name, too
         expect(json.type).toBe('object')
     })
 
-    it('output schema converts to a root-object JSON Schema without additionalProperties:false', () => {
+    it('output schema converts to a root-object JSON Schema with a strict root', () => {
+        // Strict (additionalProperties:false) is safe because mcp.ts strip-parses every
+        // result before returning it, so a future SDK field is dropped rather than
+        // failing validation - and it's required: loose schemas let undeclared API
+        // fields (raw headers, organization_id, debug data) reach the model, the
+        // data-minimization failure OpenAI app review rejects.
         const json = toJSONSchema(tool.outputSchema) as { type?: string; additionalProperties?: unknown }
         expect(json.type).toBe('object')
-        expect(json.additionalProperties, 'a future SDK field must not break structuredContent validation').not.toBe(false)
+        expect(json.additionalProperties).toBe(false)
     })
 
     it('accepts its representative SDK-shaped fixture (after normalize)', () => {
@@ -78,7 +83,9 @@ describe.each(tools.map((tool) => [tool.name, tool] as const))('%s', (_name, too
 
     it('rejects its fixture with a corrupted required field', () => {
         const fixture = normalize(fixtureByTool[tool.name]()) as Record<string, unknown>
-        const requiredKey = Object.keys(fixture)[0]
+        // Corrupt a DECLARED field: undeclared fixture keys (SDK passthrough
+        // internals) are stripped, so corrupting them can't and shouldn't fail.
+        const requiredKey = Object.keys(fixture).find((key) => key in tool.outputSchema.shape)!
         const corrupted = { ...fixture, [requiredKey]: { unexpected: 'object' } }
         expect(tool.outputSchema.safeParse(corrupted).success).toBe(false)
     })

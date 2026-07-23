@@ -53,14 +53,14 @@ async function runTool(
     // drift (a func/schema mismatch) must fail visibly rather than silently
     // handing the client malformed structured content.
     //
-    // Parse in strip mode (z.object of the same shape), not with the loose
-    // schema directly: the MCP SDK reconstructs a plain z.object from the raw
-    // shape we register and advertises it to clients with a strict
-    // (additionalProperties: false) root. Stripping unknown top-level keys
-    // here keeps structuredContent conformant with that ADVERTISED schema, so
-    // a future SDK field is dropped instead of failing validation in strict
-    // clients. Nested objects keep their looseness (they serialize from the
-    // real looseObject instances in the shape).
+    // Parse in strip mode: the MCP SDK reconstructs a plain z.object from the
+    // raw shape we register and advertises it to clients with a strict
+    // (additionalProperties: false) root, so stripping keeps structuredContent
+    // conformant with that ADVERTISED schema. The output schemas are plain
+    // z.object at every nesting level (see output-schemas.ts), so this parse
+    // also drops undeclared NESTED fields — the SDK passes through unrecognized
+    // API keys (organization_id, pod_id, debug data), and they must never reach
+    // the model (OpenAI app review data-minimization requirement).
     const parsed = z.object(tool.outputSchema.shape).safeParse(normalize(result))
     if (!parsed.success) {
         console.error('[agentmail-toolkit] output schema mismatch', {
