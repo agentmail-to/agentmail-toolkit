@@ -75,17 +75,27 @@ export const GetAttachmentParams = z.object({
     attachmentId: AttachmentIdSchema,
 })
 
-const AttachmentSchema = z.object({
+const AttachmentBaseSchema = z.object({
     filename: z.string().optional().describe('Filename'),
     contentType: z.string().optional().describe('MIME type of the attachment'),
     contentDisposition: z.enum(['inline', 'attachment']).optional().describe('Content disposition'),
     contentId: z.string().optional().describe('Content ID for inline attachments'),
-    content: z.string().optional().describe('Base64 encoded content. Exactly one of content or url must be provided'),
-    url: z
-        .url()
-        .optional()
-        .describe('Publicly accessible URL to fetch the attachment from. Exactly one of content or url must be provided'),
 })
+
+// A two-variant union so the ADVERTISED JSON Schema expresses content/url
+// exclusivity structurally (anyOf: requires content | requires url), not just in
+// description text - description-only exclusivity kept tripping OpenAI app
+// review's "Unclear Arguments" analyzer on every send/reply/forward/draft tool.
+const AttachmentSchema = z
+    .union([
+        AttachmentBaseSchema.extend({
+            content: z.string().describe('Base64 encoded content'),
+        }),
+        AttachmentBaseSchema.extend({
+            url: z.url().describe('Publicly accessible URL to fetch the attachment from'),
+        }),
+    ])
+    .describe('Attachment: provide exactly one of content (base64) or url')
 
 const BaseMessageParams = z.object({
     inboxId: InboxIdSchema,

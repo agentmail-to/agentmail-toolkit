@@ -4,6 +4,7 @@
     "description": "AgentMail Toolkit",
     "scripts": {
         "build": "tsup",
+        "prepublishOnly": "tsup",
         "test": "vitest run",
         "lint": "eslint .",
         "prettier": "prettier --write ."
