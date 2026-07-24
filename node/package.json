@@ -1,6 +1,6 @@
 {
     "name": "agentmail-toolkit",
-    "version": "0.5.1",
+    "version": "0.5.2",
     "description": "AgentMail Toolkit",
     "scripts": {
         "build": "tsup",

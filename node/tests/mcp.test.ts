@@ -82,8 +82,83 @@ describe('tools/call', () => {
         expect(result.structuredContent).toEqual({ success: true })
     })
 
-    it('returns isError with a concise API message on AgentMail errors', async () => {
-        vi.spyOn(console, 'error').mockImplementation(() => {})
+    describe.each([
+        ['send_message', 'messages', 'send'],
+        ['reply_to_message', 'messages', 'reply'],
+        ['forward_message', 'messages', 'forward'],
+        ['create_draft', 'drafts', 'create'],
+    ] as const)('%s attachment validation', (toolName, resourceName, methodName) => {
+        it('rejects both or neither attachment source before the SDK call', async () => {
+            const agentMail = mockClient()
+            const sdkCall = vi.fn()
+            ;(agentMail.inboxes[resourceName] as unknown as Record<string, unknown>)[methodName] = sdkCall
+            const client = await connect(agentMail)
+            const base = argsByTool[toolName]
+
+            const both = await client.callTool({
+                name: toolName,
+                arguments: {
+                    ...base,
+                    attachments: [{ filename: 'both.txt', content: 'aGk=', url: 'https://example.com/both.txt' }],
+                },
+            })
+            const neither = await client.callTool({
+                name: toolName,
+                arguments: {
+                    ...base,
+                    attachments: [{ filename: 'neither.txt' }],
+                },
+            })
+
+            expect(both.isError).toBe(true)
+            expect(neither.isError).toBe(true)
+            expect(sdkCall).not.toHaveBeenCalled()
+        })
+    })
+
+    it('rejects conflicting and legacy reply routing before either SDK reply operation', async () => {
+        const agentMail = mockClient()
+        const reply = vi.fn()
+        const replyAll = vi.fn()
+        ;(agentMail.inboxes.messages as unknown as Record<string, unknown>).reply = reply
+        ;(agentMail.inboxes.messages as unknown as Record<string, unknown>).replyAll = replyAll
+        const client = await connect(agentMail)
+        const base = argsByTool.reply_to_message
+
+        const invalidArguments = [
+            { ...base, recipients: { mode: 'all', to: ['conflict@example.com'] } },
+            { ...base, replyAll: true },
+            { ...base, to: ['legacy@example.com'] },
+        ]
+        for (const args of invalidArguments) {
+            const result = await client.callTool({ name: 'reply_to_message', arguments: args })
+            expect(result.isError).toBe(true)
+        }
+
+        expect(reply).not.toHaveBeenCalled()
+        expect(replyAll).not.toHaveBeenCalled()
+    })
+
+    it('passes an input date transform to the callback exactly once', async () => {
+        const agentMail = mockClient()
+        const list = vi.fn(async (_inboxId: string, _options: unknown) => ({ count: 0, messages: [] }))
+        ;(agentMail.inboxes.messages as unknown as Record<string, unknown>).list = list
+        const client = await connect(agentMail)
+        const before = '2026-07-01T12:00:00.000Z'
+
+        const result = await client.callTool({
+            name: 'list_messages',
+            arguments: { inboxId: 'inbox_1', before },
+        })
+
+        expect(result.isError ?? false).toBe(false)
+        const options = list.mock.calls[0][1] as { before: Date }
+        expect(options.before).toBeInstanceOf(Date)
+        expect(options.before.toISOString()).toBe(before)
+    })
+
+    it('returns a generic public error while preserving bounded API details in server logs', async () => {
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
         const failing = mockClient()
         ;(failing.inboxes as { get: unknown }).get = async () => {
             throw new AgentMailError({
@@ -98,12 +173,49 @@ describe('tools/call', () => {
         const result = await client.callTool({ name: 'get_inbox', arguments: { inboxId: 'nope' } })
         expect(result.isError).toBe(true)
         const content = result.content as Array<{ text: string }>
-        expect(content[0].text).toContain('inbox not found')
-        expect(content[0].text).toContain('404')
-        // The raw error body (internal/debug fields) must never reach the model -
-        // only the concise message extracted by errorMessage() in util.ts.
+        expect(content[0].text).toBe('AgentMail request failed (HTTP 404)')
+        // The API's text and internal/debug fields remain available in bounded server
+        // logs but never reach the model-facing MCP result.
+        expect(content[0].text).not.toContain('inbox not found')
         expect(content[0].text).not.toContain('req_internal_123')
+        expect(errorSpy).toHaveBeenCalledWith(
+            '[agentmail-toolkit] tool error',
+            expect.objectContaining({
+                tool: 'get_inbox',
+                error: 'inbox not found (HTTP 404)',
+                statusCode: 404,
+                body: expect.objectContaining({ message: 'inbox not found', requestId: 'req_internal_123' }),
+            })
+        )
         expect(result.structuredContent).toBeUndefined()
+    })
+
+    it('strips internal attachment extraction failures from output and its advertised schema', async () => {
+        vi.spyOn(console, 'error').mockImplementation(() => {})
+        const internal = mockClient()
+        ;(internal.inboxes.threads as { getAttachment: unknown }).getAttachment = async () => ({
+            attachmentId: 'att_1',
+            filename: 'doc.pdf',
+            size: 4,
+            contentType: 'application/pdf',
+            downloadUrl: 'http://unsafe.example/att_1',
+            expiresAt: new Date('2026-07-10T12:00:00.000Z'),
+        })
+        const client = await connect(internal)
+        const listed = await client.listTools()
+        const schema = listed.tools.find((tool) => tool.name === 'get_attachment')!.outputSchema as {
+            properties?: Record<string, unknown>
+        }
+        expect(schema.properties).not.toHaveProperty('extractionError')
+
+        const result = await client.callTool({
+            name: 'get_attachment',
+            arguments: { inboxId: 'inbox_1', threadId: 'thread_1', attachmentId: 'att_1' },
+        })
+        expect(result.isError ?? false).toBe(false)
+        expect(result.structuredContent).not.toHaveProperty('extractionError')
+        const content = result.content as Array<{ text: string }>
+        expect(JSON.parse(content[0].text)).not.toHaveProperty('extractionError')
     })
 
     it('strips unknown top-level SDK fields so structuredContent matches the advertised strict-root schema', async () => {
@@ -209,7 +321,23 @@ describe('invoke (stateless per-call client)', () => {
         expect(result.isError).toBe(true)
     })
 
-    it('surfaces AgentMail errors as an isError result with a concise, bounded message', async () => {
+    it('validates direct invoke arguments once and rejects invalid input before the SDK call', async () => {
+        const agentMail = mockClient()
+        const reply = vi.fn()
+        ;(agentMail.inboxes.messages as unknown as Record<string, unknown>).reply = reply
+        const toolkit = new AgentMailToolkit(mockClient())
+
+        const result = await toolkit.invoke('reply_to_message', agentMail, {
+            ...argsByTool.reply_to_message,
+            replyAll: true,
+        })
+
+        expect(result.isError).toBe(true)
+        expect(result.content).toEqual([{ type: 'text', text: 'Invalid arguments for tool: reply_to_message' }])
+        expect(reply).not.toHaveBeenCalled()
+    })
+
+    it('sanitizes AgentMail errors while preserving their status code', async () => {
         vi.spyOn(console, 'error').mockImplementation(() => {})
         const failing = {
             inboxes: {
@@ -227,8 +355,30 @@ describe('invoke (stateless per-call client)', () => {
 
         expect(result.isError).toBe(true)
         const content = result.content as Array<{ text: string }>
-        expect(content[0].text).toContain('Forbidden')
-        expect(content[0].text).toContain('403')
+        expect(content[0].text).toBe('AgentMail request failed (HTTP 403)')
+        expect(content[0].text).not.toContain('Forbidden')
         expect(result.structuredContent).toBeUndefined()
+    })
+
+    it('uses a status-free public error and bounds the private server log when no status exists', async () => {
+        const rawMessage = 'private failure: ' + 'x'.repeat(2_000)
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+        const failing = {
+            inboxes: {
+                list: async () => {
+                    throw new Error(rawMessage)
+                },
+            },
+        } as unknown as AgentMailClient
+        const toolkit = new AgentMailToolkit(mockClient())
+        const result = await toolkit.invoke('list_inboxes', failing, {})
+
+        expect(result.isError).toBe(true)
+        const content = result.content as Array<{ text: string }>
+        expect(content[0].text).toBe('AgentMail request failed')
+        expect(content[0].text).not.toContain('private failure')
+        const logged = errorSpy.mock.calls[0][1] as { error: string }
+        expect(logged.error).toContain('private failure')
+        expect(logged.error).toHaveLength(500)
     })
 })

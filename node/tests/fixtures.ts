@@ -164,6 +164,7 @@ export function mockClient(overrides?: Record<string, unknown>): AgentMailClient
                 search: async () => f.search_messages(),
                 send: async () => f.send_message(),
                 reply: async () => f.reply_to_message(),
+                replyAll: async () => f.reply_to_message(),
                 forward: async () => f.forward_message(),
                 update: async () => f.update_message(),
             },

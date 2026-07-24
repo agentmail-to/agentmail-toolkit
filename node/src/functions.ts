@@ -161,7 +161,14 @@ export async function sendMessage(client: AgentMailClient, args: z.infer<typeof 
 }
 
 export async function replyToMessage(client: AgentMailClient, args: z.infer<typeof ReplyToMessageParams>) {
-    const { inboxId, messageId, ...options } = args
+    const { inboxId, messageId, recipients, ...options } = args
+    if (recipients?.mode === 'all') {
+        return client.inboxes.messages.replyAll(inboxId, messageId, options)
+    }
+    if (recipients?.mode === 'custom') {
+        const { mode: _mode, ...customRecipients } = recipients
+        return client.inboxes.messages.reply(inboxId, messageId, { ...options, ...customRecipients })
+    }
     return client.inboxes.messages.reply(inboxId, messageId, options)
 }
 

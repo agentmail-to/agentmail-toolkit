@@ -317,7 +317,7 @@ export const tools: Tool[] = [
     defineTool({
         name: 'reply_to_message',
         title: 'Reply To Message',
-        description: 'Reply to a message in its thread. Set replyAll to include all original recipients.',
+        description: "Reply to a message in its thread. Omit recipients to reply to the sender, or select 'all' or 'custom' routing.",
         paramsSchema: ReplyToMessageParams,
         outputSchema: SendMessageResponseSchema,
         func: replyToMessage,

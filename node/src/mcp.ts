@@ -11,9 +11,9 @@ interface McpTool {
     name: string
     title: string
     description: string
-    inputSchema: z.ZodRawShape
+    inputSchema: z.ZodObject
     outputSchema: z.ZodRawShape
-    callback: ToolCallback<z.ZodRawShape>
+    callback: ToolCallback<z.ZodObject>
     annotations?: ToolAnnotations
 }
 
@@ -39,11 +39,13 @@ async function runTool(
         // validation when isError is true, so we don't either.
         console.error('[agentmail-toolkit] tool error', {
             tool: tool.name,
+            error: truncateForLog(result),
             statusCode,
             body: truncateForLog(body),
         })
+        const publicMessage = statusCode ? `AgentMail request failed (HTTP ${statusCode})` : 'AgentMail request failed'
         return {
-            content: [{ type: 'text' as const, text: String(result) }],
+            content: [{ type: 'text' as const, text: publicMessage }],
             isError: true,
         }
     }
@@ -89,7 +91,10 @@ export class AgentMailToolkit extends ListToolkit<McpTool> {
             name: tool.name,
             title: tool.title,
             description: tool.description,
-            inputSchema: tool.paramsSchema.shape,
+            // Pass the complete object so the MCP SDK preserves root behavior such
+            // as ReplyToMessageParams.strict(), instead of rebuilding a strip-mode
+            // object from `.shape`.
+            inputSchema: tool.paramsSchema,
             outputSchema: tool.outputSchema.shape,
             callback: async (args) => runTool(tool, this.client, args as Record<string, unknown>),
             annotations: tool.annotations,
@@ -107,10 +112,10 @@ export class AgentMailToolkit extends ListToolkit<McpTool> {
      * under long-lived/streaming connections, retains a per-call object graph
      * and drives heap growth.
      *
-     * An unknown tool name returns an isError result rather than throwing, so a
-     * bad name can never crash the caller. `args` is assumed already validated
-     * against the tool's paramsSchema (the MCP SDK validates tools/call
-     * arguments before dispatch).
+     * An unknown tool name or invalid arguments return an isError result rather
+     * than throwing, so bad input can never crash the caller. Unlike a registered
+     * tools/call callback, this path bypasses the MCP SDK's input validation, so
+     * it parses once here before dispatch.
      */
     async invoke(
         name: string,
@@ -124,6 +129,13 @@ export class AgentMailToolkit extends ListToolkit<McpTool> {
                 isError: true,
             }
         }
-        return runTool(tool, client, args)
+        const parsed = tool.paramsSchema.safeParse(args)
+        if (!parsed.success) {
+            return {
+                content: [{ type: 'text' as const, text: `Invalid arguments for tool: ${name}` }],
+                isError: true,
+            }
+        }
+        return runTool(tool, client, parsed.data)
     }
 }

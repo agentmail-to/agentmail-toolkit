@@ -90,10 +90,10 @@ const AttachmentSchema = z
     .union([
         AttachmentBaseSchema.extend({
             content: z.string().describe('Base64 encoded content'),
-        }),
+        }).strict(),
         AttachmentBaseSchema.extend({
             url: z.url().describe('Publicly accessible URL to fetch the attachment from'),
-        }),
+        }).strict(),
     ])
     .describe('Attachment: provide exactly one of content (base64) or url')
 
@@ -116,20 +116,30 @@ export const SendMessageParams = BaseMessageParams.extend({
     replyTo: z.array(z.string()).optional().describe('Reply-to addresses'),
 })
 
+const ReplyRecipientsSchema = z
+    .discriminatedUnion('mode', [
+        z.object({
+            mode: z.literal('all').describe('Reply to all original recipients'),
+        }).strict(),
+        z
+            .object({
+                mode: z.literal('custom').describe('Reply only to the specified recipients'),
+                to: z.array(z.string()).min(1).describe('Reply recipients (at least one required)'),
+                cc: z.array(z.string()).optional().describe('CC recipients'),
+                bcc: z.array(z.string()).optional().describe('BCC recipients'),
+            })
+            .strict(),
+    ])
+    .describe("Reply recipient routing. Omit to reply only to the original sender; use mode 'all' or 'custom' for other routing")
+
+// Keep the tool's root as one strict object. The mutually exclusive routing
+// variants live under `recipients`, where their discriminator is explicit to
+// both JSON Schema consumers and runtime validation.
 export const ReplyToMessageParams = BaseMessageParams.extend({
     messageId: MessageIdSchema,
-    replyAll: z
-        .boolean()
-        .optional()
-        .describe('Reply to all original recipients. Mutually exclusive with to, cc, and bcc — the API rejects the request if both are set'),
-    to: z
-        .array(z.string())
-        .optional()
-        .describe('Override reply recipients, replacing the default (the original sender). Omit to reply to the sender only. Cannot be combined with replyAll'),
-    cc: z.array(z.string()).optional().describe('Override CC recipients. Cannot be combined with replyAll'),
-    bcc: z.array(z.string()).optional().describe('Override BCC recipients. Cannot be combined with replyAll'),
+    recipients: ReplyRecipientsSchema.optional(),
     replyTo: z.array(z.string()).optional().describe('Reply-to addresses'),
-})
+}).strict()
 
 export const ForwardMessageParams = SendMessageParams.extend({
     messageId: MessageIdSchema,
