@@ -566,7 +566,7 @@ export const tools: Tool[] = [
         name: 'connect_provider',
         title: 'Connect Provider',
         description:
-            'Start signing an inbox in to a provider: mints a browser sign-in session and returns a single-use magic URL for a human to open and complete the sign-in. The URL expires, is never re-issued, and nothing is connected until the sign-in completes — do not call again for the same connection while a previous URL is still live (live sessions are limited per caller). Requires an API key with the api_key_create permission. inboxId is required unless the API key is scoped to one inbox.',
+            'Start signing an inbox in to a provider: mints a browser sign-in session and returns a single-use magic URL for a human to open and complete the sign-in. The URL expires, is never re-issued, and nothing is connected until the sign-in completes — do not call again for the same connection while a previous URL is still live (live sessions are limited per caller). Requires the api_key_create permission; some environments accept only API-key credentials for this call. inboxId is required unless the credential is scoped to one inbox.',
         paramsSchema: ConnectProviderParams,
         outputSchema: ConnectProviderResponseSchema,
         func: connectProvider,

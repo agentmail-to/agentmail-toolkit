@@ -222,7 +222,7 @@ export const AgentVerifyParams = z.object({
 // into every adapter's JSON Schema — the only pattern in the toolkit's input surface — which
 // schema-strict hosts (Gemini's function-declaration subset) reject or drop. The API validates the
 // UUID and answers a named 400; the description steers the model to the right identifier.
-const ProviderIdSchema = z.string().describe('ID of provider (UUID, from list_providers or search_providers)')
+const ProviderIdSchema = z.string().min(1).describe('ID of provider (UUID, from list_providers or search_providers)')
 
 // Provider list params deliberately do NOT reuse ListItemsParams: its `.default(10)` is wrong for
 // the accounts drill-down, which pages a filtered index where short and empty pages are normal —
