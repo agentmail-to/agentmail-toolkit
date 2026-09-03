@@ -24,6 +24,11 @@ import {
     SendDraftParams,
     DeleteDraftParams,
     AgentVerifyParams,
+    ListProvidersParams,
+    SearchProvidersParams,
+    GetProviderParams,
+    ListProviderAccountsParams,
+    ConnectProviderParams,
 } from './schemas.js'
 
 export async function listInboxes(client: AgentMailClient, args: z.infer<typeof ListItemsParams>) {
@@ -210,6 +215,46 @@ export async function deleteDraft(client: AgentMailClient, args: z.infer<typeof 
 
 export async function authMe(client: AgentMailClient) {
     return client.auth.me()
+}
+
+export async function listProviders(client: AgentMailClient, args: z.infer<typeof ListProvidersParams>) {
+    return client.providers.list(args)
+}
+
+export async function searchProviders(client: AgentMailClient, args: z.infer<typeof SearchProvidersParams>) {
+    return client.providers.search(args)
+}
+
+export async function getProvider(client: AgentMailClient, args: z.infer<typeof GetProviderParams>) {
+    return client.providers.get(args.providerId)
+}
+
+export async function listProviderAccounts(client: AgentMailClient, args: z.infer<typeof ListProviderAccountsParams>) {
+    const { providerId, ...options } = args
+    return client.providers.listAccounts(providerId, options)
+}
+
+// globalThis.crypto is unflagged only from Node 19, and this package's floor is Node 18 (the
+// SDK's own engines), so fall back to a random hex key — the key is a dedup token, not a secret,
+// and the fallback stays within the API's `A-Za-z0-9._~-` charset. No node: import, so the module
+// stays runtime-neutral, matching the fetch usage above.
+function randomIdempotencyKey(): string {
+    const uuid = globalThis.crypto?.randomUUID?.bind(globalThis.crypto)
+    if (uuid) return uuid()
+    return Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join('')
+}
+
+export async function connectProvider(client: AgentMailClient, args: z.infer<typeof ConnectProviderParams>) {
+    const { providerId, idempotencyKey, ...body } = args
+    // The API requires an Idempotency-Key, and its contract is dedup-with-conflict, not replay
+    // (the magic URL is single-use and never re-served) — so a generated key only distinguishes
+    // duplicate attempts; it can never recover a lost response. maxRetries: 0 for the same
+    // reason: the SDK's fetcher retries POSTs on 408/429/5xx with the SAME key, and a re-POST of
+    // a committed session can only answer 409 while the URL from the first attempt is lost.
+    return client.providers.connect(providerId, body, {
+        idempotencyKey: idempotencyKey ?? randomIdempotencyKey(),
+        maxRetries: 0,
+    })
 }
 
 export async function agentVerify(client: AgentMailClient, args: z.infer<typeof AgentVerifyParams>) {

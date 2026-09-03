@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 // Output (result) schemas for the AgentMail SDK's response shapes, derived from the
-// installed `agentmail` SDK (0.5.11) runtime types (all responses are genuine camelCase
+// installed `agentmail` SDK (0.5.22) runtime types (all responses are genuine camelCase
 // JS objects at runtime, per the SDK's Fern-generated serializers). Dates are modeled as
 // ISO-8601 strings because MCP structuredContent must be JSON-Schema-representable; the
 // `normalize` helper in util.ts converts real Date objects to ISO strings before a result
@@ -208,4 +208,65 @@ export const IdentitySchema = z.object({
 
 export const AgentVerifyResponseSchema = z.object({
     verified: z.boolean().describe('Whether the organization was verified'),
+})
+
+// One shape for both projections GET /providers/{id} serves: a curated catalog entry (name +
+// updatedAt + display fields) and the bare identity resolved for an unlisted provider the caller
+// holds an account at (id, maybe a name, nothing else). Catalog membership shows as updatedAt
+// being present — the API publishes no flag for it. Display fields are provider-authored.
+export const ProviderSchema = z.object({
+    providerId: z.string(),
+    name: z.string().optional().describe('Display name of provider'),
+    updatedAt: isoDate()
+        .optional()
+        .describe(
+            'Time at which the listing was last updated. Present only for curated catalog entries; absent means the provider resolved as a bare identity'
+        ),
+    description: z.string().optional(),
+    logoUrl: z.string().optional(),
+    termsUrl: z.string().optional(),
+    privacyUrl: z.string().optional(),
+})
+
+// The browse surfaces (list, search) serve catalog entries only, where the API requires name and
+// updatedAt — declaring them required keeps the output-schema net able to catch a malformed entry
+// instead of passing a nameless row to the model. Only get_provider and the embedded provider on
+// the accounts response can be a bare identity.
+const CatalogProviderSchema = ProviderSchema.required({ name: true, updatedAt: true })
+
+export const ListProvidersResponseSchema = PaginationSchema.extend({
+    providers: z.array(CatalogProviderSchema),
+})
+
+// Search's own envelope, NOT PaginationSchema: the route is unpaginated, so advertising an
+// optional nextPageToken would invite a model to read its absence as "the list is complete" —
+// wrong on a route that truncates silently. count and limit are always sent.
+export const SearchProvidersResponseSchema = z.object({
+    count: z.number().describe('Number of items returned'),
+    limit: z.number().describe('Limit of number of items returned'),
+    providers: z.array(CatalogProviderSchema),
+})
+
+// podId and organizationId are on the wire but deliberately excluded — the same internal-identifier
+// rule as InboxSchema above. accountId stays: it is the resource's own addressable id, the same
+// class as inboxId.
+export const AccountSchema = z.object({
+    accountId: z.string(),
+    providerId: z.string(),
+    providerName: z.string().optional().describe('Display name of provider'),
+    inboxId: z.string().describe('The inbox (email address) holding the account'),
+    firstSignedInAt: isoDate().describe('Time of first sign-in at provider'),
+    lastSignedInAt: isoDate().describe('Time of most recent sign-in at provider'),
+    signInCount: z.number().describe('Number of sign-ins at provider'),
+})
+
+export const ListProviderAccountsResponseSchema = PaginationSchema.extend({
+    provider: ProviderSchema.optional().describe('The provider, when it resolves for this caller'),
+    accounts: z.array(AccountSchema),
+})
+
+export const ConnectProviderResponseSchema = z.object({
+    sessionId: z.string().describe('ID of the pending sign-in session'),
+    magicUrl: z.string().describe('Single-use sign-in URL for a human to open in a browser'),
+    expiresAt: isoDate().describe('Time at which the magic URL stops working'),
 })

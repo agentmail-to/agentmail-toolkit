@@ -92,6 +92,39 @@ export const identity = () => ({ scopeType: 'organization' as const, scopeId: 'o
 
 export const agentVerifyResult = () => ({ verified: true })
 
+export const provider = () => ({
+    providerId: '11111111-1111-4111-8111-111111111111',
+    name: 'Example RP',
+    updatedAt: NOW,
+    description: 'An example provider',
+    logoUrl: 'https://cdn.example.com/logo.png',
+    termsUrl: 'https://example.com/terms',
+    privacyUrl: 'https://example.com/privacy',
+    // SDK-passthrough internals the output schemas must strip.
+    client_id: 'client-internal-1',
+    score: 42,
+})
+
+export const account = () => ({
+    accountId: '44444444-4444-4444-8444-444444444444',
+    providerId: '11111111-1111-4111-8111-111111111111',
+    providerName: 'Example RP',
+    inboxId: 'agent@agentmail.to',
+    firstSignedInAt: NOW,
+    lastSignedInAt: NOW,
+    signInCount: 3,
+    // Real (camelCase) SDK fields the output schemas must strip — tenancy
+    // identifiers stay off tool results, the same rule as InboxSchema's podId.
+    podId: 'pod_internal_1',
+    organizationId: 'org_internal_1',
+})
+
+export const connectAccepted = () => ({
+    sessionId: '33333333-3333-4333-8333-333333333333',
+    magicUrl: 'https://agentid.example/connect#token',
+    expiresAt: NOW,
+})
+
 const success = () => ({ success: true as const })
 
 // One representative success fixture per tool, keyed by canonical tool name.
@@ -127,6 +160,11 @@ export const fixtureByTool: Record<string, () => unknown> = {
     delete_draft: success,
     auth_me: identity,
     agent_verify: agentVerifyResult,
+    list_providers: () => ({ count: 1, limit: 10, providers: [provider()] }),
+    search_providers: () => ({ count: 1, limit: 10, providers: [provider()] }),
+    get_provider: provider,
+    list_provider_accounts: () => ({ provider: provider(), count: 1, accounts: [account()] }),
+    connect_provider: connectAccepted,
 }
 
 // Minimal valid arguments per tool (must satisfy each tool's paramsSchema).
@@ -156,6 +194,11 @@ export const argsByTool: Record<string, Record<string, unknown>> = {
     delete_draft: { inboxId: 'inbox_1', draftId: 'draft_1' },
     auth_me: {},
     agent_verify: { otpCode: '123456' },
+    list_providers: {},
+    search_providers: { q: 'example' },
+    get_provider: { providerId: '11111111-1111-4111-8111-111111111111' },
+    list_provider_accounts: { providerId: '11111111-1111-4111-8111-111111111111' },
+    connect_provider: { providerId: '11111111-1111-4111-8111-111111111111', inboxId: 'agent@agentmail.to' },
 }
 
 // A fake AgentMailClient whose every method resolves with the matching fixture.
@@ -199,6 +242,13 @@ export function mockClient(overrides?: Record<string, unknown>): AgentMailClient
         },
         agent: {
             verify: async () => f.agent_verify(),
+        },
+        providers: {
+            list: async () => f.list_providers(),
+            search: async () => f.search_providers(),
+            get: async () => f.get_provider(),
+            listAccounts: async () => f.list_provider_accounts(),
+            connect: async () => f.connect_provider(),
         },
         ...overrides,
     }
