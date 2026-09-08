@@ -120,6 +120,15 @@ export const SendMessageParams = BaseMessageParams.extend({
     bcc: z.array(z.string()).optional().describe('BCC recipients'),
     subject: z.string().optional().describe('Subject'),
     replyTo: z.array(z.string()).optional().describe('Reply-to addresses'),
+    idempotencyKey: z
+        .string()
+        .min(1)
+        .max(256)
+        .regex(/^[A-Za-z0-9._~-]+$/)
+        .optional()
+        .describe(
+            'Deduplication key, auto-generated when omitted. A repeated call with the same key returns the existing message instead of delivering a duplicate; a different body under the same key returns a conflict error. Use a fresh key only for a genuinely new send'
+        ),
 })
 
 export const ReplyToMessageParams = BaseMessageParams.extend({
@@ -135,6 +144,15 @@ export const ReplyToMessageParams = BaseMessageParams.extend({
     cc: z.array(z.string()).optional().describe('Override CC recipients. Cannot be combined with replyAll'),
     bcc: z.array(z.string()).optional().describe('Override BCC recipients. Cannot be combined with replyAll'),
     replyTo: z.array(z.string()).optional().describe('Reply-to addresses'),
+    idempotencyKey: z
+        .string()
+        .min(1)
+        .max(256)
+        .regex(/^[A-Za-z0-9._~-]+$/)
+        .optional()
+        .describe(
+            'Deduplication key, auto-generated when omitted. A repeated call with the same key returns the existing message instead of delivering a duplicate; a different body under the same key returns a conflict error. Use a fresh key only for a genuinely new send'
+        ),
     // Mirrors the API's ReplyMessageSchema refine (agentmail-api schemas/message.ts),
     // predicate and error text both - reject the combination locally instead of
     // round-tripping a request the API will reject. NOTE: the MCP SDK validates
