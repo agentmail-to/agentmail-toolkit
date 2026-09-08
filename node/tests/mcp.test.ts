@@ -6,7 +6,8 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 
 import { AgentMailToolkit } from '../src/mcp.js'
 import { tools } from '../src/tools.js'
-import { mockClient, argsByTool, inbox } from './fixtures.js'
+import { mockClient, argsByTool, inbox, fixtureByTool, connectAccepted } from './fixtures.js'
+import { ConnectProviderParams } from '../src/schemas.js'
 
 // Real MCP SDK client <-> server over an in-memory transport: the same protocol
 // surface (tools/list, tools/call, client-side structuredContent validation
@@ -291,5 +292,90 @@ describe('invoke (stateless per-call client)', () => {
         expect(content[0].text).toContain('Forbidden')
         expect(content[0].text).toContain('403')
         expect(result.structuredContent).toBeUndefined()
+    })
+})
+
+describe('provider tools', () => {
+    it('strips tenancy and registry internals from provider and account results', async () => {
+        const client = await connect(mockClient())
+        await client.listTools()
+
+        const accountsResult = await client.callTool({
+            name: 'list_provider_accounts',
+            arguments: argsByTool.list_provider_accounts,
+        })
+        const structured = accountsResult.structuredContent as {
+            provider?: Record<string, unknown>
+            accounts: Record<string, unknown>[]
+        }
+        // The fixtures deliberately carry these internals; strip mode must drop
+        // every one — the InboxSchema podId rule, asserted per-resource like the
+        // email strip tests above.
+        expect(structured.provider).not.toHaveProperty('client_id')
+        expect(structured.provider).not.toHaveProperty('score')
+        for (const account of structured.accounts) {
+            expect(account).not.toHaveProperty('podId')
+            expect(account).not.toHaveProperty('organizationId')
+        }
+
+        const listResult = await client.callTool({ name: 'list_providers', arguments: {} })
+        for (const provider of (listResult.structuredContent as { providers: Record<string, unknown>[] }).providers) {
+            expect(provider).not.toHaveProperty('client_id')
+            expect(provider).not.toHaveProperty('score')
+        }
+    })
+
+    it('maps the SDK calls: positional ids, camelCase body, fresh idempotency key, no POST retries', async () => {
+        const calls: unknown[][] = []
+        const client = await connect(
+            mockClient({
+                providers: {
+                    list: async () => fixtureByTool.list_providers(),
+                    search: async () => fixtureByTool.search_providers(),
+                    get: async () => fixtureByTool.get_provider(),
+                    listAccounts: async (...args: unknown[]) => {
+                        calls.push(['listAccounts', ...args])
+                        return fixtureByTool.list_provider_accounts()
+                    },
+                    connect: async (...args: unknown[]) => {
+                        calls.push(['connect', ...args])
+                        return connectAccepted()
+                    },
+                },
+            })
+        )
+
+        await client.callTool({ name: 'list_provider_accounts', arguments: { providerId: 'prov_1', limit: 5 } })
+        expect(calls[0]![1]).toBe('prov_1')
+        expect(calls[0]![2]).toEqual({ limit: 5 })
+
+        await client.callTool({
+            name: 'connect_provider',
+            arguments: { providerId: 'prov_1', inboxId: 'agent@agentmail.to', authorize: false },
+        })
+        const [, connectId, connectBody, connectOptions] = calls[1] as [
+            string,
+            string,
+            Record<string, unknown>,
+            { idempotencyKey: string; maxRetries: number },
+        ]
+        expect(connectId).toBe('prov_1')
+        // authorize: false must be transmitted, not dropped — omitting it means
+        // "keep the first-use disclosure", which is not the same request.
+        expect(connectBody).toEqual({ inboxId: 'agent@agentmail.to', authorize: false })
+        // The SDK fetcher retries POSTs by default; a re-POST of a committed
+        // session can only 409 while the first response's magic URL is lost.
+        expect(connectOptions.maxRetries).toBe(0)
+        expect(connectOptions.idempotencyKey).toMatch(/^[A-Za-z0-9._~-]+$/)
+
+        await client.callTool({ name: 'connect_provider', arguments: { providerId: 'prov_1' } })
+        const secondKey = (calls[2]![3] as { idempotencyKey: string }).idempotencyKey
+        expect(secondKey).not.toBe(connectOptions.idempotencyKey)
+    })
+
+    it('rejects idempotency keys the API would 400 before any request is sent', () => {
+        expect(ConnectProviderParams.safeParse({ providerId: 'prov_1', idempotencyKey: '' }).success).toBe(false)
+        expect(ConnectProviderParams.safeParse({ providerId: 'prov_1', idempotencyKey: 'retry 2' }).success).toBe(false)
+        expect(ConnectProviderParams.safeParse({ providerId: 'prov_1', idempotencyKey: 'retry-2' }).success).toBe(true)
     })
 })

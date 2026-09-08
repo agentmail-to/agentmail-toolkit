@@ -215,3 +215,61 @@ export const AuthMeParams = z.object({})
 export const AgentVerifyParams = z.object({
     otpCode: z.string().describe('6-digit verification code emailed to the human who signed up'),
 })
+
+// Provider schemas
+
+// A plain described string, not z.uuid(): zod's uuid emits `format: "uuid"` plus a long `pattern`
+// into every adapter's JSON Schema — the only pattern in the toolkit's input surface — which
+// schema-strict hosts (Gemini's function-declaration subset) reject or drop. The API validates the
+// UUID and answers a named 400; the description steers the model to the right identifier.
+const ProviderIdSchema = z.string().min(1).describe('ID of provider (UUID, from list_providers or search_providers)')
+
+// Provider list params deliberately do NOT reuse ListItemsParams: its `.default(10)` is wrong for
+// the accounts drill-down, which pages a filtered index where short and empty pages are normal —
+// forcing 10-row reads would multiply the walk ~10x over the API's own 100 default. The `.max()`
+// bounds mirror the API's own caps (100 list / 50 search) so an oversized ask is rejected locally
+// with a named message instead of an opaque upstream 400.
+const ProviderPageParams = z.object({
+    limit: z.number().int().positive().max(100).optional().describe('Max number of items to return'),
+    pageToken: z.string().optional().describe('Page token for pagination'),
+})
+
+export const ListProvidersParams = ProviderPageParams
+
+export const SearchProvidersParams = z.object({
+    q: z.string().min(1).max(128).describe('Name (or name prefix) to search for'),
+    limit: z.number().int().positive().max(50).optional().describe('Max number of items to return'),
+})
+
+export const GetProviderParams = z.object({
+    providerId: ProviderIdSchema,
+})
+
+export const ListProviderAccountsParams = ProviderPageParams.extend({
+    providerId: ProviderIdSchema,
+})
+
+export const ConnectProviderParams = z.object({
+    providerId: ProviderIdSchema,
+    inboxId: z
+        .string()
+        .optional()
+        .describe('The inbox (email address or inbox client ID) to connect. Required unless the API key is scoped to one inbox'),
+    authorize: z
+        .boolean()
+        .optional()
+        .describe(
+            'Authorize the provider for this inbox up front, skipping the first-use disclosure page after browser sign-in. Not every provider or environment supports this: the call then fails (as a 404 or 400) even though the provider ID is valid — retry without authorize'
+        ),
+    // Mirrors the API's IdempotencyIdSchema exactly, and `.min(1)` matters: an empty string would
+    // survive the `??` fallback in connectProvider and be sent as an empty header the API 400s.
+    idempotencyKey: z
+        .string()
+        .min(1)
+        .max(256)
+        .regex(/^[A-Za-z0-9._~-]+$/)
+        .optional()
+        .describe(
+            'Deduplication key, auto-generated when omitted. A repeated call with the same key is rejected with a conflict (the magic URL is single-use and never re-served) instead of minting a second session; use a fresh key only for a genuinely new attempt'
+        ),
+})

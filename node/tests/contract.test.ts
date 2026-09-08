@@ -20,9 +20,9 @@ describe('canonical tool catalog', () => {
     it('has unique names and deterministic ordering', () => {
         const names = tools.map((t) => t.name)
         expect(new Set(names).size).toBe(names.length)
-        // Grouped by resource: inboxes, threads, messages, drafts, auth, agent.
+        // Grouped by resource: inboxes, threads, messages, drafts, auth, agent, providers.
         expect(names[0]).toBe('list_inboxes')
-        expect(names[names.length - 1]).toBe('agent_verify')
+        expect(names[names.length - 1]).toBe('connect_provider')
     })
 })
 
