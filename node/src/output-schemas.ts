@@ -266,7 +266,7 @@ export const ListProviderAccountsResponseSchema = PaginationSchema.extend({
 })
 
 export const ConnectProviderResponseSchema = z.object({
-    sessionId: z.string().describe('ID of the pending sign-in session'),
+    apiKeyId: z.string().describe('ID of the pending sign-in key. Its status turns active once the human completes the sign-in'),
     magicUrl: z.string().describe('Single-use sign-in URL for a human to open in a browser'),
     expiresAt: isoDate().describe('Time at which the magic URL stops working'),
 })

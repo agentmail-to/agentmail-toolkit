@@ -255,11 +255,11 @@ export const ConnectProviderParams = z.object({
         .string()
         .optional()
         .describe('The inbox (email address or inbox client ID) to connect. Required unless the API key is scoped to one inbox'),
-    authorize: z
+    acceptDisclosure: z
         .boolean()
         .optional()
         .describe(
-            'Authorize the provider for this inbox up front, skipping the first-use disclosure page after browser sign-in. Not every provider or environment supports this: the call then fails (as a 404 or 400) even though the provider ID is valid — retry without authorize'
+            "Accept the provider's first-use disclosure up front, so the browser sign-in skips that page. Not every provider or environment supports this: the call then fails (as a 404 or 400) even though the provider ID is valid — retry without acceptDisclosure"
         ),
     // Mirrors the API's IdempotencyIdSchema exactly, and `.min(1)` matters: an empty string would
     // survive the `??` fallback in connectProvider and be sent as an empty header the API 400s.

@@ -351,7 +351,7 @@ describe('provider tools', () => {
 
         await client.callTool({
             name: 'connect_provider',
-            arguments: { providerId: 'prov_1', inboxId: 'agent@agentmail.to', authorize: false },
+            arguments: { providerId: 'prov_1', inboxId: 'agent@agentmail.to', acceptDisclosure: false },
         })
         const [, connectId, connectBody, connectOptions] = calls[1] as [
             string,
@@ -360,9 +360,9 @@ describe('provider tools', () => {
             { idempotencyKey: string; maxRetries: number },
         ]
         expect(connectId).toBe('prov_1')
-        // authorize: false must be transmitted, not dropped — omitting it means
-        // "keep the first-use disclosure", which is not the same request.
-        expect(connectBody).toEqual({ inboxId: 'agent@agentmail.to', authorize: false })
+        // acceptDisclosure: false must be transmitted, not dropped — omitting it
+        // means "keep the first-use disclosure page", which is not the same request.
+        expect(connectBody).toEqual({ inboxId: 'agent@agentmail.to', acceptDisclosure: false })
         // The SDK fetcher retries POSTs by default; a re-POST of a committed
         // session can only 409 while the first response's magic URL is lost.
         expect(connectOptions.maxRetries).toBe(0)

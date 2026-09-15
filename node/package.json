@@ -57,7 +57,7 @@
         }
     },
     "dependencies": {
-        "agentmail": "^0.5.22",
+        "agentmail": "^0.5.25",
         "jszip": "^3.10.1",
         "unpdf": "^1.4.0",
         "zod": "^4.1.13"
