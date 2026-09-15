@@ -260,9 +260,23 @@ export const AccountSchema = z.object({
     signInCount: z.number().describe('Number of sign-ins at provider'),
 })
 
-export const ListProviderAccountsResponseSchema = PaginationSchema.extend({
-    provider: ProviderSchema.optional().describe('The provider, when it resolves for this caller'),
+// Shared by the cross-provider and per-provider account lists: the per-provider route embeds
+// the provider, the cross-provider one has no single provider to embed.
+export const ListAccountsResponseSchema = PaginationSchema.extend({
+    provider: ProviderSchema.optional().describe('The provider, when the list was narrowed to one and it resolves for this caller'),
     accounts: z.array(AccountSchema),
+})
+
+// A narrow read of the sign-in key connect_provider minted: the model needs its status, not the
+// key's permission map, creator, or material — the identifier over-exposure that got auth_me
+// pulled from the hosted catalog.
+export const ProviderConnectionSchema = z.object({
+    apiKeyId: z.string(),
+    status: z.enum(['pending', 'active']).describe('pending until the human completes the browser sign-in, then active'),
+    inboxId: z.string().optional().describe('The inbox the sign-in is for'),
+    expiresAt: isoDate()
+        .optional()
+        .describe('While pending, when the sign-in stops being completable; once active, when the key itself expires'),
 })
 
 export const ConnectProviderResponseSchema = z.object({

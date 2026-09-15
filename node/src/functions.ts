@@ -27,7 +27,11 @@ import {
     ListProvidersParams,
     SearchProvidersParams,
     GetProviderParams,
-    ListProviderAccountsParams,
+    ListAccountsParams,
+    GetProviderConnectionParams,
+    GetMessageParams,
+    SearchInboxesParams,
+    UnblockRecipientParams,
     ConnectProviderParams,
 } from './schemas.js'
 
@@ -229,34 +233,47 @@ export async function getProvider(client: AgentMailClient, args: z.infer<typeof 
     return client.providers.get(args.providerId)
 }
 
-export async function listProviderAccounts(client: AgentMailClient, args: z.infer<typeof ListProviderAccountsParams>) {
+export async function listAccounts(client: AgentMailClient, args: z.infer<typeof ListAccountsParams>) {
     const { providerId, ...options } = args
-    return client.providers.listAccounts(providerId, options)
+    // The per-provider route is the API's only server-side provider filter, so one tool
+    // fans out to whichever list answers the question asked.
+    return providerId === undefined ? client.accounts.list(options) : client.providers.listAccounts(providerId, options)
 }
 
-// globalThis.crypto is unflagged only from Node 19, and this package's floor is Node 18 (the
-// SDK's own engines), so fall back to a random hex key — the key is a dedup token, not a secret,
-// and the fallback stays within the API's `A-Za-z0-9._~-` charset. No node: import, so the module
-// stays runtime-neutral, matching the fetch usage above.
-function randomIdempotencyKey(): string {
-    const uuid = globalThis.crypto?.randomUUID?.bind(globalThis.crypto)
-    if (uuid) return uuid()
-    return Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join('')
+export async function getProviderConnection(client: AgentMailClient, args: z.infer<typeof GetProviderConnectionParams>) {
+    const key = await client.apiKeys.get(args.apiKeyId)
+    // Only a sign-in key carries a status; a bearer key under this id is a caller mistake,
+    // and answering with its metadata would republish exactly what the catalog withholds.
+    if (key.type !== 'public_key' || key.status === undefined) {
+        throw new Error(`${args.apiKeyId} is not a provider sign-in key. Pass the apiKeyId that connect_provider returned.`)
+    }
+    return { apiKeyId: key.apiKeyId, status: key.status, inboxId: key.inboxId, expiresAt: key.expiresAt }
 }
 
-export async function connectProvider(client: AgentMailClient, args: z.infer<typeof ConnectProviderParams>) {
-    const { providerId, idempotencyKey, ...body } = args
-    // The API requires an Idempotency-Key, and its contract is dedup-with-conflict, not replay
-    // (the magic URL is single-use and never re-served) — so a generated key only distinguishes
-    // duplicate attempts; it can never recover a lost response. maxRetries: 0 for the same
-    // reason: the SDK's fetcher retries POSTs on 408/429/5xx with the SAME key, and a re-POST of
-    // a committed session can only answer 409 while the URL from the first attempt is lost.
-    return client.providers.connect(providerId, body, {
-        idempotencyKey: idempotencyKey ?? randomIdempotencyKey(),
-        maxRetries: 0,
-    })
+export async function getMessage(client: AgentMailClient, args: z.infer<typeof GetMessageParams>) {
+    const { inboxId, messageId } = args
+    return client.inboxes.messages.get(inboxId, messageId)
+}
+
+export async function searchInboxes(client: AgentMailClient, args: z.infer<typeof SearchInboxesParams>) {
+    return client.inboxes.search(args)
+}
+
+export async function unblockRecipient(client: AgentMailClient, args: z.infer<typeof UnblockRecipientParams>) {
+    const { inboxId, entry } = args
+    await client.inboxes.lists.delete(inboxId, 'send', 'block', entry)
+    return { success: true as const }
 }
 
 export async function agentVerify(client: AgentMailClient, args: z.infer<typeof AgentVerifyParams>) {
     return client.agent.verify(args)
+}
+
+export async function connectProvider(client: AgentMailClient, args: z.infer<typeof ConnectProviderParams>) {
+    const { providerId, ...body } = args
+    // maxRetries: 0 because the SDK's fetcher retries POSTs on 408/429/5xx, and this
+    // POST mints a live sign-in session on every accepted attempt (the endpoint has no
+    // idempotency key): a blind re-POST after a lost response would mint a second one
+    // against the caller's bounded live-session budget.
+    return client.providers.connect(providerId, body, { maxRetries: 0 })
 }
