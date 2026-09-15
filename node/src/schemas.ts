@@ -92,6 +92,23 @@ export const GetAttachmentParams = z.object({
     attachmentId: AttachmentIdSchema,
 })
 
+// `z.url()` accepts any scheme node can parse, so `file:///…` used to reach the API's fetch and come
+// back as a 503 telling the agent to retry a URL that can never resolve. agentmail-api rejects these
+// too; checking here saves the round trip and lets the message say what to do instead, which
+// `z.url({ protocol })` ("Invalid URL") cannot.
+const isFetchableUrl = (value: string) => {
+    try {
+        return /^https?:$/.test(new URL(value).protocol)
+    } catch {
+        return false
+    }
+}
+
+const FetchableUrlSchema = z.url().refine(isFetchableUrl, {
+    message:
+        'Attachment url must be an http:// or https:// URL that AgentMail can fetch from the public internet. Schemes like file:, data: and s3: are not supported — AgentMail sends from the cloud and cannot read your local filesystem. Host the file at a URL that returns 200 without authentication, or send the bytes inline as base64 in content.',
+})
+
 const AttachmentBaseSchema = z.object({
     filename: z.string().optional().describe('Filename'),
     contentType: z.string().optional().describe('MIME type of the attachment'),
@@ -111,11 +128,17 @@ const AttachmentSchema = z
     .union([
         z.strictObject({
             ...AttachmentBaseSchema.shape,
-            content: z.string().describe('Base64 encoded content'),
+            content: z
+                .string()
+                .describe(
+                    'Base64-encoded file bytes, inlined into this tool call. There is no way to reference a local file path here — you must emit the entire base64 string yourself, so this only works for small files (roughly under 100 KB). Larger files get truncated mid-string, which either fails validation or silently sends a corrupt attachment. Use url for those.'
+                ),
         }),
         z.strictObject({
             ...AttachmentBaseSchema.shape,
-            url: z.url().describe('Publicly accessible URL to fetch the attachment from'),
+            url: FetchableUrlSchema.describe(
+                'Public http:// or https:// URL that AgentMail fetches the attachment from. Must be reachable from the public internet without authentication. AgentMail sends from the cloud, so a local path or a file:// URL can never work. This is the route for anything too large to inline as content.'
+            ),
         }),
     ])
     .describe('Attachment: provide exactly one of content (base64) or url')
@@ -128,7 +151,9 @@ const BaseMessageParams = z.object({
     attachments: z
         .array(AttachmentSchema)
         .optional()
-        .describe('Attachments. Each item must specify exactly one of content (base64) or url'),
+        .describe(
+            'Attachments. Each item must specify exactly one of content (base64) or url. Prefer url above roughly 100 KB: content must be emitted verbatim into this tool call and is truncated beyond that.'
+        ),
 })
 
 export const SendMessageParams = BaseMessageParams.extend({
