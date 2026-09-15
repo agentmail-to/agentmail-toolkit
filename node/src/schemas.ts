@@ -59,6 +59,23 @@ export const SearchInboxItemsParams = ListItemsParams.extend({
     after: z.string().pipe(z.coerce.date()).optional().describe('Filter items after datetime'),
 })
 
+export const GetMessageParams = z.object({
+    inboxId: InboxIdSchema,
+    messageId: MessageIdSchema,
+})
+
+// q bounds mirror the API's (2 to 256 characters); default page size matches list_inboxes, and the
+// cap mirrors the API's MAX_SEARCH_LIMIT so an oversized ask is rejected locally with a named message.
+export const SearchInboxesParams = ListItemsParams.extend({
+    q: z.string().min(2).max(256).describe('Address or display name to search for; matches word prefixes'),
+    limit: z.number().int().positive().max(100).optional().default(10).describe('Max number of items to return'),
+})
+
+export const UnblockRecipientParams = z.object({
+    inboxId: InboxIdSchema,
+    entry: z.string().min(1).describe('Email address or domain to remove from the send block list'),
+})
+
 export const GetThreadParams = z.object({
     inboxId: InboxIdSchema,
     threadId: ThreadIdSchema,
@@ -222,7 +239,14 @@ export const AgentVerifyParams = z.object({
 // into every adapter's JSON Schema — the only pattern in the toolkit's input surface — which
 // schema-strict hosts (Gemini's function-declaration subset) reject or drop. The API validates the
 // UUID and answers a named 400; the description steers the model to the right identifier.
-const ProviderIdSchema = z.string().min(1).describe('ID of provider (UUID, from list_providers or search_providers)')
+// The refine adds no JSON-schema keyword; it only keeps '.' and '..' out of a path segment
+// the SDK would otherwise let the URL parser normalize onto a different route.
+const notDotSegment = (value: string) => value !== '.' && value !== '..'
+const ProviderIdSchema = z
+    .string()
+    .min(1)
+    .refine(notDotSegment, 'must be a provider ID')
+    .describe('ID of provider (UUID, from list_providers or search_providers)')
 
 // Provider list params deliberately do NOT reuse ListItemsParams: its `.default(10)` is wrong for
 // the accounts drill-down, which pages a filtered index where short and empty pages are normal —
@@ -245,8 +269,14 @@ export const GetProviderParams = z.object({
     providerId: ProviderIdSchema,
 })
 
-export const ListProviderAccountsParams = ProviderPageParams.extend({
-    providerId: ProviderIdSchema,
+// One account-list tool: cross-provider by default, narrowed to one provider when providerId is
+// given (the per-provider route is the only server-side filter the API offers).
+export const ListAccountsParams = ProviderPageParams.extend({
+    providerId: ProviderIdSchema.optional().describe('Narrow to one provider (ID from list_providers or search_providers); omit for every provider'),
+})
+
+export const GetProviderConnectionParams = z.object({
+    apiKeyId: z.string().min(1).refine(notDotSegment, 'must be an API key ID').describe('The apiKeyId returned by connect_provider'),
 })
 
 export const ConnectProviderParams = z.object({
@@ -255,21 +285,10 @@ export const ConnectProviderParams = z.object({
         .string()
         .optional()
         .describe('The inbox (email address or inbox client ID) to connect. Required unless the API key is scoped to one inbox'),
-    authorize: z
+    acceptDisclosure: z
         .boolean()
         .optional()
         .describe(
-            'Authorize the provider for this inbox up front, skipping the first-use disclosure page after browser sign-in. Not every provider or environment supports this: the call then fails (as a 404 or 400) even though the provider ID is valid — retry without authorize'
-        ),
-    // Mirrors the API's IdempotencyIdSchema exactly, and `.min(1)` matters: an empty string would
-    // survive the `??` fallback in connectProvider and be sent as an empty header the API 400s.
-    idempotencyKey: z
-        .string()
-        .min(1)
-        .max(256)
-        .regex(/^[A-Za-z0-9._~-]+$/)
-        .optional()
-        .describe(
-            'Deduplication key, auto-generated when omitted. A repeated call with the same key is rejected with a conflict (the magic URL is single-use and never re-served) instead of minting a second session; use a fresh key only for a genuinely new attempt'
+            "Accept the provider's first-use disclosure up front, so the browser sign-in skips that page. Not every provider or environment supports this: the call then fails (as a 404 or 400) even though the provider ID is valid — retry without acceptDisclosure"
         ),
 })

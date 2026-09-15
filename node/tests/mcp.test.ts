@@ -7,7 +7,6 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { AgentMailToolkit } from '../src/mcp.js'
 import { tools } from '../src/tools.js'
 import { mockClient, argsByTool, inbox, fixtureByTool, connectAccepted } from './fixtures.js'
-import { ConnectProviderParams } from '../src/schemas.js'
 
 // Real MCP SDK client <-> server over an in-memory transport: the same protocol
 // surface (tools/list, tools/call, client-side structuredContent validation
@@ -301,8 +300,8 @@ describe('provider tools', () => {
         await client.listTools()
 
         const accountsResult = await client.callTool({
-            name: 'list_provider_accounts',
-            arguments: argsByTool.list_provider_accounts,
+            name: 'list_accounts',
+            arguments: { providerId: '11111111-1111-4111-8111-111111111111' },
         })
         const structured = accountsResult.structuredContent as {
             provider?: Record<string, unknown>
@@ -325,7 +324,7 @@ describe('provider tools', () => {
         }
     })
 
-    it('maps the SDK calls: positional ids, camelCase body, fresh idempotency key, no POST retries', async () => {
+    it('maps the SDK calls: positional ids, camelCase body, no POST retries', async () => {
         const calls: unknown[][] = []
         const client = await connect(
             mockClient({
@@ -335,7 +334,7 @@ describe('provider tools', () => {
                     get: async () => fixtureByTool.get_provider(),
                     listAccounts: async (...args: unknown[]) => {
                         calls.push(['listAccounts', ...args])
-                        return fixtureByTool.list_provider_accounts()
+                        return { provider: fixtureByTool.get_provider(), count: 1, accounts: [] }
                     },
                     connect: async (...args: unknown[]) => {
                         calls.push(['connect', ...args])
@@ -345,37 +344,21 @@ describe('provider tools', () => {
             })
         )
 
-        await client.callTool({ name: 'list_provider_accounts', arguments: { providerId: 'prov_1', limit: 5 } })
+        await client.callTool({ name: 'list_accounts', arguments: { providerId: 'prov_1', limit: 5 } })
         expect(calls[0]![1]).toBe('prov_1')
         expect(calls[0]![2]).toEqual({ limit: 5 })
 
         await client.callTool({
             name: 'connect_provider',
-            arguments: { providerId: 'prov_1', inboxId: 'agent@agentmail.to', authorize: false },
+            arguments: { providerId: 'prov_1', inboxId: 'agent@agentmail.to', acceptDisclosure: false },
         })
-        const [, connectId, connectBody, connectOptions] = calls[1] as [
-            string,
-            string,
-            Record<string, unknown>,
-            { idempotencyKey: string; maxRetries: number },
-        ]
+        const [, connectId, connectBody, connectOptions] = calls[1] as [string, string, Record<string, unknown>, { maxRetries: number }]
         expect(connectId).toBe('prov_1')
-        // authorize: false must be transmitted, not dropped — omitting it means
-        // "keep the first-use disclosure", which is not the same request.
-        expect(connectBody).toEqual({ inboxId: 'agent@agentmail.to', authorize: false })
-        // The SDK fetcher retries POSTs by default; a re-POST of a committed
-        // session can only 409 while the first response's magic URL is lost.
+        // acceptDisclosure: false must be transmitted, not dropped — omitting it
+        // means "keep the first-use disclosure page", which is not the same request.
+        expect(connectBody).toEqual({ inboxId: 'agent@agentmail.to', acceptDisclosure: false })
+        // The SDK fetcher retries POSTs by default; a re-POST would mint a second
+        // live session (the endpoint has no idempotency key).
         expect(connectOptions.maxRetries).toBe(0)
-        expect(connectOptions.idempotencyKey).toMatch(/^[A-Za-z0-9._~-]+$/)
-
-        await client.callTool({ name: 'connect_provider', arguments: { providerId: 'prov_1' } })
-        const secondKey = (calls[2]![3] as { idempotencyKey: string }).idempotencyKey
-        expect(secondKey).not.toBe(connectOptions.idempotencyKey)
-    })
-
-    it('rejects idempotency keys the API would 400 before any request is sent', () => {
-        expect(ConnectProviderParams.safeParse({ providerId: 'prov_1', idempotencyKey: '' }).success).toBe(false)
-        expect(ConnectProviderParams.safeParse({ providerId: 'prov_1', idempotencyKey: 'retry 2' }).success).toBe(false)
-        expect(ConnectProviderParams.safeParse({ providerId: 'prov_1', idempotencyKey: 'retry-2' }).success).toBe(true)
     })
 })

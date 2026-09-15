@@ -119,8 +119,33 @@ export const account = () => ({
     organizationId: 'org_internal_1',
 })
 
+export const signInKey = () => ({
+    type: 'public_key' as const,
+    apiKeyId: '33333333-3333-4333-8333-333333333333',
+    name: 'Example RP sign-in',
+    inboxId: 'agent@agentmail.to',
+    status: 'pending' as const,
+    createdAt: NOW,
+    updatedAt: NOW,
+    expiresAt: NOW,
+    // Real SDK fields the narrow projection must drop: the permission map and the
+    // creator are the identifier over-exposure that got auth_me pulled.
+    permissions: { provider_connect: true, provider_owner_share: false },
+    createdBy: { type: 'bearer', apiKeyId: '99999999-9999-4999-8999-999999999999' },
+    podId: 'pod_internal_1',
+})
+
+export const bearerKey = () => ({
+    type: 'bearer' as const,
+    apiKeyId: '99999999-9999-4999-8999-999999999999',
+    prefix: 'am_us_',
+    name: 'ops key',
+    createdAt: NOW,
+    updatedAt: NOW,
+})
+
 export const connectAccepted = () => ({
-    sessionId: '33333333-3333-4333-8333-333333333333',
+    apiKeyId: '33333333-3333-4333-8333-333333333333',
     magicUrl: 'https://agentid.example/connect#token',
     expiresAt: NOW,
 })
@@ -163,8 +188,12 @@ export const fixtureByTool: Record<string, () => unknown> = {
     list_providers: () => ({ count: 1, limit: 10, providers: [provider()] }),
     search_providers: () => ({ count: 1, limit: 10, providers: [provider()] }),
     get_provider: provider,
-    list_provider_accounts: () => ({ provider: provider(), count: 1, accounts: [account()] }),
+    list_accounts: () => ({ count: 1, limit: 10, accounts: [account()] }),
     connect_provider: connectAccepted,
+    get_provider_connection: () => ({ apiKeyId: signInKey().apiKeyId, status: 'pending', inboxId: 'agent@agentmail.to', expiresAt: NOW }),
+    get_message: message,
+    search_inboxes: () => ({ count: 1, inboxes: [inbox()] }),
+    unblock_recipient: success,
 }
 
 // Minimal valid arguments per tool (must satisfy each tool's paramsSchema).
@@ -197,8 +226,12 @@ export const argsByTool: Record<string, Record<string, unknown>> = {
     list_providers: {},
     search_providers: { q: 'example' },
     get_provider: { providerId: '11111111-1111-4111-8111-111111111111' },
-    list_provider_accounts: { providerId: '11111111-1111-4111-8111-111111111111' },
+    list_accounts: {},
     connect_provider: { providerId: '11111111-1111-4111-8111-111111111111', inboxId: 'agent@agentmail.to' },
+    get_provider_connection: { apiKeyId: '33333333-3333-4333-8333-333333333333' },
+    get_message: { inboxId: 'inbox_1', messageId: 'msg_1' },
+    search_inboxes: { q: 'agent' },
+    unblock_recipient: { inboxId: 'inbox_1', entry: 'someone@example.com' },
 }
 
 // A fake AgentMailClient whose every method resolves with the matching fixture.
@@ -208,6 +241,7 @@ export function mockClient(overrides?: Record<string, unknown>): AgentMailClient
     const client = {
         inboxes: {
             list: async () => f.list_inboxes(),
+            search: async () => f.search_inboxes(),
             get: async () => f.get_inbox(),
             create: async () => f.create_inbox(),
             update: async () => f.update_inbox(),
@@ -221,12 +255,16 @@ export function mockClient(overrides?: Record<string, unknown>): AgentMailClient
                 getAttachment: async () => f.get_attachment(),
             },
             messages: {
+                get: async () => f.get_message(),
                 list: async () => f.list_messages(),
                 search: async () => f.search_messages(),
                 send: async () => f.send_message(),
                 reply: async () => f.reply_to_message(),
                 forward: async () => f.forward_message(),
                 update: async () => f.update_message(),
+            },
+            lists: {
+                delete: async () => undefined,
             },
             drafts: {
                 create: async () => f.create_draft(),
@@ -247,8 +285,14 @@ export function mockClient(overrides?: Record<string, unknown>): AgentMailClient
             list: async () => f.list_providers(),
             search: async () => f.search_providers(),
             get: async () => f.get_provider(),
-            listAccounts: async () => f.list_provider_accounts(),
+            listAccounts: async () => ({ provider: provider(), count: 1, accounts: [account()] }),
             connect: async () => f.connect_provider(),
+        },
+        accounts: {
+            list: async () => f.list_accounts(),
+        },
+        apiKeys: {
+            get: async () => signInKey(),
         },
         ...overrides,
     }
