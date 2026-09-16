@@ -28,10 +28,12 @@ import {
     SearchProvidersParams,
     GetProviderParams,
     ListAccountsParams,
-    GetProviderConnectionParams,
     GetMessageParams,
     SearchInboxesParams,
-    UnblockRecipientParams,
+    ListListEntriesParams,
+    GetListEntryParams,
+    CreateListEntryParams,
+    DeleteListEntryParams,
     ConnectProviderParams,
 } from './schemas.js'
 
@@ -240,16 +242,6 @@ export async function listAccounts(client: AgentMailClient, args: z.infer<typeof
     return providerId === undefined ? client.accounts.list(options) : client.providers.listAccounts(providerId, options)
 }
 
-export async function getProviderConnection(client: AgentMailClient, args: z.infer<typeof GetProviderConnectionParams>) {
-    const key = await client.apiKeys.get(args.apiKeyId)
-    // Only a sign-in key carries a status; a bearer key under this id is a caller mistake,
-    // and answering with its metadata would republish exactly what the catalog withholds.
-    if (key.type !== 'public_key' || key.status === undefined) {
-        throw new Error(`${args.apiKeyId} is not a provider sign-in key. Pass the apiKeyId that connect_provider returned.`)
-    }
-    return { apiKeyId: key.apiKeyId, status: key.status, inboxId: key.inboxId, expiresAt: key.expiresAt }
-}
-
 export async function getMessage(client: AgentMailClient, args: z.infer<typeof GetMessageParams>) {
     const { inboxId, messageId } = args
     return client.inboxes.messages.get(inboxId, messageId)
@@ -259,9 +251,24 @@ export async function searchInboxes(client: AgentMailClient, args: z.infer<typeo
     return client.inboxes.search(args)
 }
 
-export async function unblockRecipient(client: AgentMailClient, args: z.infer<typeof UnblockRecipientParams>) {
-    const { inboxId, entry } = args
-    await client.inboxes.lists.delete(inboxId, 'send', 'block', entry)
+export async function listListEntries(client: AgentMailClient, args: z.infer<typeof ListListEntriesParams>) {
+    const { inboxId, direction, listType, ...options } = args
+    return client.inboxes.lists.list(inboxId, direction, listType, options)
+}
+
+export async function getListEntry(client: AgentMailClient, args: z.infer<typeof GetListEntryParams>) {
+    const { inboxId, direction, listType, entry } = args
+    return client.inboxes.lists.get(inboxId, direction, listType, entry)
+}
+
+export async function createListEntry(client: AgentMailClient, args: z.infer<typeof CreateListEntryParams>) {
+    const { inboxId, direction, listType, ...body } = args
+    return client.inboxes.lists.create(inboxId, direction, listType, body)
+}
+
+export async function deleteListEntry(client: AgentMailClient, args: z.infer<typeof DeleteListEntryParams>) {
+    const { inboxId, direction, listType, entry } = args
+    await client.inboxes.lists.delete(inboxId, direction, listType, entry)
     return { success: true as const }
 }
 

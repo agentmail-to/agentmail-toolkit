@@ -22,7 +22,7 @@ describe('canonical tool catalog', () => {
         expect(new Set(names).size).toBe(names.length)
         // Grouped by resource: inboxes, threads, messages, drafts, lists, auth, agent, providers.
         expect(names[0]).toBe('list_inboxes')
-        expect(names[names.length - 1]).toBe('get_provider_connection')
+        expect(names[names.length - 1]).toBe('connect_provider')
     })
 })
 

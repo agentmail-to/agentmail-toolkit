@@ -8,15 +8,17 @@ import { AgentMailToolkit } from '../src/mcp.js'
 import { tools } from '../src/tools.js'
 import {
     ListAccountsParams,
-    GetProviderConnectionParams,
     SearchInboxesParams,
-    UnblockRecipientParams,
     GetMessageParams,
+    ListListEntriesParams,
+    GetListEntryParams,
+    CreateListEntryParams,
+    DeleteListEntryParams,
 } from '../src/schemas.js'
-import { listAccounts, getProviderConnection, unblockRecipient, searchInboxes, getMessage } from '../src/functions.js'
-import { mockClient, account, provider, signInKey, bearerKey, message, inbox } from './fixtures.js'
+import { listAccounts, searchInboxes, getMessage, listListEntries, getListEntry, createListEntry, deleteListEntry } from '../src/functions.js'
+import { mockClient, account, provider, message, inbox, listEntry } from './fixtures.js'
 
-// The five tools added alongside the api-keys rework, driven the way an MCP host
+// The tools added alongside the api-keys rework, driven the way an MCP host
 // drives them: through a real client/server pair over an in-memory transport,
 // with the SDK stubbed at the method boundary so every argument the function
 // hands the SDK is observable.
@@ -47,9 +49,8 @@ function recordingClient(calls: Call[], overrides: Record<string, unknown> = {})
             search: record('providers.search', { count: 0, limit: 10, providers: [] }),
             get: record('providers.get', provider()),
             listAccounts: record('providers.listAccounts', { provider: provider(), count: 1, accounts: [account()] }),
-            connect: record('providers.connect', { apiKeyId: signInKey().apiKeyId, magicUrl: 'https://agentid.example/connect#t', expiresAt: new Date('2026-07-10T12:05:00.000Z') }),
+            connect: record('providers.connect', { apiKeyId: '33333333-3333-4333-8333-333333333333', magicUrl: 'https://agentid.example/connect#t', expiresAt: new Date('2026-07-10T12:05:00.000Z') }),
         },
-        apiKeys: { get: record('apiKeys.get', signInKey()) },
         ...overrides,
     })
 }
@@ -59,11 +60,14 @@ describe('catalog: the five additions are registered with complete metadata', ()
         const names = tools.map((t) => t.name)
         expect(names.indexOf('search_inboxes')).toBe(names.indexOf('list_inboxes') + 1)
         expect(names.indexOf('get_message')).toBe(names.indexOf('update_message') + 1)
-        expect(names.indexOf('unblock_recipient')).toBe(names.indexOf('auth_me') - 1)
+        expect(names.slice(names.indexOf('list_list_entries'), names.indexOf('list_list_entries') + 4)).toEqual(['list_list_entries', 'get_list_entry', 'create_list_entry', 'delete_list_entry'])
+        expect(names.indexOf('delete_list_entry')).toBe(names.indexOf('auth_me') - 1)
         expect(names.indexOf('list_accounts')).toBeGreaterThan(names.indexOf('get_provider'))
-        expect(names[names.length - 1]).toBe('get_provider_connection')
+        expect(names[names.length - 1]).toBe('connect_provider')
         expect(names).not.toContain('list_provider_accounts')
-        for (const name of ['search_inboxes', 'get_message', 'unblock_recipient', 'list_accounts', 'get_provider_connection']) {
+        expect(names).not.toContain('get_provider_connection')
+        expect(names).not.toContain('unblock_recipient')
+        for (const name of ['search_inboxes', 'get_message', 'list_list_entries', 'get_list_entry', 'create_list_entry', 'delete_list_entry', 'list_accounts']) {
             const tool = tools.find((t) => t.name === name)!
             expect(tool.title).toBeTruthy()
             expect(tool.description.length).toBeGreaterThan(40)
@@ -73,16 +77,19 @@ describe('catalog: the five additions are registered with complete metadata', ()
         }
     })
 
-    it('marks the reads read-only and the block-list removal as a destructive write', () => {
+    it('marks the reads read-only and the list writes as destructive', () => {
         const by = (name: string) => tools.find((t) => t.name === name)!.annotations
         expect(by('search_inboxes').readOnlyHint).toBe(true)
         expect(by('get_message').readOnlyHint).toBe(true)
         expect(by('get_message').openWorldHint).toBe(true) // external senders' content
         expect(by('list_accounts').readOnlyHint).toBe(true)
-        expect(by('get_provider_connection').readOnlyHint).toBe(true)
-        expect(by('unblock_recipient').readOnlyHint).toBe(false)
-        expect(by('unblock_recipient').destructiveHint).toBe(true)
-        expect(by('unblock_recipient').idempotentHint).toBe(true)
+        expect(by('list_list_entries').readOnlyHint).toBe(true)
+        expect(by('get_list_entry').readOnlyHint).toBe(true)
+        expect(by('create_list_entry').readOnlyHint).toBe(false)
+        expect(by('create_list_entry').destructiveHint).toBe(true)
+        expect(by('create_list_entry').idempotentHint).toBe(false)
+        expect(by('delete_list_entry').destructiveHint).toBe(true)
+        expect(by('delete_list_entry').idempotentHint).toBe(true)
     })
 })
 
@@ -132,81 +139,6 @@ describe('list_accounts', () => {
         const calls: Call[] = []
         await listAccounts(recordingClient(calls), ListAccountsParams.parse({}))
         expect(calls[0]!.args).toEqual([{}])
-    })
-})
-
-describe('get_provider_connection', () => {
-    it('returns only the sign-in status fields, never the key metadata', async () => {
-        const calls: Call[] = []
-        const client = await connect(recordingClient(calls))
-        const result = await client.callTool({ name: 'get_provider_connection', arguments: { apiKeyId: signInKey().apiKeyId } })
-        expect(calls).toEqual([{ method: 'apiKeys.get', args: [signInKey().apiKeyId] }])
-        expect(result.isError ?? false).toBe(false)
-        expect(result.structuredContent).toEqual({
-            apiKeyId: signInKey().apiKeyId,
-            status: 'pending',
-            inboxId: 'agent@agentmail.to',
-            expiresAt: '2026-07-10T12:00:00.000Z',
-        })
-        for (const leaked of ['permissions', 'createdBy', 'podId', 'publicKey', 'name', 'type']) {
-            expect(result.structuredContent).not.toHaveProperty(leaked)
-        }
-    })
-
-    it('projects exactly four fields at the function boundary, before any adapter allowlist', async () => {
-        // The MCP path strips through the output schema regardless, so only a direct call
-        // proves the function itself drops the key metadata for the other adapters.
-        const result = await getProviderConnection(recordingClient([]), { apiKeyId: signInKey().apiKeyId })
-        expect(Object.keys(result).sort()).toEqual(['apiKeyId', 'expiresAt', 'inboxId', 'status'])
-        expect(result).not.toHaveProperty('permissions')
-        expect(result).not.toHaveProperty('createdBy')
-        expect(result).not.toHaveProperty('podId')
-    })
-
-    it('reports active once the human has finished the browser sign-in', async () => {
-        const client = await connect(recordingClient([], { apiKeys: { get: async () => ({ ...signInKey(), status: 'active' }) } }))
-        const result = await client.callTool({ name: 'get_provider_connection', arguments: { apiKeyId: signInKey().apiKeyId } })
-        expect((result.structuredContent as { status: string }).status).toBe('active')
-    })
-
-    it('refuses a bearer key id rather than republishing its metadata', async () => {
-        const client = await connect(recordingClient([], { apiKeys: { get: async () => bearerKey() } }))
-        const result = await client.callTool({ name: 'get_provider_connection', arguments: { apiKeyId: bearerKey().apiKeyId } })
-        expect(result.isError).toBe(true)
-        const text = (result.content as Array<{ text: string }>)[0]!.text
-        expect(text).toContain('not a provider sign-in key')
-        expect(text).not.toContain('am_us_')
-        expect(result.structuredContent).toBeUndefined()
-    })
-
-    it('refuses a public key without a status the same way', async () => {
-        const { status: _status, ...registered } = signInKey()
-        await expect(getProviderConnection(recordingClient([], { apiKeys: { get: async () => registered } }), { apiKeyId: 'k' })).rejects.toThrow(
-            /not a provider sign-in key/
-        )
-    })
-
-    it('surfaces the API 404 for an unknown key id with its status', async () => {
-        const client = await connect(
-            recordingClient([], {
-                apiKeys: {
-                    get: async () => {
-                        throw new AgentMailError({ statusCode: 404, body: { name: 'NotFoundError', message: 'API key not found' } })
-                    },
-                },
-            })
-        )
-        const result = await client.callTool({ name: 'get_provider_connection', arguments: { apiKeyId: 'missing' } })
-        expect(result.isError).toBe(true)
-        expect((result.content as Array<{ text: string }>)[0]!.text).toContain('404')
-    })
-
-    it('requires a non-empty apiKeyId', () => {
-        expect(GetProviderConnectionParams.safeParse({ apiKeyId: '' }).success).toBe(false)
-        expect(GetProviderConnectionParams.safeParse({}).success).toBe(false)
-        expect(GetProviderConnectionParams.safeParse({ apiKeyId: '..' }).success).toBe(false)
-        expect(GetProviderConnectionParams.safeParse({ apiKeyId: '.' }).success).toBe(false)
-        expect(ListAccountsParams.safeParse({ providerId: '..' }).success).toBe(false)
     })
 })
 
@@ -280,57 +212,175 @@ describe('search_inboxes', () => {
     })
 })
 
-describe('unblock_recipient', () => {
-    it('deletes exactly the send/block entry and reports success', async () => {
+function listsClient(calls: Call[], overrides: Partial<Record<'list' | 'get' | 'create' | 'delete', (...args: unknown[]) => Promise<unknown>>> = {}): AgentMailClient {
+    const record = (method: string, result: unknown) => async (...args: unknown[]) => {
+        calls.push({ method, args })
+        return result
+    }
+    const base = (mockClient() as unknown as { inboxes: Record<string, unknown> }).inboxes
+    return mockClient({
+        inboxes: {
+            ...base,
+            lists: {
+                list: record('lists.list', { count: 1, limit: 10, entries: [listEntry()] }),
+                get: record('lists.get', listEntry()),
+                create: record('lists.create', listEntry()),
+                delete: record('lists.delete', undefined),
+                ...overrides,
+            },
+        },
+    })
+}
+
+describe('list_list_entries', () => {
+    it('passes direction and type positionally and the page controls as options', async () => {
         const calls: Call[] = []
+        const client = await connect(listsClient(calls))
+        const result = await client.callTool({
+            name: 'list_list_entries',
+            arguments: { inboxId: 'inbox_1', direction: 'receive', listType: 'allow', limit: 5, pageToken: 'tok' },
+        })
+        expect(calls).toEqual([{ method: 'lists.list', args: ['inbox_1', 'receive', 'allow', { limit: 5, pageToken: 'tok' }] }])
+        expect(result.isError ?? false).toBe(false)
+        const structured = result.structuredContent as { entries: Record<string, unknown>[] }
+        expect(structured.entries).toHaveLength(1)
+    })
+
+    it('strips tenancy identifiers and keeps readOnly and reason on every row', async () => {
+        const client = await connect(listsClient([], { list: async () => ({ count: 1, entries: [{ ...listEntry(), readOnly: true }] }) }))
+        const result = await client.callTool({ name: 'list_list_entries', arguments: { inboxId: 'inbox_1', direction: 'send', listType: 'block' } })
+        const [row] = (result.structuredContent as { entries: Record<string, unknown>[] }).entries
+        expect(row).toMatchObject({ entry: 'blocked@example.com', direction: 'send', listType: 'block', entryType: 'email', reason: 'asked by the human', readOnly: true })
+        expect(row).toHaveProperty('createdAt', '2026-07-10T12:00:00.000Z')
+        expect(row).not.toHaveProperty('organizationId')
+        expect(row).not.toHaveProperty('podId')
+        expect(row).not.toHaveProperty('scope_key')
+    })
+
+    it('rejects a direction or listType outside the API vocabulary before any request', () => {
+        expect(ListListEntriesParams.safeParse({ inboxId: 'inbox_1', direction: 'send', listType: 'block' }).success).toBe(true)
+        expect(ListListEntriesParams.safeParse({ inboxId: 'inbox_1', direction: 'outbound', listType: 'block' }).success).toBe(false)
+        expect(ListListEntriesParams.safeParse({ inboxId: 'inbox_1', direction: 'send', listType: 'deny' }).success).toBe(false)
+        expect(ListListEntriesParams.parse({ inboxId: 'inbox_1', direction: 'send', listType: 'block' }).limit).toBe(10)
+    })
+
+    it('hands the parsed page controls to the SDK without the routing fields', async () => {
+        const calls: Call[] = []
+        await listListEntries(listsClient(calls), ListListEntriesParams.parse({ inboxId: 'inbox_1', direction: 'reply', listType: 'allow' }))
+        expect(calls[0]!.args).toEqual(['inbox_1', 'reply', 'allow', { limit: 10 }])
+    })
+})
+
+describe('get_list_entry', () => {
+    it('reads one entry by its value and strips tenancy identifiers', async () => {
+        const calls: Call[] = []
+        const client = await connect(listsClient(calls))
+        const result = await client.callTool({
+            name: 'get_list_entry',
+            arguments: { inboxId: 'inbox_1', direction: 'send', listType: 'block', entry: 'blocked@example.com' },
+        })
+        expect(calls).toEqual([{ method: 'lists.get', args: ['inbox_1', 'send', 'block', 'blocked@example.com'] }])
+        expect(result.isError ?? false).toBe(false)
+        expect(result.structuredContent).not.toHaveProperty('organizationId')
+        expect(result.structuredContent).not.toHaveProperty('podId')
+        expect((result.structuredContent as { entry: string }).entry).toBe('blocked@example.com')
+    })
+
+    it('passes the four routing values positionally and nothing else', async () => {
+        const calls: Call[] = []
+        await getListEntry(listsClient(calls), GetListEntryParams.parse({ inboxId: 'inbox_1', direction: 'reply', listType: 'allow', entry: 'example.com' }))
+        expect(calls[0]!.args).toEqual(['inbox_1', 'reply', 'allow', 'example.com'])
+    })
+
+    it('requires a non-empty entry that is not a dot segment', () => {
+        expect(GetListEntryParams.safeParse({ inboxId: 'inbox_1', direction: 'send', listType: 'block', entry: '..' }).success).toBe(false)
+        expect(GetListEntryParams.safeParse({ inboxId: 'inbox_1', direction: 'send', listType: 'block', entry: '' }).success).toBe(false)
+        expect(GetListEntryParams.safeParse({ inboxId: 'inbox_1', direction: 'send', listType: 'block' }).success).toBe(false)
+    })
+
+    it('surfaces a missing entry as the API 404', async () => {
         const client = await connect(
-            mockClient({
-                inboxes: {
-                    ...(mockClient() as unknown as { inboxes: Record<string, unknown> }).inboxes,
-                    lists: {
-                        delete: async (...args: unknown[]) => {
-                            calls.push({ method: 'lists.delete', args })
-                            return undefined
-                        },
-                    },
+            listsClient([], {
+                get: async () => {
+                    throw new AgentMailError({ statusCode: 404, body: { name: 'NotFoundError', message: 'ListEntry not found' } })
                 },
             })
         )
-        const result = await client.callTool({ name: 'unblock_recipient', arguments: { inboxId: 'inbox_1', entry: 'someone@example.com' } })
+        const result = await client.callTool({ name: 'get_list_entry', arguments: { inboxId: 'inbox_1', direction: 'send', listType: 'block', entry: 'nobody@example.com' } })
+        expect(result.isError).toBe(true)
+        expect((result.content as Array<{ text: string }>)[0]!.text).toContain('404')
+    })
+})
+
+describe('create_list_entry', () => {
+    it('posts the entry and reason as the body, routing fields positional', async () => {
+        const calls: Call[] = []
+        const client = await connect(listsClient(calls))
+        const result = await client.callTool({
+            name: 'create_list_entry',
+            arguments: { inboxId: 'inbox_1', direction: 'send', listType: 'block', entry: 'blocked@example.com', reason: 'asked by the human' },
+        })
+        expect(calls).toEqual([{ method: 'lists.create', args: ['inbox_1', 'send', 'block', { entry: 'blocked@example.com', reason: 'asked by the human' }] }])
+        expect(result.isError ?? false).toBe(false)
+        expect((result.structuredContent as { entry: string }).entry).toBe('blocked@example.com')
+        expect(result.structuredContent).not.toHaveProperty('organizationId')
+    })
+
+    it('omits reason from the body when not given', async () => {
+        const calls: Call[] = []
+        await createListEntry(listsClient(calls), CreateListEntryParams.parse({ inboxId: 'inbox_1', direction: 'receive', listType: 'allow', entry: 'example.com' }))
+        expect(calls[0]!.args).toEqual(['inbox_1', 'receive', 'allow', { entry: 'example.com' }])
+    })
+
+    it('passes a duplicate-entry conflict through with its message', async () => {
+        const client = await connect(
+            listsClient([], {
+                create: async () => {
+                    throw new AgentMailError({ statusCode: 409, body: { name: 'ConflictError', message: 'ListEntry already exists' } })
+                },
+            })
+        )
+        const result = await client.callTool({ name: 'create_list_entry', arguments: { inboxId: 'inbox_1', direction: 'send', listType: 'block', entry: 'blocked@example.com' } })
+        expect(result.isError).toBe(true)
+        expect((result.content as Array<{ text: string }>)[0]!.text).toContain('already exists')
+    })
+})
+
+describe('delete_list_entry', () => {
+    it('deletes exactly the addressed entry and reports success', async () => {
+        const calls: Call[] = []
+        const client = await connect(listsClient(calls))
+        const result = await client.callTool({
+            name: 'delete_list_entry',
+            arguments: { inboxId: 'inbox_1', direction: 'send', listType: 'block', entry: 'someone@example.com' },
+        })
         expect(calls).toEqual([{ method: 'lists.delete', args: ['inbox_1', 'send', 'block', 'someone@example.com'] }])
         expect(result.isError ?? false).toBe(false)
         expect(result.structuredContent).toEqual({ success: true })
     })
 
-    it('never touches the allow list or the receive/reply directions', async () => {
+    it('addresses whichever list the arguments name, never a fixed one', async () => {
         const calls: Call[] = []
-        const client = { inboxes: { lists: { delete: async (...args: unknown[]) => { calls.push({ method: 'd', args }) } } } } as unknown as AgentMailClient
-        await unblockRecipient(client, UnblockRecipientParams.parse({ inboxId: 'inbox_1', entry: 'example.com' }))
-        expect(calls[0]!.args[1]).toBe('send')
-        expect(calls[0]!.args[2]).toBe('block')
+        await deleteListEntry(listsClient(calls), DeleteListEntryParams.parse({ inboxId: 'inbox_1', direction: 'receive', listType: 'allow', entry: 'example.com' }))
+        expect(calls[0]!.args).toEqual(['inbox_1', 'receive', 'allow', 'example.com'])
     })
 
     it('passes the read-only suppression refusal through with its remedy text', async () => {
         const client = await connect(
-            mockClient({
-                inboxes: {
-                    ...(mockClient() as unknown as { inboxes: Record<string, unknown> }).inboxes,
-                    lists: {
-                        delete: async () => {
-                            throw new AgentMailError({
-                                statusCode: 409,
-                                body: {
-                                    name: 'CannotDeleteError',
-                                    message: 'Cannot delete ListEntry: entry is read-only',
-                                    fix: 'This entry is an AgentMail suppression. Email support@agentmail.to to have it reviewed.',
-                                },
-                            })
+            listsClient([], {
+                delete: async () => {
+                    throw new AgentMailError({
+                        statusCode: 409,
+                        body: {
+                            name: 'CannotDeleteError',
+                            message: 'Cannot delete ListEntry: entry is read-only',
+                            fix: 'This entry is an AgentMail suppression. Email support@agentmail.to to have it reviewed.',
                         },
-                    },
+                    })
                 },
             })
         )
-        const result = await client.callTool({ name: 'unblock_recipient', arguments: { inboxId: 'inbox_1', entry: 'bounced@example.com' } })
+        const result = await client.callTool({ name: 'delete_list_entry', arguments: { inboxId: 'inbox_1', direction: 'send', listType: 'block', entry: 'bounced@example.com' } })
         expect(result.isError).toBe(true)
         const text = (result.content as Array<{ text: string }>)[0]!.text
         expect(text).toContain('suppression')
@@ -338,7 +388,7 @@ describe('unblock_recipient', () => {
     })
 
     it('requires a non-empty entry', () => {
-        expect(UnblockRecipientParams.safeParse({ inboxId: 'inbox_1', entry: '' }).success).toBe(false)
-        expect(UnblockRecipientParams.safeParse({ inboxId: 'inbox_1' }).success).toBe(false)
+        expect(DeleteListEntryParams.safeParse({ inboxId: 'inbox_1', direction: 'send', listType: 'block', entry: '' }).success).toBe(false)
+        expect(DeleteListEntryParams.safeParse({ inboxId: 'inbox_1', direction: 'send', listType: 'block' }).success).toBe(false)
     })
 })
