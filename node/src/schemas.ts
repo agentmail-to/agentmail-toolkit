@@ -1,6 +1,11 @@
 import { z } from 'zod'
 
 const InboxIdSchema = z.string().describe('ID of inbox')
+
+// Shared by every id or value the SDK splices into a URL path. A refine adds no JSON-schema
+// keyword for a host to choke on; it only keeps '.' and '..' out of a segment the URL parser
+// would otherwise normalize onto a different route.
+const notDotSegment = (value: string) => value !== '.' && value !== '..'
 const ThreadIdSchema = z.string().describe('ID of thread')
 const MessageIdSchema = z.string().describe('ID of message')
 const AttachmentIdSchema = z.string().describe('ID of attachment')
@@ -71,10 +76,39 @@ export const SearchInboxesParams = ListItemsParams.extend({
     limit: z.number().int().positive().max(100).optional().default(10).describe('Max number of items to return'),
 })
 
-export const UnblockRecipientParams = z.object({
+// One set of tools for every allow/block list an inbox has: which list is a parameter, not a
+// tool. The enums mirror the API's Direction and ListType exactly.
+const ListDirectionSchema = z
+    .enum(['send', 'receive', 'reply'])
+    .describe(
+        'Which traffic the list governs: send filters the recipients of outbound mail; receive filters the senders of new inbound mail; reply filters the senders of inbound mail that continues a thread this inbox already replied to'
+    )
+const ListTypeSchema = z.enum(['allow', 'block']).describe('allow or block list')
+// The same dot-segment guard as ProviderIdSchema: the SDK splices the entry into the URL path.
+const ListEntryValueSchema = z.string().min(1).refine(notDotSegment, 'must be an email address or domain').describe('Email address or domain')
+
+export const ListListEntriesParams = ListItemsParams.extend({
     inboxId: InboxIdSchema,
-    entry: z.string().min(1).describe('Email address or domain to remove from the send block list'),
+    direction: ListDirectionSchema,
+    listType: ListTypeSchema,
 })
+
+export const GetListEntryParams = z.object({
+    inboxId: InboxIdSchema,
+    direction: ListDirectionSchema,
+    listType: ListTypeSchema,
+    entry: ListEntryValueSchema,
+})
+
+export const CreateListEntryParams = z.object({
+    inboxId: InboxIdSchema,
+    direction: ListDirectionSchema,
+    listType: ListTypeSchema,
+    entry: ListEntryValueSchema.describe('Email address or domain to add'),
+    reason: z.string().optional().describe('Why the entry was added'),
+})
+
+export const DeleteListEntryParams = GetListEntryParams
 
 export const GetThreadParams = z.object({
     inboxId: InboxIdSchema,
@@ -239,9 +273,6 @@ export const AgentVerifyParams = z.object({
 // into every adapter's JSON Schema — the only pattern in the toolkit's input surface — which
 // schema-strict hosts (Gemini's function-declaration subset) reject or drop. The API validates the
 // UUID and answers a named 400; the description steers the model to the right identifier.
-// The refine adds no JSON-schema keyword; it only keeps '.' and '..' out of a path segment
-// the SDK would otherwise let the URL parser normalize onto a different route.
-const notDotSegment = (value: string) => value !== '.' && value !== '..'
 const ProviderIdSchema = z
     .string()
     .min(1)
@@ -273,10 +304,6 @@ export const GetProviderParams = z.object({
 // given (the per-provider route is the only server-side filter the API offers).
 export const ListAccountsParams = ProviderPageParams.extend({
     providerId: ProviderIdSchema.optional().describe('Narrow to one provider (ID from list_providers or search_providers); omit for every provider'),
-})
-
-export const GetProviderConnectionParams = z.object({
-    apiKeyId: z.string().min(1).refine(notDotSegment, 'must be an API key ID').describe('The apiKeyId returned by connect_provider'),
 })
 
 export const ConnectProviderParams = z.object({

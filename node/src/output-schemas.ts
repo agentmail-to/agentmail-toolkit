@@ -267,20 +267,29 @@ export const ListAccountsResponseSchema = PaginationSchema.extend({
     accounts: z.array(AccountSchema),
 })
 
-// A narrow read of the sign-in key connect_provider minted: the model needs its status, not the
-// key's permission map, creator, or material — the identifier over-exposure that got auth_me
-// pulled from the hosted catalog.
-export const ProviderConnectionSchema = z.object({
-    apiKeyId: z.string(),
-    status: z.enum(['pending', 'active']).describe('pending until the human completes the browser sign-in, then active'),
-    inboxId: z.string().optional().describe('The inbox the sign-in is for'),
-    expiresAt: isoDate()
-        .optional()
-        .describe('While pending, when the sign-in stops being completable; once active, when the key itself expires'),
+export const ConnectProviderResponseSchema = z.object({
+    apiKeyId: z.string().describe('ID of the pending sign-in key; it turns active once the sign-in completes'),
+    magicUrl: z.string().describe('Single-use sign-in URL to open in the client that will hold the sign-in'),
+    expiresAt: isoDate().describe('Time at which the magic URL stops working'),
 })
 
-export const ConnectProviderResponseSchema = z.object({
-    apiKeyId: z.string().describe('ID of the pending sign-in key. Its status turns active once the human completes the sign-in'),
-    magicUrl: z.string().describe('Single-use sign-in URL for a human to open in a browser'),
-    expiresAt: isoDate().describe('Time at which the magic URL stops working'),
+// organizationId and podId are on the wire but deliberately excluded — the InboxSchema
+// internal-identifier rule. readOnly stays: it tells the model an entry is an AgentMail
+// suppression it cannot delete, before it tries.
+export const ListEntrySchema = z.object({
+    entry: z.string().describe('Email address or domain'),
+    direction: z.enum(['send', 'receive', 'reply']),
+    listType: z.enum(['allow', 'block']),
+    entryType: z.enum(['email', 'domain']),
+    reason: z.string().optional().describe('Why the entry was added'),
+    inboxId: z.string().optional().describe('The inbox the entry is scoped to, when inbox-scoped'),
+    readOnly: z
+        .boolean()
+        .optional()
+        .describe('True for suppressions AgentMail added itself (bounce, complaint, unsubscribe); these cannot be deleted'),
+    createdAt: isoDate(),
+})
+
+export const ListListEntriesResponseSchema = PaginationSchema.extend({
+    entries: z.array(ListEntrySchema).describe('Ordered by entry ascending'),
 })

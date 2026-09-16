@@ -119,29 +119,19 @@ export const account = () => ({
     organizationId: 'org_internal_1',
 })
 
-export const signInKey = () => ({
-    type: 'public_key' as const,
-    apiKeyId: '33333333-3333-4333-8333-333333333333',
-    name: 'Example RP sign-in',
-    inboxId: 'agent@agentmail.to',
-    status: 'pending' as const,
+export const listEntry = () => ({
+    entry: 'blocked@example.com',
+    direction: 'send' as const,
+    listType: 'block' as const,
+    entryType: 'email' as const,
+    reason: 'asked by the human',
+    inboxId: 'inbox_1',
     createdAt: NOW,
-    updatedAt: NOW,
-    expiresAt: NOW,
-    // Real SDK fields the narrow projection must drop: the permission map and the
-    // creator are the identifier over-exposure that got auth_me pulled.
-    permissions: { provider_connect: true, provider_owner_share: false },
-    createdBy: { type: 'bearer', apiKeyId: '99999999-9999-4999-8999-999999999999' },
+    // Real (camelCase) SDK fields the output schema must strip — the InboxSchema podId rule —
+    // plus a snake_case internal the SDK passes through unrecognized, like messageItem's.
+    organizationId: 'org_internal_1',
     podId: 'pod_internal_1',
-})
-
-export const bearerKey = () => ({
-    type: 'bearer' as const,
-    apiKeyId: '99999999-9999-4999-8999-999999999999',
-    prefix: 'am_us_',
-    name: 'ops key',
-    createdAt: NOW,
-    updatedAt: NOW,
+    scope_key: 'pod_internal_1#inbox_1',
 })
 
 export const connectAccepted = () => ({
@@ -190,10 +180,12 @@ export const fixtureByTool: Record<string, () => unknown> = {
     get_provider: provider,
     list_accounts: () => ({ count: 1, limit: 10, accounts: [account()] }),
     connect_provider: connectAccepted,
-    get_provider_connection: () => ({ apiKeyId: signInKey().apiKeyId, status: 'pending', inboxId: 'agent@agentmail.to', expiresAt: NOW }),
     get_message: message,
     search_inboxes: () => ({ count: 1, inboxes: [inbox()] }),
-    unblock_recipient: success,
+    list_list_entries: () => ({ count: 1, limit: 10, entries: [listEntry()] }),
+    get_list_entry: listEntry,
+    create_list_entry: listEntry,
+    delete_list_entry: success,
 }
 
 // Minimal valid arguments per tool (must satisfy each tool's paramsSchema).
@@ -228,10 +220,12 @@ export const argsByTool: Record<string, Record<string, unknown>> = {
     get_provider: { providerId: '11111111-1111-4111-8111-111111111111' },
     list_accounts: {},
     connect_provider: { providerId: '11111111-1111-4111-8111-111111111111', inboxId: 'agent@agentmail.to' },
-    get_provider_connection: { apiKeyId: '33333333-3333-4333-8333-333333333333' },
     get_message: { inboxId: 'inbox_1', messageId: 'msg_1' },
     search_inboxes: { q: 'agent' },
-    unblock_recipient: { inboxId: 'inbox_1', entry: 'someone@example.com' },
+    list_list_entries: { inboxId: 'inbox_1', direction: 'send', listType: 'block' },
+    get_list_entry: { inboxId: 'inbox_1', direction: 'send', listType: 'block', entry: 'blocked@example.com' },
+    create_list_entry: { inboxId: 'inbox_1', direction: 'send', listType: 'block', entry: 'blocked@example.com' },
+    delete_list_entry: { inboxId: 'inbox_1', direction: 'send', listType: 'block', entry: 'blocked@example.com' },
 }
 
 // A fake AgentMailClient whose every method resolves with the matching fixture.
@@ -264,6 +258,9 @@ export function mockClient(overrides?: Record<string, unknown>): AgentMailClient
                 update: async () => f.update_message(),
             },
             lists: {
+                list: async () => f.list_list_entries(),
+                get: async () => f.get_list_entry(),
+                create: async () => f.create_list_entry(),
                 delete: async () => undefined,
             },
             drafts: {
@@ -290,9 +287,6 @@ export function mockClient(overrides?: Record<string, unknown>): AgentMailClient
         },
         accounts: {
             list: async () => f.list_accounts(),
-        },
-        apiKeys: {
-            get: async () => signInKey(),
         },
         ...overrides,
     }
