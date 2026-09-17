@@ -55,6 +55,11 @@ export const ListThreadsParams = ListInboxItemsParams.extend({
     subject: z.array(z.string()).optional().describe('Filter threads by subject (substring match; all values must match)'),
     includeSpam: z.boolean().optional().describe('Include threads in spam'),
     includeTrash: z.boolean().optional().describe('Include threads in trash'),
+    includeBlocked: z.boolean().optional().describe('Include blocked threads'),
+    includeUnauthenticated: z
+        .boolean()
+        .optional()
+        .describe('Include threads from unauthenticated senders (failed SPF/DKIM/DMARC)'),
 })
 
 export const SearchInboxItemsParams = ListItemsParams.extend({
@@ -214,6 +219,11 @@ export const ListMessagesParams = ListInboxItemsParams.extend({
     subject: z.array(z.string()).optional().describe('Filter messages by subject (substring match; all values must match)'),
     includeSpam: z.boolean().optional().describe('Include messages in spam'),
     includeTrash: z.boolean().optional().describe('Include messages in trash'),
+    includeBlocked: z.boolean().optional().describe('Include blocked messages'),
+    includeUnauthenticated: z
+        .boolean()
+        .optional()
+        .describe('Include messages from unauthenticated senders (failed SPF/DKIM/DMARC)'),
 })
 
 // Draft schemas
