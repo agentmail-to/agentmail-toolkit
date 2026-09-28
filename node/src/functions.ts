@@ -23,6 +23,7 @@ import {
     UpdateDraftParams,
     SendDraftParams,
     DeleteDraftParams,
+    AgentAttachHumanParams,
     AgentVerifyParams,
     ListProvidersParams,
     SearchProvidersParams,
@@ -270,6 +271,10 @@ export async function deleteListEntry(client: AgentMailClient, args: z.infer<typ
     const { inboxId, direction, listType, entry } = args
     await client.inboxes.lists.delete(inboxId, direction, listType, entry)
     return { success: true as const }
+}
+
+export async function agentAttachHuman(client: AgentMailClient, args: z.infer<typeof AgentAttachHumanParams>) {
+    return client.agent.attachHuman(args)
 }
 
 export async function agentVerify(client: AgentMailClient, args: z.infer<typeof AgentVerifyParams>) {
