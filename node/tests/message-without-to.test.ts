@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import { type AgentMailClient } from 'agentmail'
+import { serialization, type AgentMailClient } from 'agentmail'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
@@ -10,6 +10,7 @@ import { AgentMailToolkit as AiSdkToolkit } from '../src/ai-sdk.js'
 import { AgentMailToolkit as LangchainToolkit } from '../src/langchain.js'
 import { AgentMailToolkit as ClawdbotToolkit } from '../src/clawdbot.js'
 import { ListMessagesResponseSchema, MessageItemSchema, MessageSchema, SearchMessagesResponseSchema, ThreadSchema } from '../src/output-schemas.js'
+import { normalize } from '../src/util.js'
 import { mockClient, messageItem, message, threadItem } from './fixtures.js'
 
 // A message delivered with no To header (Bcc-only delivery, an
@@ -25,10 +26,16 @@ const withoutTo = <T extends { to?: unknown }>(fixture: T): Omit<T, 'to'> => {
 const bccOnlyItem = () => withoutTo(messageItem())
 const bccOnlyMessage = () => withoutTo(message())
 
-// The fixtures carry Date objects; the MCP path converts them to ISO strings
-// (normalize) before validation. A JSON round-trip does the same for a direct
-// schema check, and drops undefined the same way.
-const asWire = (value: unknown) => JSON.parse(JSON.stringify(value))
+// The options the SDK client parses every response with: unknown keys pass
+// through and nothing is validated, which is why a body without `to` reaches
+// the toolkit at all despite the generated type saying `to` is required.
+const SDK_PARSE_OPTIONS = {
+    unrecognizedObjectKeys: 'passthrough' as const,
+    allowUnrecognizedUnionMembers: true,
+    allowUnrecognizedEnumValues: true,
+    skipValidation: true,
+    breadcrumbsPrefix: ['response'],
+}
 
 type Item = Record<string, unknown>
 type Page = { count: number; messages: Item[] }
@@ -49,14 +56,17 @@ async function connect(client: AgentMailClient) {
 
 type Inboxes = { messages: Record<string, unknown>; threads: Record<string, unknown> }
 
-// The fixture client with only the message reads swapped for the given message.
-// mockClient's overrides replace a whole top-level key, so the swap is done on
-// the built client to keep every sibling method (inbox, draft, list tools) intact.
-function messagesClient(item: Item, full: Item = { ...item, text: 'Hello there' }): AgentMailClient {
+// The fixture client with only the message reads swapped: `get` and the thread
+// serve the given message, `list` serves the given page (default: that message
+// alone). mockClient's overrides replace a whole top-level key, so the swap is
+// done on the built client to keep every sibling method (inbox, draft, list
+// tools) intact.
+function messagesClient(item: Item, page: Item[] = [item]): AgentMailClient {
+    const full = { ...item, text: 'Hello there' }
     const client = mockClient() as unknown as { inboxes: Inboxes }
     client.inboxes.messages = {
         ...client.inboxes.messages,
-        list: async () => ({ count: 1, messages: [item] }),
+        list: async () => ({ count: page.length, messages: page }),
         search: async () => ({ count: 1, messages: [{ ...item, highlights: { text: ['<em>Hello</em> there'] } }] }),
         get: async () => full,
     }
@@ -70,54 +80,87 @@ afterEach(() => {
 
 describe('output schemas: a message with no To header', () => {
     it('MessageItemSchema accepts it and keeps `to` absent rather than inventing one', () => {
-        const parsed = MessageItemSchema.parse(asWire(bccOnlyItem()))
+        const parsed = MessageItemSchema.parse(normalize(bccOnlyItem()))
         expect(parsed).not.toHaveProperty('to')
         expect(parsed.from).toBe('sender@example.com')
         expect(parsed.messageId).toBe('msg_1')
     })
 
     it('still strips the fields the schema exists to strip', () => {
-        const parsed = MessageItemSchema.parse(asWire(bccOnlyItem()))
+        const parsed = MessageItemSchema.parse(normalize(bccOnlyItem()))
         expect(parsed).not.toHaveProperty('headers')
         expect(parsed).not.toHaveProperty('organization_id')
         expect(parsed).not.toHaveProperty('pod_id')
     })
 
     it('keeps an explicit empty `to` as an empty list', () => {
-        const parsed = MessageItemSchema.parse(asWire({ ...messageItem(), to: [] }))
+        const parsed = MessageItemSchema.parse(normalize({ ...messageItem(), to: [] }))
         expect(parsed.to).toEqual([])
     })
 
     it('MessageSchema (get_message) accepts it too', () => {
-        const parsed = MessageSchema.parse(asWire(bccOnlyMessage()))
+        const parsed = MessageSchema.parse(normalize(bccOnlyMessage()))
         expect(parsed).not.toHaveProperty('to')
         expect(parsed.text).toBe('Hello there')
     })
 
     it('a list page mixing messages with and without `to` validates as a whole', () => {
-        const page = ListMessagesResponseSchema.parse(asWire({ count: 2, messages: [messageItem(), bccOnlyItem()] }))
+        const page = ListMessagesResponseSchema.parse(normalize({ count: 2, messages: [messageItem(), bccOnlyItem()] }))
         expect(page.messages).toHaveLength(2)
         expect(page.messages[0].to).toEqual(['agent@agentmail.to'])
         expect(page.messages[1]).not.toHaveProperty('to')
     })
 
     it('a search page with highlights validates with `to` absent', () => {
-        const page = SearchMessagesResponseSchema.parse(asWire({ count: 1, messages: [{ ...bccOnlyItem(), highlights: { text: ['<em>Hello</em>'] } }] }))
+        const page = SearchMessagesResponseSchema.parse(normalize({ count: 1, messages: [{ ...bccOnlyItem(), highlights: { text: ['<em>Hello</em>'] } }] }))
         expect(page.messages[0]).not.toHaveProperty('to')
         expect(page.messages[0].highlights).toEqual({ text: ['<em>Hello</em>'] })
     })
 
     it('a thread whose messages lack `to` validates', () => {
-        const parsed = ThreadSchema.parse(asWire({ ...threadItem(), messages: [bccOnlyMessage()] }))
+        const parsed = ThreadSchema.parse(normalize({ ...threadItem(), messages: [bccOnlyMessage()] }))
         expect(parsed.messages[0]).not.toHaveProperty('to')
         expect(parsed.recipients).toEqual(['agent@agentmail.to'])
     })
 
     it('the other required fields stay required: `from` and `messageId` missing still fail', () => {
         const { from: _from, ...noFrom } = messageItem()
-        expect(MessageItemSchema.safeParse(asWire(noFrom)).success).toBe(false)
+        expect(MessageItemSchema.safeParse(normalize(noFrom)).success).toBe(false)
         const { messageId: _id, ...noId } = messageItem()
-        expect(MessageItemSchema.safeParse(asWire(noId)).success).toBe(false)
+        expect(MessageItemSchema.safeParse(normalize(noId)).success).toBe(false)
+    })
+
+    it('an API body without `to` survives the SDK deserializer and then this schema, end to end', () => {
+        // The wire shape the API sends for a Bcc-only message: snake_case, ISO
+        // strings, no `to`. The SDK's generated type says `to` is required; the
+        // client parses with skipValidation, so the field is simply absent.
+        const body = {
+            count: 1,
+            messages: [
+                {
+                    inbox_id: 'inbox_1',
+                    thread_id: 'thread_1',
+                    message_id: 'msg_1',
+                    labels: ['inbox'],
+                    timestamp: '2026-07-10T12:00:00.000Z',
+                    from: 'sender@example.com',
+                    subject: 'Daily brief',
+                    size: 123,
+                    updated_at: '2026-07-10T12:00:00.000Z',
+                    created_at: '2026-07-10T12:00:00.000Z',
+                    organization_id: 'org_internal_1',
+                },
+            ],
+        }
+        const fromSdk = serialization.ListMessagesResponse.parseOrThrow(body, SDK_PARSE_OPTIONS)
+        expect(fromSdk.messages[0]).not.toHaveProperty('to')
+        expect(fromSdk.messages[0].messageId).toBe('msg_1')
+        expect(fromSdk.messages[0].timestamp).toBeInstanceOf(Date)
+
+        const page = ListMessagesResponseSchema.parse(normalize(fromSdk))
+        expect(page.messages[0]).not.toHaveProperty('to')
+        expect(page.messages[0]).not.toHaveProperty('organization_id')
+        expect(page.messages[0].timestamp).toBe('2026-07-10T12:00:00.000Z')
     })
 })
 
@@ -128,14 +171,17 @@ describe('tools/list: the schemas a host validates against do not require `to`',
         const byName = Object.fromEntries(tools.map((t) => [t.name, t.outputSchema as Record<string, unknown>]))
 
         const itemsOf = (schema: Record<string, unknown>) => {
-            const properties = schema.properties as Record<string, { items: { required: string[]; properties: Record<string, unknown> } }>
-            return properties.messages.items
+            const properties = schema.properties as Record<string, { items?: { required: string[]; properties: Record<string, unknown> } }>
+            return properties?.messages?.items
         }
         for (const name of ['list_messages', 'search_messages', 'get_thread']) {
             const items = itemsOf(byName[name])
-            expect(items.required, `${name} items.required`).not.toContain('to')
-            expect(items.required, `${name} items.required`).toContain('from')
-            expect(items.properties, `${name} items.properties`).toHaveProperty('to')
+            // Inline items are what the MCP SDK emits today; a $ref-based
+            // rendering would need this lookup rewritten, not silently pass.
+            expect(items, `${name} messages.items`).toBeDefined()
+            expect(items!.required, `${name} items.required`).not.toContain('to')
+            expect(items!.required, `${name} items.required`).toContain('from')
+            expect(items!.properties, `${name} items.properties`).toHaveProperty('to')
         }
         const getMessage = byName.get_message as { required: string[]; properties: Record<string, unknown> }
         expect(getMessage.required).not.toContain('to')
@@ -189,15 +235,12 @@ describe('tools/call through the real MCP path with a Bcc-only message', () => {
     })
 
     it('a page mixing both kinds comes back whole, in order', async () => {
-        const mixed = messagesClient(bccOnlyItem()) as unknown as { inboxes: Inboxes }
-        mixed.inboxes.messages.list = async () => ({
-            count: 2,
-            messages: [
+        const client = await connect(
+            messagesClient(bccOnlyItem(), [
                 { ...messageItem(), messageId: 'msg_with_to' },
                 { ...bccOnlyItem(), messageId: 'msg_bcc_only' },
-            ],
-        })
-        const client = await connect(mixed as unknown as AgentMailClient)
+            ])
+        )
         const result = await client.callTool({ name: 'list_messages', arguments: { inboxId: 'inbox_1' } })
 
         expect(result.isError ?? false).toBe(false)
