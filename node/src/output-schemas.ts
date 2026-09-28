@@ -206,6 +206,11 @@ export const IdentitySchema = z.object({
     apiKeyId: z.string().optional(),
 })
 
+export const AgentAttachHumanResponseSchema = z.object({
+    humanEmail: z.string().describe('Email address of the attached human'),
+    instructions: z.string().describe('Next steps for the agent, in plain text'),
+})
+
 export const AgentVerifyResponseSchema = z.object({
     verified: z.boolean().describe('Whether the organization was verified'),
 })

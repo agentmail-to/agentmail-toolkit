@@ -90,6 +90,11 @@ export const sendResult = () => ({ messageId: 'msg_1', threadId: 'thread_1' })
 export const identity = () => ({ scopeType: 'organization' as const, scopeId: 'org_1', organizationId: 'org_1' })
 
 
+export const agentAttachHumanResult = () => ({
+    humanEmail: 'human@example.com',
+    instructions: 'human@example.com is now attached to your account, and we emailed them a verification code.',
+})
+
 export const agentVerifyResult = () => ({ verified: true })
 
 export const provider = () => ({
@@ -174,6 +179,7 @@ export const fixtureByTool: Record<string, () => unknown> = {
     send_draft: sendResult,
     delete_draft: success,
     auth_me: identity,
+    agent_attach_human: agentAttachHumanResult,
     agent_verify: agentVerifyResult,
     list_providers: () => ({ count: 1, limit: 10, providers: [provider()] }),
     search_providers: () => ({ count: 1, limit: 10, providers: [provider()] }),
@@ -214,6 +220,7 @@ export const argsByTool: Record<string, Record<string, unknown>> = {
     send_draft: { inboxId: 'inbox_1', draftId: 'draft_1' },
     delete_draft: { inboxId: 'inbox_1', draftId: 'draft_1' },
     auth_me: {},
+    agent_attach_human: { humanEmail: 'human@example.com' },
     agent_verify: { otpCode: '123456' },
     list_providers: {},
     search_providers: { q: 'example' },
@@ -276,6 +283,7 @@ export function mockClient(overrides?: Record<string, unknown>): AgentMailClient
             me: async () => f.auth_me(),
         },
         agent: {
+            attachHuman: async () => f.agent_attach_human(),
             verify: async () => f.agent_verify(),
         },
         providers: {

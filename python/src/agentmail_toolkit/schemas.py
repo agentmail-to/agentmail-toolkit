@@ -94,5 +94,11 @@ class UpdateMessageParams(BaseModel):
     remove_labels: Optional[List[str]] = Field(default=None, description="Labels to remove")
 
 
+class AgentAttachHumanParams(BaseModel):
+    human_email: str = Field(
+        description="Email address of the human you work for. They are emailed a 6-digit verification code"
+    )
+
+
 class AgentVerifyParams(BaseModel):
-    otp_code: str = Field(description="6-digit verification code emailed to the human who signed up")
+    otp_code: str = Field(description="6-digit verification code emailed to the human attached to the organization")

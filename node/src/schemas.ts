@@ -263,8 +263,12 @@ export const AuthMeParams = z.object({})
 
 // Agent schemas
 
+export const AgentAttachHumanParams = z.object({
+    humanEmail: z.string().describe('Email address of the human you work for. They are emailed a 6-digit verification code'),
+})
+
 export const AgentVerifyParams = z.object({
-    otpCode: z.string().describe('6-digit verification code emailed to the human who signed up'),
+    otpCode: z.string().describe('6-digit verification code emailed to the human attached to the organization'),
 })
 
 // Provider schemas

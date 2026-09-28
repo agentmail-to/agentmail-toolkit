@@ -121,6 +121,11 @@ def test_update_message_call_shape(mock_client):
     )
 
 
+def test_agent_attach_human_call_shape(mock_client):
+    functions.agent_attach_human(mock_client, {"human_email": "human@example.com"})
+    mock_client.agent.attach_human.assert_called_once_with(human_email="human@example.com")
+
+
 def test_agent_verify_call_shape(mock_client):
     functions.agent_verify(mock_client, {"otp_code": "123456"})
     mock_client.agent.verify.assert_called_once_with(otp_code="123456")

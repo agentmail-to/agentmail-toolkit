@@ -6,7 +6,7 @@ readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"
 dependencies = [
-    "agentmail>=0.4.13",
+    "agentmail>=2.0.5",
     "filetype>=1.2.0",
     "langchain>=1.1.0",
     "livekit-agents>=1.3.5",

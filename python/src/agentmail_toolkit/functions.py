@@ -129,5 +129,9 @@ def update_message(client: AgentMail, kwargs: Kwargs):
     return client.inboxes.messages.update(**kwargs)
 
 
+def agent_attach_human(client: AgentMail, kwargs: Kwargs):
+    return client.agent.attach_human(**kwargs)
+
+
 def agent_verify(client: AgentMail, kwargs: Kwargs):
     return client.agent.verify(**kwargs)
