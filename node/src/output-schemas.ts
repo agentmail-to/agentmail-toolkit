@@ -88,7 +88,12 @@ export const MessageItemSchema = z.object({
     labels: z.array(z.string()),
     timestamp: isoDate(),
     from: z.string(),
-    to: z.array(z.string()),
+    // Optional to match what the API sends, not the SDK type: a message with no
+    // To header (Bcc-only delivery, undisclosed recipients) is stored and
+    // returned without `to`. Requiring it here turned every list, search,
+    // thread, or get result holding such a message into an "output schema"
+    // failure, since MessageSchema and ThreadSchema build on this shape.
+    to: z.array(z.string()).optional(),
     cc: z.array(z.string()).optional(),
     bcc: z.array(z.string()).optional(),
     subject: z.string().optional(),
