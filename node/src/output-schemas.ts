@@ -221,8 +221,9 @@ export const AgentVerifyResponseSchema = z.object({
 })
 
 // One shape for both projections GET /providers/{id} serves: a curated catalog entry (name +
-// updatedAt + display fields) and the bare identity resolved for an unlisted provider the caller
-// holds an account at (id, maybe a name, nothing else). Catalog membership shows as updatedAt
+// updatedAt + display fields) and the bare identity resolved for a provider the catalog does not
+// list — one the caller holds an account at, or any registered provider (id, maybe a name,
+// nothing else). Catalog membership shows as updatedAt
 // being present — the API publishes no flag for it. Display fields are provider-authored.
 export const ProviderSchema = z.object({
     providerId: z.string(),
