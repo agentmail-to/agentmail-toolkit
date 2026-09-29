@@ -241,7 +241,7 @@ export const ProviderSchema = z.object({
         .number()
         .optional()
         .describe(
-            "Maximum number of your organization's inboxes that may sign up at this provider. Absent when the provider sets no limit; 0 means new sign-ups are paused, while inboxes that already hold an account can still sign in"
+            "Maximum number of your organization's inboxes that may sign up at this provider. Absent when the provider sets no limit; 0 means new sign-ups are paused, while inboxes that already hold an account can still sign in. It counts every inbox that has ever signed up, including disabled accounts that list_accounts does not show, and can lag the live value: treat it as a hint and rely on connect_provider's limit error"
         ),
 })
 
