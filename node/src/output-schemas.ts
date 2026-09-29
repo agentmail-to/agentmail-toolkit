@@ -221,8 +221,9 @@ export const AgentVerifyResponseSchema = z.object({
 })
 
 // One shape for both projections GET /providers/{id} serves: a curated catalog entry (name +
-// updatedAt + display fields) and the bare identity resolved for an unlisted provider the caller
-// holds an account at (id, maybe a name, nothing else). Catalog membership shows as updatedAt
+// updatedAt + display fields) and the bare identity resolved for a provider the catalog does not
+// list — one the caller holds an account at, or any registered provider (id, maybe a name,
+// nothing else). Catalog membership shows as updatedAt
 // being present — the API publishes no flag for it. Display fields are provider-authored.
 export const ProviderSchema = z.object({
     providerId: z.string(),
@@ -236,6 +237,12 @@ export const ProviderSchema = z.object({
     logoUrl: z.string().optional(),
     termsUrl: z.string().optional(),
     privacyUrl: z.string().optional(),
+    ownerSignupLimit: z
+        .number()
+        .optional()
+        .describe(
+            "Maximum number of your organization's inboxes that may sign up at this provider. Absent when the provider sets no limit; 0 means new sign-ups are paused, while inboxes that already hold an account can still sign in. It counts every inbox that has ever signed up, including disabled accounts that list_accounts does not show, and can lag the live value: treat it as a hint and rely on connect_provider's limit error"
+        ),
 })
 
 // The browse surfaces (list, search) serve catalog entries only, where the API requires name and
