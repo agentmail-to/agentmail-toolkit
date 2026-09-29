@@ -105,6 +105,7 @@ export const provider = () => ({
     logoUrl: 'https://cdn.example.com/logo.png',
     termsUrl: 'https://example.com/terms',
     privacyUrl: 'https://example.com/privacy',
+    ownerSignupLimit: 1,
     // SDK-passthrough internals the output schemas must strip.
     client_id: 'client-internal-1',
     score: 42,

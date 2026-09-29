@@ -93,6 +93,17 @@ describe('catalog: the five additions are registered with complete metadata', ()
     })
 })
 
+describe('get_provider', () => {
+    it('surfaces the sign-up cap and strips SDK internals', async () => {
+        const client = await connect(recordingClient([]))
+        const result = await client.callTool({ name: 'get_provider', arguments: { providerId: provider().providerId } })
+        const structured = result.structuredContent as Record<string, unknown>
+        expect(structured.ownerSignupLimit).toBe(1)
+        expect(structured).not.toHaveProperty('client_id')
+        expect(structured).not.toHaveProperty('score')
+    })
+})
+
 describe('list_accounts', () => {
     it('routes to the cross-provider list when no providerId is given', async () => {
         const calls: Call[] = []

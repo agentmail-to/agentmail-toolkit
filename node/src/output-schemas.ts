@@ -237,6 +237,12 @@ export const ProviderSchema = z.object({
     logoUrl: z.string().optional(),
     termsUrl: z.string().optional(),
     privacyUrl: z.string().optional(),
+    ownerSignupLimit: z
+        .number()
+        .optional()
+        .describe(
+            "Maximum number of your organization's inboxes that may sign up at this provider. Absent when the provider sets no limit; 0 means new sign-ups are paused, while inboxes that already hold an account can still sign in"
+        ),
 })
 
 // The browse surfaces (list, search) serve catalog entries only, where the API requires name and
