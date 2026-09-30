@@ -97,11 +97,11 @@ export const agentAttachHumanResult = () => ({
 
 export const agentVerifyResult = () => ({ verified: true })
 
-export const provider = () => ({
-    providerId: '11111111-1111-4111-8111-111111111111',
+export const app = () => ({
+    appId: '11111111-1111-4111-8111-111111111111',
     name: 'Example RP',
     updatedAt: NOW,
-    description: 'An example provider',
+    description: 'An example app',
     logoUrl: 'https://cdn.example.com/logo.png',
     termsUrl: 'https://example.com/terms',
     privacyUrl: 'https://example.com/privacy',
@@ -113,8 +113,8 @@ export const provider = () => ({
 
 export const account = () => ({
     accountId: '44444444-4444-4444-8444-444444444444',
-    providerId: '11111111-1111-4111-8111-111111111111',
-    providerName: 'Example RP',
+    appId: '11111111-1111-4111-8111-111111111111',
+    appName: 'Example RP',
     inboxId: 'agent@agentmail.to',
     firstSignedInAt: NOW,
     lastSignedInAt: NOW,
@@ -123,6 +123,10 @@ export const account = () => ({
     // identifiers stay off tool results, the same rule as InboxSchema's podId.
     podId: 'pod_internal_1',
     organizationId: 'org_internal_1',
+    // The legacy aliases every account still carries on the wire; the tools
+    // speak only the app vocabulary, so strip mode must drop them too.
+    providerId: '11111111-1111-4111-8111-111111111111',
+    providerName: 'Example RP',
 })
 
 export const listEntry = () => ({
@@ -182,11 +186,11 @@ export const fixtureByTool: Record<string, () => unknown> = {
     auth_me: identity,
     agent_attach_human: agentAttachHumanResult,
     agent_verify: agentVerifyResult,
-    list_providers: () => ({ count: 1, limit: 10, providers: [provider()] }),
-    search_providers: () => ({ count: 1, limit: 10, providers: [provider()] }),
-    get_provider: provider,
+    list_apps: () => ({ count: 1, limit: 10, apps: [app()] }),
+    search_apps: () => ({ count: 1, limit: 10, apps: [app()] }),
+    get_app: app,
     list_accounts: () => ({ count: 1, limit: 10, accounts: [account()] }),
-    connect_provider: connectAccepted,
+    connect_app: connectAccepted,
     get_message: message,
     search_inboxes: () => ({ count: 1, inboxes: [inbox()] }),
     list_list_entries: () => ({ count: 1, limit: 10, entries: [listEntry()] }),
@@ -223,11 +227,11 @@ export const argsByTool: Record<string, Record<string, unknown>> = {
     auth_me: {},
     agent_attach_human: { humanEmail: 'human@example.com' },
     agent_verify: { otpCode: '123456' },
-    list_providers: {},
-    search_providers: { q: 'example' },
-    get_provider: { providerId: '11111111-1111-4111-8111-111111111111' },
+    list_apps: {},
+    search_apps: { q: 'example' },
+    get_app: { appId: '11111111-1111-4111-8111-111111111111' },
     list_accounts: {},
-    connect_provider: { providerId: '11111111-1111-4111-8111-111111111111', inboxId: 'agent@agentmail.to' },
+    connect_app: { appId: '11111111-1111-4111-8111-111111111111', inboxId: 'agent@agentmail.to' },
     get_message: { inboxId: 'inbox_1', messageId: 'msg_1' },
     search_inboxes: { q: 'agent' },
     list_list_entries: { inboxId: 'inbox_1', direction: 'send', listType: 'block' },
@@ -287,12 +291,12 @@ export function mockClient(overrides?: Record<string, unknown>): AgentMailClient
             attachHuman: async () => f.agent_attach_human(),
             verify: async () => f.agent_verify(),
         },
-        providers: {
-            list: async () => f.list_providers(),
-            search: async () => f.search_providers(),
-            get: async () => f.get_provider(),
-            listAccounts: async () => ({ provider: provider(), count: 1, accounts: [account()] }),
-            connect: async () => f.connect_provider(),
+        apps: {
+            list: async () => f.list_apps(),
+            search: async () => f.search_apps(),
+            get: async () => f.get_app(),
+            listAccounts: async () => ({ app: app(), count: 1, accounts: [account()] }),
+            connect: async () => f.connect_app(),
         },
         accounts: {
             list: async () => f.list_accounts(),

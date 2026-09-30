@@ -25,9 +25,9 @@ import {
     DeleteDraftParams,
     AgentAttachHumanParams,
     AgentVerifyParams,
-    ListProvidersParams,
-    SearchProvidersParams,
-    GetProviderParams,
+    ListAppsParams,
+    SearchAppsParams,
+    GetAppParams,
     ListAccountsParams,
     GetMessageParams,
     SearchInboxesParams,
@@ -35,7 +35,7 @@ import {
     GetListEntryParams,
     CreateListEntryParams,
     DeleteListEntryParams,
-    ConnectProviderParams,
+    ConnectAppParams,
 } from './schemas.js'
 
 export async function listInboxes(client: AgentMailClient, args: z.infer<typeof ListItemsParams>) {
@@ -224,23 +224,23 @@ export async function authMe(client: AgentMailClient) {
     return client.auth.me()
 }
 
-export async function listProviders(client: AgentMailClient, args: z.infer<typeof ListProvidersParams>) {
-    return client.providers.list(args)
+export async function listApps(client: AgentMailClient, args: z.infer<typeof ListAppsParams>) {
+    return client.apps.list(args)
 }
 
-export async function searchProviders(client: AgentMailClient, args: z.infer<typeof SearchProvidersParams>) {
-    return client.providers.search(args)
+export async function searchApps(client: AgentMailClient, args: z.infer<typeof SearchAppsParams>) {
+    return client.apps.search(args)
 }
 
-export async function getProvider(client: AgentMailClient, args: z.infer<typeof GetProviderParams>) {
-    return client.providers.get(args.providerId)
+export async function getApp(client: AgentMailClient, args: z.infer<typeof GetAppParams>) {
+    return client.apps.get(args.appId)
 }
 
 export async function listAccounts(client: AgentMailClient, args: z.infer<typeof ListAccountsParams>) {
-    const { providerId, ...options } = args
-    // The per-provider route is the API's only server-side provider filter, so one tool
+    const { appId, ...options } = args
+    // The per-app route is the API's only server-side app filter, so one tool
     // fans out to whichever list answers the question asked.
-    return providerId === undefined ? client.accounts.list(options) : client.providers.listAccounts(providerId, options)
+    return appId === undefined ? client.accounts.list(options) : client.apps.listAccounts(appId, options)
 }
 
 export async function getMessage(client: AgentMailClient, args: z.infer<typeof GetMessageParams>) {
@@ -281,11 +281,11 @@ export async function agentVerify(client: AgentMailClient, args: z.infer<typeof 
     return client.agent.verify(args)
 }
 
-export async function connectProvider(client: AgentMailClient, args: z.infer<typeof ConnectProviderParams>) {
-    const { providerId, ...body } = args
+export async function connectApp(client: AgentMailClient, args: z.infer<typeof ConnectAppParams>) {
+    const { appId, ...body } = args
     // maxRetries: 0 because the SDK's fetcher retries POSTs on 408/429/5xx, and this
     // POST mints a live sign-in session on every accepted attempt (the endpoint has no
     // idempotency key): a blind re-POST after a lost response would mint a second one
     // against the caller's bounded live-session budget.
-    return client.providers.connect(providerId, body, { maxRetries: 0 })
+    return client.apps.connect(appId, body, { maxRetries: 0 })
 }

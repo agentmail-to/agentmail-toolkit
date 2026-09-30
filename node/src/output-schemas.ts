@@ -220,18 +220,18 @@ export const AgentVerifyResponseSchema = z.object({
     verified: z.boolean().describe('Whether the organization was verified'),
 })
 
-// One shape for both projections GET /providers/{id} serves: a curated catalog entry (name +
-// updatedAt + display fields) and the bare identity resolved for a provider the catalog does not
-// list — one the caller holds an account at, or any registered provider (id, maybe a name,
+// One shape for both projections GET /apps/{id} serves: a curated catalog entry (name +
+// updatedAt + display fields) and the bare identity resolved for an app the catalog does not
+// list — one the caller holds an account at, or any registered app (id, maybe a name,
 // nothing else). Catalog membership shows as updatedAt
-// being present — the API publishes no flag for it. Display fields are provider-authored.
-export const ProviderSchema = z.object({
-    providerId: z.string(),
-    name: z.string().optional().describe('Display name of provider'),
+// being present — the API publishes no flag for it. Display fields are app-authored.
+export const AppSchema = z.object({
+    appId: z.string(),
+    name: z.string().optional().describe('Display name of app'),
     updatedAt: isoDate()
         .optional()
         .describe(
-            'Time at which the listing was last updated. Present only for curated catalog entries; absent means the provider resolved as a bare identity'
+            'Time at which the listing was last updated. Present only for curated catalog entries; absent means the app resolved as a bare identity'
         ),
     description: z.string().optional(),
     logoUrl: z.string().optional(),
@@ -241,50 +241,51 @@ export const ProviderSchema = z.object({
         .number()
         .optional()
         .describe(
-            "Maximum number of your organization's inboxes that may sign up at this provider. Absent when the provider sets no limit; 0 means new sign-ups are paused, while inboxes that already hold an account can still sign in. It counts every inbox that has ever signed up, including disabled accounts that list_accounts does not show, and can lag the live value: treat it as a hint and rely on connect_provider's limit error"
+            "Maximum number of your organization's inboxes that may sign up at this app. Absent when the app sets no limit; 0 means new sign-ups are paused, while inboxes that already hold an account can still sign in. It counts every inbox that has ever signed up, including disabled accounts that list_accounts does not show, and can lag the live value: treat it as a hint and rely on connect_app's limit error"
         ),
 })
 
 // The browse surfaces (list, search) serve catalog entries only, where the API requires name and
 // updatedAt — declaring them required keeps the output-schema net able to catch a malformed entry
-// instead of passing a nameless row to the model. Only get_provider and the embedded provider on
-// the accounts response can be a bare identity.
-const CatalogProviderSchema = ProviderSchema.required({ name: true, updatedAt: true })
+// instead of passing a nameless row to the model. Only get_app and the embedded app on the
+// accounts response can be a bare identity.
+const CatalogAppSchema = AppSchema.required({ name: true, updatedAt: true })
 
-export const ListProvidersResponseSchema = PaginationSchema.extend({
-    providers: z.array(CatalogProviderSchema),
+export const ListAppsResponseSchema = PaginationSchema.extend({
+    apps: z.array(CatalogAppSchema),
 })
 
 // Search's own envelope, NOT PaginationSchema: the route is unpaginated, so advertising an
 // optional nextPageToken would invite a model to read its absence as "the list is complete" —
 // wrong on a route that truncates silently. count and limit are always sent.
-export const SearchProvidersResponseSchema = z.object({
+export const SearchAppsResponseSchema = z.object({
     count: z.number().describe('Number of items returned'),
     limit: z.number().describe('Limit of number of items returned'),
-    providers: z.array(CatalogProviderSchema),
+    apps: z.array(CatalogAppSchema),
 })
 
 // podId and organizationId are on the wire but deliberately excluded — the same internal-identifier
 // rule as InboxSchema above. accountId stays: it is the resource's own addressable id, the same
-// class as inboxId.
+// class as inboxId. The legacy providerId / providerName aliases are on the wire too and are
+// stripped: the tools speak only the app vocabulary.
 export const AccountSchema = z.object({
     accountId: z.string(),
-    providerId: z.string(),
-    providerName: z.string().optional().describe('Display name of provider'),
+    appId: z.string(),
+    appName: z.string().optional().describe('Display name of app'),
     inboxId: z.string().describe('The inbox (email address) holding the account'),
-    firstSignedInAt: isoDate().describe('Time of first sign-in at provider'),
-    lastSignedInAt: isoDate().describe('Time of most recent sign-in at provider'),
-    signInCount: z.number().describe('Number of sign-ins at provider'),
+    firstSignedInAt: isoDate().describe('Time of first sign-in at app'),
+    lastSignedInAt: isoDate().describe('Time of most recent sign-in at app'),
+    signInCount: z.number().describe('Number of sign-ins at app'),
 })
 
-// Shared by the cross-provider and per-provider account lists: the per-provider route embeds
-// the provider, the cross-provider one has no single provider to embed.
+// Shared by the all-apps and per-app account lists: the per-app route embeds the app, the
+// all-apps one has no single app to embed.
 export const ListAccountsResponseSchema = PaginationSchema.extend({
-    provider: ProviderSchema.optional().describe('The provider, when the list was narrowed to one and it resolves for this caller'),
+    app: AppSchema.optional().describe('The app, when the list was narrowed to one and it resolves for this caller'),
     accounts: z.array(AccountSchema),
 })
 
-export const ConnectProviderResponseSchema = z.object({
+export const ConnectAppResponseSchema = z.object({
     apiKeyId: z.string().describe('ID of the pending sign-in key; it turns active once the sign-in completes'),
     magicUrl: z.string().describe('Single-use sign-in URL to open in the client that will hold the sign-in'),
     expiresAt: isoDate().describe('Time at which the magic URL stops working'),

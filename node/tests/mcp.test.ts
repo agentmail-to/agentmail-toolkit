@@ -294,33 +294,33 @@ describe('invoke (stateless per-call client)', () => {
     })
 })
 
-describe('provider tools', () => {
-    it('strips tenancy and registry internals from provider and account results', async () => {
+describe('app tools', () => {
+    it('strips tenancy and registry internals from app and account results', async () => {
         const client = await connect(mockClient())
         await client.listTools()
 
         const accountsResult = await client.callTool({
             name: 'list_accounts',
-            arguments: { providerId: '11111111-1111-4111-8111-111111111111' },
+            arguments: { appId: '11111111-1111-4111-8111-111111111111' },
         })
         const structured = accountsResult.structuredContent as {
-            provider?: Record<string, unknown>
+            app?: Record<string, unknown>
             accounts: Record<string, unknown>[]
         }
         // The fixtures deliberately carry these internals; strip mode must drop
         // every one — the InboxSchema podId rule, asserted per-resource like the
         // email strip tests above.
-        expect(structured.provider).not.toHaveProperty('client_id')
-        expect(structured.provider).not.toHaveProperty('score')
+        expect(structured.app).not.toHaveProperty('client_id')
+        expect(structured.app).not.toHaveProperty('score')
         for (const account of structured.accounts) {
             expect(account).not.toHaveProperty('podId')
             expect(account).not.toHaveProperty('organizationId')
         }
 
-        const listResult = await client.callTool({ name: 'list_providers', arguments: {} })
-        for (const provider of (listResult.structuredContent as { providers: Record<string, unknown>[] }).providers) {
-            expect(provider).not.toHaveProperty('client_id')
-            expect(provider).not.toHaveProperty('score')
+        const listResult = await client.callTool({ name: 'list_apps', arguments: {} })
+        for (const app of (listResult.structuredContent as { apps: Record<string, unknown>[] }).apps) {
+            expect(app).not.toHaveProperty('client_id')
+            expect(app).not.toHaveProperty('score')
         }
     })
 
@@ -328,13 +328,13 @@ describe('provider tools', () => {
         const calls: unknown[][] = []
         const client = await connect(
             mockClient({
-                providers: {
-                    list: async () => fixtureByTool.list_providers(),
-                    search: async () => fixtureByTool.search_providers(),
-                    get: async () => fixtureByTool.get_provider(),
+                apps: {
+                    list: async () => fixtureByTool.list_apps(),
+                    search: async () => fixtureByTool.search_apps(),
+                    get: async () => fixtureByTool.get_app(),
                     listAccounts: async (...args: unknown[]) => {
                         calls.push(['listAccounts', ...args])
-                        return { provider: fixtureByTool.get_provider(), count: 1, accounts: [] }
+                        return { app: fixtureByTool.get_app(), count: 1, accounts: [] }
                     },
                     connect: async (...args: unknown[]) => {
                         calls.push(['connect', ...args])
@@ -344,16 +344,16 @@ describe('provider tools', () => {
             })
         )
 
-        await client.callTool({ name: 'list_accounts', arguments: { providerId: 'prov_1', limit: 5 } })
-        expect(calls[0]![1]).toBe('prov_1')
+        await client.callTool({ name: 'list_accounts', arguments: { appId: 'app_1', limit: 5 } })
+        expect(calls[0]![1]).toBe('app_1')
         expect(calls[0]![2]).toEqual({ limit: 5 })
 
         await client.callTool({
-            name: 'connect_provider',
-            arguments: { providerId: 'prov_1', inboxId: 'agent@agentmail.to', acceptDisclosure: false },
+            name: 'connect_app',
+            arguments: { appId: 'app_1', inboxId: 'agent@agentmail.to', acceptDisclosure: false },
         })
         const [, connectId, connectBody, connectOptions] = calls[1] as [string, string, Record<string, unknown>, { maxRetries: number }]
-        expect(connectId).toBe('prov_1')
+        expect(connectId).toBe('app_1')
         // acceptDisclosure: false must be transmitted, not dropped — omitting it
         // means "keep the first-use disclosure page", which is not the same request.
         expect(connectBody).toEqual({ inboxId: 'agent@agentmail.to', acceptDisclosure: false })
