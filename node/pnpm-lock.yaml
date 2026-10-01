@@ -5,6 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
+  nanoid@5: 5.1.11
   '@hono/node-server': '>=1.19.15'
   '@modelcontextprotocol/sdk': '>=1.26.0'
   '@protobufjs/utf8': '>=1.1.1'
@@ -13,7 +14,7 @@ overrides:
   basic-ftp: '>=5.2.2'
   body-parser: '>=2.3.0'
   brace-expansion: '>=2.1.2'
-  fast-uri: '>=3.1.5'
+  fast-uri: '>=4.1.4'
   fast-xml-parser: '>=5.7.0'
   flatted: '>=3.4.2'
   follow-redirects: '>=1.16.0'
@@ -2525,6 +2526,7 @@ packages:
   eslint@9.39.2:
     resolution: {integrity: sha512-LEyamqS7W5HB3ujJyvi0HQK/dtVINZvd5mAAp9eT5S/ujByGjiZLCzPcHVzuXbpJDJF/cxwHlfceVUDZ2lnSTw==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+    deprecated: This version is no longer supported. Please see https://eslint.org/version-support for other options.
     hasBin: true
     peerDependencies:
       jiti: '*'
@@ -2611,8 +2613,8 @@ packages:
   fast-levenshtein@2.0.6:
     resolution: {integrity: sha512-DCXu6Ifhqcks7TZKY3Hxp3y6qphY5SJZmrWMDrKcERSOXWQdMhU9Ig/PYrzyw/ul9jOIyh0N4M0tbC5hodg8dw==}
 
-  fast-uri@4.1.2:
-    resolution: {integrity: sha512-TyGmBcbDTZXcb2cj5MV89DrF42DKvb3y5DDUNh95iO+IMeAzMkVSxK1PZRrRIpc9yg8U2GhGdbofNa0LS/a4Bw==}
+  fast-uri@4.2.1:
+    resolution: {integrity: sha512-TmHQgewjHtMq1E5QKA0tOE0yeYGQs25KZC/ziJpubRtWI15W92e6vPFydWOeZBVROSHBYw/QhD9d5OefdD6LDg==}
 
   fast-xml-builder@1.3.1:
     resolution: {integrity: sha512-pIM/1n3ntFXKYrUZwW7QCK0gAW7XY+wzj1YMIV3tLDvPj/V+zTGJK5e3/4WJfwj0qWw2ElNXiTixda/R+3YSug==}
@@ -3314,8 +3316,8 @@ packages:
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
     hasBin: true
 
-  nanoid@5.1.6:
-    resolution: {integrity: sha512-c7+7RQ+dMB5dPwwCp4ee1/iV/q2P6aK1mTZcfr1BTuVlyW9hJYiMPybJCcnBlQtuSmTIWNeazm/zqNoZSSElBg==}
+  nanoid@5.1.11:
+    resolution: {integrity: sha512-v+KEsUv2ps74PaSKv0gHTxTCgMXOIfBEbaqa6w6ISIGC7ZsvHN4N9oJ8d4cmf0n5oTzQz2SLmThbQWhjd/8eKg==}
     engines: {node: ^18 || >=20}
     hasBin: true
 
@@ -6817,7 +6819,7 @@ snapshots:
   ajv@8.20.0:
     dependencies:
       fast-deep-equal: 3.1.3
-      fast-uri: 4.1.2
+      fast-uri: 4.2.1
       json-schema-traverse: 1.0.0
       require-from-string: 2.0.2
 
@@ -7470,7 +7472,7 @@ snapshots:
 
   fast-levenshtein@2.0.6: {}
 
-  fast-uri@4.1.2: {}
+  fast-uri@4.2.1: {}
 
   fast-xml-builder@1.3.1:
     dependencies:
@@ -8246,7 +8248,7 @@ snapshots:
 
   nanoid@3.3.18: {}
 
-  nanoid@5.1.6:
+  nanoid@5.1.11:
     optional: true
 
   natural-compare@1.4.0: {}
@@ -8300,7 +8302,7 @@ snapshots:
       is-unicode-supported: 2.1.0
       lifecycle-utils: 3.0.1
       log-symbols: 7.0.1
-      nanoid: 5.1.6
+      nanoid: 5.1.11
       node-addon-api: 8.5.0
       octokit: 5.0.5
       ora: 8.2.0
