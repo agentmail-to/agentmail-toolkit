@@ -16,7 +16,7 @@ import {
     DeleteListEntryParams,
 } from '../src/schemas.js'
 import { listAccounts, searchInboxes, getMessage, listListEntries, getListEntry, createListEntry, deleteListEntry } from '../src/functions.js'
-import { mockClient, account, provider, message, inbox, listEntry } from './fixtures.js'
+import { mockClient, account, app, message, inbox, listEntry } from './fixtures.js'
 
 // The tools added alongside the api-keys rework, driven the way an MCP host
 // drives them: through a real client/server pair over an in-memory transport,
@@ -44,12 +44,12 @@ function recordingClient(calls: Call[], overrides: Record<string, unknown> = {})
     }
     return mockClient({
         accounts: { list: record('accounts.list', { count: 1, limit: 10, accounts: [account()] }) },
-        providers: {
-            list: record('providers.list', { count: 0, limit: 10, providers: [] }),
-            search: record('providers.search', { count: 0, limit: 10, providers: [] }),
-            get: record('providers.get', provider()),
-            listAccounts: record('providers.listAccounts', { provider: provider(), count: 1, accounts: [account()] }),
-            connect: record('providers.connect', { apiKeyId: '33333333-3333-4333-8333-333333333333', magicUrl: 'https://agentid.example/connect#t', expiresAt: new Date('2026-07-10T12:05:00.000Z') }),
+        apps: {
+            list: record('apps.list', { count: 0, limit: 10, apps: [] }),
+            search: record('apps.search', { count: 0, limit: 10, apps: [] }),
+            get: record('apps.get', app()),
+            listAccounts: record('apps.listAccounts', { app: app(), count: 1, accounts: [account()] }),
+            connect: record('apps.connect', { apiKeyId: '33333333-3333-4333-8333-333333333333', magicUrl: 'https://agentid.example/connect#t', expiresAt: new Date('2026-07-10T12:05:00.000Z') }),
         },
         ...overrides,
     })
@@ -62,10 +62,14 @@ describe('catalog: the five additions are registered with complete metadata', ()
         expect(names.indexOf('get_message')).toBe(names.indexOf('update_message') + 1)
         expect(names.slice(names.indexOf('list_list_entries'), names.indexOf('list_list_entries') + 4)).toEqual(['list_list_entries', 'get_list_entry', 'create_list_entry', 'delete_list_entry'])
         expect(names.indexOf('delete_list_entry')).toBe(names.indexOf('auth_me') - 1)
-        expect(names.indexOf('list_accounts')).toBeGreaterThan(names.indexOf('get_provider'))
-        expect(names[names.length - 1]).toBe('connect_provider')
-        expect(names).not.toContain('list_provider_accounts')
-        expect(names).not.toContain('get_provider_connection')
+        expect(names.indexOf('list_accounts')).toBeGreaterThan(names.indexOf('get_app'))
+        expect(names[names.length - 1]).toBe('connect_app')
+        expect(names).not.toContain('list_app_accounts')
+        expect(names).not.toContain('get_app_connection')
+        // Renamed outright, with no alias tools left behind.
+        for (const old of ['list_providers', 'search_providers', 'get_provider', 'connect_provider']) {
+            expect(names).not.toContain(old)
+        }
         expect(names).not.toContain('unblock_recipient')
         for (const name of ['search_inboxes', 'get_message', 'list_list_entries', 'get_list_entry', 'create_list_entry', 'delete_list_entry', 'list_accounts']) {
             const tool = tools.find((t) => t.name === name)!
@@ -93,11 +97,14 @@ describe('catalog: the five additions are registered with complete metadata', ()
     })
 })
 
-describe('get_provider', () => {
+describe('get_app', () => {
     it('surfaces the sign-up cap and strips SDK internals', async () => {
-        const client = await connect(recordingClient([]))
-        const result = await client.callTool({ name: 'get_provider', arguments: { providerId: provider().providerId } })
+        const calls: Call[] = []
+        const client = await connect(recordingClient(calls))
+        const result = await client.callTool({ name: 'get_app', arguments: { appId: app().appId } })
+        expect(calls).toEqual([{ method: 'apps.get', args: [app().appId] }])
         const structured = result.structuredContent as Record<string, unknown>
+        expect(structured.appId).toBe(app().appId)
         expect(structured.ownerSignupLimit).toBe(1)
         expect(structured).not.toHaveProperty('client_id')
         expect(structured).not.toHaveProperty('score')
@@ -105,42 +112,46 @@ describe('get_provider', () => {
 })
 
 describe('list_accounts', () => {
-    it('routes to the cross-provider list when no providerId is given', async () => {
+    it('routes to the all-apps list when no appId is given', async () => {
         const calls: Call[] = []
         const client = await connect(recordingClient(calls))
         const result = await client.callTool({ name: 'list_accounts', arguments: { limit: 5, pageToken: 'tok' } })
         expect(calls).toEqual([{ method: 'accounts.list', args: [{ limit: 5, pageToken: 'tok' }] }])
         expect(result.isError ?? false).toBe(false)
-        const structured = result.structuredContent as { provider?: unknown; accounts: Record<string, unknown>[] }
-        expect(structured.provider).toBeUndefined()
+        const structured = result.structuredContent as { app?: unknown; accounts: Record<string, unknown>[] }
+        expect(structured.app).toBeUndefined()
         expect(structured.accounts).toHaveLength(1)
     })
 
-    it('routes to the per-provider list when providerId is given, with the id positional', async () => {
+    it('routes to the per-app list when appId is given, with the id positional', async () => {
         const calls: Call[] = []
         const client = await connect(recordingClient(calls))
-        const result = await client.callTool({ name: 'list_accounts', arguments: { providerId: 'prov_1', limit: 5 } })
-        expect(calls).toEqual([{ method: 'providers.listAccounts', args: ['prov_1', { limit: 5 }] }])
-        const structured = result.structuredContent as { provider?: Record<string, unknown>; accounts: Record<string, unknown>[] }
-        expect(structured.provider?.providerId).toBe(provider().providerId)
+        const result = await client.callTool({ name: 'list_accounts', arguments: { appId: 'app_1', limit: 5 } })
+        expect(calls).toEqual([{ method: 'apps.listAccounts', args: ['app_1', { limit: 5 }] }])
+        const structured = result.structuredContent as { app?: Record<string, unknown>; accounts: Record<string, unknown>[] }
+        expect(structured.app?.appId).toBe(app().appId)
         expect(structured.accounts).toHaveLength(1)
     })
 
-    it('strips tenancy identifiers from every account row on both routes', async () => {
-        for (const args of [{}, { providerId: 'prov_1' }]) {
+    it('keeps appId and appName on every account row and strips tenancy identifiers and the legacy provider aliases, on both routes', async () => {
+        for (const args of [{}, { appId: 'app_1' }]) {
             const client = await connect(recordingClient([]))
             const result = await client.callTool({ name: 'list_accounts', arguments: args })
             const structured = result.structuredContent as { accounts: Record<string, unknown>[] }
             for (const row of structured.accounts) {
                 expect(row).toHaveProperty('accountId')
+                expect(row.appId).toBe(account().appId)
+                expect(row.appName).toBe(account().appName)
                 expect(row).not.toHaveProperty('podId')
                 expect(row).not.toHaveProperty('organizationId')
+                expect(row).not.toHaveProperty('providerId')
+                expect(row).not.toHaveProperty('providerName')
             }
         }
     })
 
-    it('rejects an empty providerId instead of routing it as a filter', () => {
-        expect(ListAccountsParams.safeParse({ providerId: '' }).success).toBe(false)
+    it('rejects an empty appId instead of routing it as a filter', () => {
+        expect(ListAccountsParams.safeParse({ appId: '' }).success).toBe(false)
         expect(ListAccountsParams.safeParse({}).success).toBe(true)
         expect(ListAccountsParams.safeParse({ limit: 101 }).success).toBe(false)
         expect(ListAccountsParams.safeParse({ limit: 0 }).success).toBe(false)

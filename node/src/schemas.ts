@@ -84,7 +84,7 @@ const ListDirectionSchema = z
         'Which traffic the list governs: send filters the recipients of outbound mail; receive filters the senders of new inbound mail; reply filters the senders of inbound mail that continues a thread this inbox already replied to'
     )
 const ListTypeSchema = z.enum(['allow', 'block']).describe('allow or block list')
-// The same dot-segment guard as ProviderIdSchema: the SDK splices the entry into the URL path.
+// The same dot-segment guard as AppIdSchema: the SDK splices the entry into the URL path.
 const ListEntryValueSchema = z.string().min(1).refine(notDotSegment, 'must be an email address or domain').describe('Email address or domain')
 
 export const ListListEntriesParams = ListItemsParams.extend({
@@ -271,47 +271,47 @@ export const AgentVerifyParams = z.object({
     otpCode: z.string().describe('6-digit verification code emailed to the human attached to the organization'),
 })
 
-// Provider schemas
+// App schemas
 
 // A plain described string, not z.uuid(): zod's uuid emits `format: "uuid"` plus a long `pattern`
 // into every adapter's JSON Schema — the only pattern in the toolkit's input surface — which
 // schema-strict hosts (Gemini's function-declaration subset) reject or drop. The API validates the
 // UUID and answers a named 400; the description steers the model to the right identifier.
-const ProviderIdSchema = z
+const AppIdSchema = z
     .string()
     .min(1)
-    .refine(notDotSegment, 'must be a provider ID')
-    .describe('ID of provider (UUID, from list_providers or search_providers)')
+    .refine(notDotSegment, 'must be an app ID')
+    .describe('ID of app (UUID, from list_apps or search_apps)')
 
-// Provider list params deliberately do NOT reuse ListItemsParams: its `.default(10)` is wrong for
+// App list params deliberately do NOT reuse ListItemsParams: its `.default(10)` is wrong for
 // the accounts drill-down, which pages a filtered index where short and empty pages are normal —
 // forcing 10-row reads would multiply the walk ~10x over the API's own 100 default. The `.max()`
 // bounds mirror the API's own caps (100 list / 50 search) so an oversized ask is rejected locally
 // with a named message instead of an opaque upstream 400.
-const ProviderPageParams = z.object({
+const AppPageParams = z.object({
     limit: z.number().int().positive().max(100).optional().describe('Max number of items to return'),
     pageToken: z.string().optional().describe('Page token for pagination'),
 })
 
-export const ListProvidersParams = ProviderPageParams
+export const ListAppsParams = AppPageParams
 
-export const SearchProvidersParams = z.object({
+export const SearchAppsParams = z.object({
     q: z.string().min(1).max(128).describe('Name (or name prefix) to search for'),
     limit: z.number().int().positive().max(50).optional().describe('Max number of items to return'),
 })
 
-export const GetProviderParams = z.object({
-    providerId: ProviderIdSchema,
+export const GetAppParams = z.object({
+    appId: AppIdSchema,
 })
 
-// One account-list tool: cross-provider by default, narrowed to one provider when providerId is
-// given (the per-provider route is the only server-side filter the API offers).
-export const ListAccountsParams = ProviderPageParams.extend({
-    providerId: ProviderIdSchema.optional().describe('Narrow to one provider (ID from list_providers or search_providers); omit for every provider'),
+// One account-list tool: across every app by default, narrowed to one app when appId is given
+// (the per-app route is the only server-side filter the API offers).
+export const ListAccountsParams = AppPageParams.extend({
+    appId: AppIdSchema.optional().describe('Narrow to one app (ID from list_apps or search_apps); omit for every app'),
 })
 
-export const ConnectProviderParams = z.object({
-    providerId: ProviderIdSchema,
+export const ConnectAppParams = z.object({
+    appId: AppIdSchema,
     inboxId: z
         .string()
         .optional()
@@ -320,6 +320,6 @@ export const ConnectProviderParams = z.object({
         .boolean()
         .optional()
         .describe(
-            "Accept the provider's first-use disclosure up front, so the browser sign-in skips that page. Not every provider or environment supports this: the call then fails (as a 404 or 400) even though the provider ID is valid — retry without acceptDisclosure"
+            "Accept the app's first-use disclosure up front, so the browser sign-in skips that page. Not every app or environment supports this: the call then fails (as a 404 or 400) even though the app ID is valid — retry without acceptDisclosure"
         ),
 })
