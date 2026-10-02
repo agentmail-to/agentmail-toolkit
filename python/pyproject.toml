@@ -37,3 +37,7 @@ publish = "twine upload dist/*"
 
 [tool.uv.workspace]
 members = ["examples"]
+
+# MCP pulls HTTPX2 transitively; require the decompression-amplification fix.
+[tool.uv]
+constraint-dependencies = ["httpx2>=2.12.0"]
