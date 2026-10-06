@@ -109,6 +109,27 @@ describe('get_app', () => {
         expect(structured).not.toHaveProperty('client_id')
         expect(structured).not.toHaveProperty('score')
     })
+
+    // The API resolves a catalog app's slug wherever it takes an app ID, so a slug must reach the
+    // SDK verbatim and the app's own slug must reach the model.
+    it('passes a slug through as the app reference and surfaces the app slug', async () => {
+        const calls: Call[] = []
+        const client = await connect(recordingClient(calls))
+        const result = await client.callTool({ name: 'get_app', arguments: { appId: 'Example-RP' } })
+        expect(calls).toEqual([{ method: 'apps.get', args: ['Example-RP'] }])
+        expect((result.structuredContent as Record<string, unknown>).slug).toBe('examplerp')
+    })
+
+    it('surfaces the slug on catalog listings and on the app embedded in an account list', async () => {
+        const client = await connect(mockClient())
+        for (const name of ['list_apps', 'search_apps']) {
+            const result = await client.callTool({ name, arguments: name === 'search_apps' ? { q: 'example' } : {} })
+            const apps = (result.structuredContent as { apps: Record<string, unknown>[] }).apps
+            expect(apps[0].slug).toBe('examplerp')
+        }
+        const accounts = await client.callTool({ name: 'list_accounts', arguments: { appId: 'examplerp' } })
+        expect((accounts.structuredContent as { app: Record<string, unknown> }).app.slug).toBe('examplerp')
+    })
 })
 
 describe('list_accounts', () => {

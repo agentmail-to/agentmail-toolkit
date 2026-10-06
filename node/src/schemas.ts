@@ -273,15 +273,17 @@ export const AgentVerifyParams = z.object({
 
 // App schemas
 
-// A plain described string, not z.uuid(): zod's uuid emits `format: "uuid"` plus a long `pattern`
-// into every adapter's JSON Schema — the only pattern in the toolkit's input surface — which
-// schema-strict hosts (Gemini's function-declaration subset) reject or drop. The API validates the
-// UUID and answers a named 400; the description steers the model to the right identifier.
+// A plain described string, not z.uuid(): the API takes an app ID or a catalog app's slug in the same
+// path segment, and zod's uuid would also emit `format: "uuid"` plus a long `pattern` into every
+// adapter's JSON Schema, which schema-strict hosts (Gemini's function-declaration subset) reject or
+// drop. The API resolves the reference and answers a named 404 or 400.
 const AppIdSchema = z
     .string()
     .min(1)
-    .refine(notDotSegment, 'must be an app ID')
-    .describe('ID of app (UUID, from list_apps or search_apps)')
+    .refine(notDotSegment, 'must be an app ID or slug')
+    .describe(
+        'ID of app (from list_apps or search_apps), or the slug of an app in the catalog, such as "firecrawl" (case, spaces and punctuation are ignored)'
+    )
 
 // App list params deliberately do NOT reuse ListItemsParams: its `.default(10)` is wrong for
 // the accounts drill-down, which pages a filtered index where short and empty pages are normal —
@@ -307,7 +309,9 @@ export const GetAppParams = z.object({
 // One account-list tool: across every app by default, narrowed to one app when appId is given
 // (the per-app route is the only server-side filter the API offers).
 export const ListAccountsParams = AppPageParams.extend({
-    appId: AppIdSchema.optional().describe('Narrow to one app (ID from list_apps or search_apps); omit for every app'),
+    appId: AppIdSchema.optional().describe(
+        'Narrow to one app (ID from list_apps or search_apps, or a catalog app slug); omit for every app'
+    ),
 })
 
 export const ConnectAppParams = z.object({

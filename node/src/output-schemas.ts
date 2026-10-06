@@ -227,6 +227,12 @@ export const AgentVerifyResponseSchema = z.object({
 // being present — the API publishes no flag for it. Display fields are app-authored.
 export const AppSchema = z.object({
     appId: z.string(),
+    slug: z
+        .string()
+        .optional()
+        .describe(
+            'Short name accepted in place of appId by get_app, list_accounts and connect_app. Present on catalog entries; store appId, the permanent ID'
+        ),
     name: z.string().optional().describe('Display name of app'),
     updatedAt: isoDate()
         .optional()
