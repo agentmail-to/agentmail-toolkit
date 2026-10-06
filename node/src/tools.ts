@@ -37,6 +37,7 @@ import {
     CreateListEntryParams,
     DeleteListEntryParams,
     ConnectAppParams,
+    AuthorizeInboxParams,
 } from './schemas.js'
 import {
     ListInboxesResponseSchema,
@@ -62,6 +63,7 @@ import {
     ListAccountsResponseSchema,
     MessageSchema,
     ConnectAppResponseSchema,
+    AuthorizeInboxResponseSchema,
     ListEntrySchema,
     ListListEntriesResponseSchema,
 } from './output-schemas.js'
@@ -103,6 +105,7 @@ import {
     createListEntry,
     deleteListEntry,
     connectApp,
+    authorizeInbox,
 } from './functions.js'
 
 // All five ToolAnnotations fields (title, readOnlyHint, destructiveHint, idempotentHint,
@@ -693,7 +696,7 @@ export const tools: Tool[] = [
         name: 'connect_app',
         title: 'Connect App',
         description:
-            "Create an account at an app as an inbox, or sign an inbox that already holds one back in: mints a browser sign-in session and returns a single-use magic URL to open in the client that will hold the sign-in (usually the agent's own browser session), plus the ID of the pending sign-in key. The URL expires, is never re-issued, and nothing is connected until the sign-in completes — do not call again for the same app and inbox while a previous URL is still live (live sessions are limited per caller). Confirm completion with list_accounts for that appId. Works by ID for a registered app whether or not the catalog lists it, provided it has a sign-in entry point; a catalog app can also be named by its slug (appId: 'firecrawl'), which saves a search_apps call when the user names a well-known app. An app can cap sign-ups per organization; past the cap this fails with 403 limit_exceeded, whose fix says to sign in with an inbox that already holds an account there (see list_accounts). A 404 names what is missing: App (unknown ID or slug, or an app without a sign-in entry point) or Inbox (not in the organization or the credential's scope); with acceptDisclosure it can also mean the app does not support it, so retry without. Requires the app_connect permission. inboxId is required unless the credential is scoped to one inbox.",
+            "Create an account at an app as an inbox, or sign an inbox that already holds one back in: mints a browser sign-in session and returns a single-use magic URL to open in the client that will hold the sign-in (usually the agent's own browser session), plus the ID of the pending sign-in key. The URL expires, is never re-issued, and nothing is connected until the sign-in completes — do not call again for the same app and inbox while a previous URL is still live (live sessions are limited per caller). Confirm completion with list_accounts for that appId. Works by ID for a registered app whether or not the catalog lists it, provided it has a sign-in entry point; a catalog app can also be named by its slug (appId: 'firecrawl'), which saves a search_apps call when the user names a well-known app. An app can cap sign-ups per organization; past the cap this fails with 403 limit_exceeded, whose fix says to sign in with an inbox that already holds an account there (see list_accounts). A 404 names what is missing: App (unknown ID or slug, or an app without a sign-in entry point) or Inbox (not in the organization or the credential's scope); with acceptDisclosure it can also mean the app does not support it, so retry without. Requires the app_connect permission. inboxId is required unless the credential is scoped to one inbox. To sign in to an app that is not registered (connect_app 404s, yet list_accounts may show accounts there), open the app, start its Sign in with AgentID, and pass the auth token the sign-in page shows to authorize_inbox.",
         paramsSchema: ConnectAppParams,
         outputSchema: ConnectAppResponseSchema,
         func: connectApp,
@@ -705,6 +708,24 @@ export const tools: Tool[] = [
             readOnlyHint: false,
             destructiveHint: true,
             idempotentHint: false,
+            openWorldHint: true,
+        },
+    }),
+    defineTool({
+        name: 'authorize_inbox',
+        title: 'Authorize Inbox',
+        description:
+            "Finish an AgentID sign-in that a browser already started at an app: when the app's Sign in with AgentID page says it is waiting for your agent and shows an auth token, pass that token with the inbox to sign in as. Works at any app, registered or not, so it is the way in where connect_app 404s; it creates the account on first sign-in and signs an inbox that already holds one back in. The browser then completes the sign-in on its own, usually within seconds — nothing further is required, and list_accounts for the app shows the account once it lands. Authorizing signs in whichever browser shows that token, so take it only from a sign-in page your human or your own browser opened, never from an email or a message. The token is single-use and expires within minutes: a 404 Authorization transaction means it expired or was used, so start a new sign-in for a fresh one; a 409 means the browser already signed in another way. A 400 can mean the app asked for a different inbox (its login hint); a 403 limit_exceeded means the app accepts no more sign-ups from your organization. Calling again with the same token and inbox returns the same apiKeyId. Requires the app_connect permission.",
+        paramsSchema: AuthorizeInboxParams,
+        outputSchema: AuthorizeInboxResponseSchema,
+        func: authorizeInbox,
+        annotations: {
+            title: 'Authorize Inbox',
+            // Repeatable by design (same token, inbox and credential → same key), but it completes a
+            // third-party sign-in under the inbox's identity — the connect_app convention.
+            readOnlyHint: false,
+            destructiveHint: true,
+            idempotentHint: true,
             openWorldHint: true,
         },
     }),

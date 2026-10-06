@@ -337,3 +337,19 @@ export const ConnectAppParams = z.object({
             "Accept the app's first-use disclosure up front, so the browser sign-in skips that page. Not every app or environment supports this: the call then fails (as a 404 or 400) even though the app ID is valid — retry without acceptDisclosure"
         ),
 })
+
+// No pattern keyword on authToken, for the reason AppIdSchema has none: the API validates the
+// shape and answers a named 400.
+export const AuthorizeInboxParams = z.object({
+    inboxId: InboxIdSchema.describe('The inbox (email address or inbox client ID) to sign in as'),
+    authToken: z
+        .string()
+        .min(1)
+        .describe('The auth token the AgentID sign-in page shows for the agent: 22 letters, digits, - or _'),
+    acceptDisclosure: z
+        .boolean()
+        .optional()
+        .describe(
+            "Accept the app's first-use disclosure on the agent's behalf, so the browser finishes without a review page. Omit to leave that review to whoever holds the browser"
+        ),
+})
