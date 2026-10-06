@@ -52,8 +52,8 @@ importers:
         specifier: '>=1.26.0'
         version: 1.30.0(@cfworker/json-schema@4.1.1)(zod@4.2.1)
       agentmail:
-        specifier: ^0.5.33
-        version: 0.5.33
+        specifier: ^0.5.37
+        version: 0.5.37
       jszip:
         specifier: ^3.10.1
         version: 3.10.1
@@ -2035,8 +2035,8 @@ packages:
     resolution: {integrity: sha512-MnA+YT8fwfJPgBx3m60MNqakm30XOkyIoH1y6huTQvC0PwZG7ki8NacLBcrPbNoo8vEZy7Jpuk7+jMO+CUovTQ==}
     engines: {node: '>= 14'}
 
-  agentmail@0.5.33:
-    resolution: {integrity: sha512-0IQsdc+qlzZGEdp3aNtqfRxNu9NRcU0hvqS8C0MmikBjxhacpb9Z/Bm89wav7K3neBJfe7uEgA9ydg1suVjs8g==}
+  agentmail@0.5.37:
+    resolution: {integrity: sha512-T+H4pg5iZuvs5ujZcraTu37cV0GReeb84vj5fGxc7uwuNVzP7ayRVpvLFOeowv/282pI8SatfJ6ZffwETDcjnw==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
       '@x402/fetch': ^2
@@ -6783,7 +6783,7 @@ snapshots:
 
   agent-base@7.1.4: {}
 
-  agentmail@0.5.33:
+  agentmail@0.5.37:
     dependencies:
       ws: 8.21.0
     transitivePeerDependencies:

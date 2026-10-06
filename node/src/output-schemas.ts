@@ -227,6 +227,12 @@ export const AgentVerifyResponseSchema = z.object({
 // being present — the API publishes no flag for it. Display fields are app-authored.
 export const AppSchema = z.object({
     appId: z.string(),
+    slug: z
+        .string()
+        .optional()
+        .describe(
+            'Short name accepted in place of appId by get_app, list_accounts and connect_app. Present on catalog entries; store appId, the permanent ID'
+        ),
     name: z.string().optional().describe('Display name of app'),
     updatedAt: isoDate()
         .optional()
@@ -234,6 +240,12 @@ export const AppSchema = z.object({
             'Time at which the listing was last updated. Present only for curated catalog entries; absent means the app resolved as a bare identity'
         ),
     description: z.string().optional(),
+    // Plain strings, not the input enum: a category the API adds before the next SDK release must not
+    // fail the output check.
+    categories: z
+        .array(z.string())
+        .optional()
+        .describe('Kinds of app, up to 3 (such as search, scraping or payments). Omitted when the app sets none'),
     logoUrl: z.string().optional(),
     termsUrl: z.string().optional(),
     privacyUrl: z.string().optional(),

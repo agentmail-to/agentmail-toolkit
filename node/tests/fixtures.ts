@@ -106,6 +106,9 @@ export const app = () => ({
     termsUrl: 'https://example.com/terms',
     privacyUrl: 'https://example.com/privacy',
     ownerSignupLimit: 1,
+    // A catalog app's slug and its kinds (agentmail 0.5.37), both kept by the output schema.
+    slug: 'examplerp',
+    categories: ['search', 'developer-tools'],
     // SDK-passthrough internals the output schemas must strip.
     client_id: 'client-internal-1',
     score: 42,
