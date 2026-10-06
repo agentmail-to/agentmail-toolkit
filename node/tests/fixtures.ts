@@ -153,6 +153,11 @@ export const connectAccepted = () => ({
     expiresAt: NOW,
 })
 
+export const inboxAuthorized = () => ({
+    apiKeyId: '44444444-4444-4444-8444-444444444444',
+    instructions: 'Authorization complete. Return to browser.',
+})
+
 const success = () => ({ success: true as const })
 
 // One representative success fixture per tool, keyed by canonical tool name.
@@ -194,6 +199,7 @@ export const fixtureByTool: Record<string, () => unknown> = {
     get_app: app,
     list_accounts: () => ({ count: 1, limit: 10, accounts: [account()] }),
     connect_app: connectAccepted,
+    authorize_inbox: inboxAuthorized,
     get_message: message,
     search_inboxes: () => ({ count: 1, inboxes: [inbox()] }),
     list_list_entries: () => ({ count: 1, limit: 10, entries: [listEntry()] }),
@@ -235,6 +241,7 @@ export const argsByTool: Record<string, Record<string, unknown>> = {
     get_app: { appId: '11111111-1111-4111-8111-111111111111' },
     list_accounts: {},
     connect_app: { appId: '11111111-1111-4111-8111-111111111111', inboxId: 'agent@agentmail.to' },
+    authorize_inbox: { inboxId: 'agent@agentmail.to', authToken: 'eS6aErPmLQFFU1VFy1RsAg' },
     get_message: { inboxId: 'inbox_1', messageId: 'msg_1' },
     search_inboxes: { q: 'agent' },
     list_list_entries: { inboxId: 'inbox_1', direction: 'send', listType: 'block' },
@@ -255,6 +262,7 @@ export function mockClient(overrides?: Record<string, unknown>): AgentMailClient
             create: async () => f.create_inbox(),
             update: async () => f.update_inbox(),
             delete: async () => undefined,
+            authorize: async () => f.authorize_inbox(),
             threads: {
                 list: async () => f.list_threads(),
                 search: async () => f.search_threads(),

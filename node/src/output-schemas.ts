@@ -303,6 +303,11 @@ export const ConnectAppResponseSchema = z.object({
     expiresAt: isoDate().describe('Time at which the magic URL stops working'),
 })
 
+export const AuthorizeInboxResponseSchema = z.object({
+    apiKeyId: z.string().describe('ID of the pending sign-in key; it turns active once the browser finishes the sign-in'),
+    instructions: z.string().describe("The agent's next step. Nothing further is required from the agent"),
+})
+
 // organizationId and podId are on the wire but deliberately excluded — the InboxSchema
 // internal-identifier rule. readOnly stays: it tells the model an entry is an AgentMail
 // suppression it cannot delete, before it tries.

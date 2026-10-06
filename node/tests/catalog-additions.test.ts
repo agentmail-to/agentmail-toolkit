@@ -64,7 +64,7 @@ describe('catalog: the five additions are registered with complete metadata', ()
         expect(names.slice(names.indexOf('list_list_entries'), names.indexOf('list_list_entries') + 4)).toEqual(['list_list_entries', 'get_list_entry', 'create_list_entry', 'delete_list_entry'])
         expect(names.indexOf('delete_list_entry')).toBe(names.indexOf('auth_me') - 1)
         expect(names.indexOf('list_accounts')).toBeGreaterThan(names.indexOf('get_app'))
-        expect(names[names.length - 1]).toBe('connect_app')
+        expect(names.slice(-2)).toEqual(['connect_app', 'authorize_inbox'])
         expect(names).not.toContain('list_app_accounts')
         expect(names).not.toContain('get_app_connection')
         // Renamed outright, with no alias tools left behind.
