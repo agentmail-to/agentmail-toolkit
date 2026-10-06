@@ -1,3 +1,4 @@
+import { AgentMail } from 'agentmail'
 import { z } from 'zod'
 
 const InboxIdSchema = z.string().describe('ID of inbox')
@@ -295,7 +296,16 @@ const AppPageParams = z.object({
     pageToken: z.string().optional().describe('Page token for pagination'),
 })
 
-export const ListAppsParams = AppPageParams
+// The SDK's AppCategory is the API's vocabulary, so a category the API would 400 is refused here
+// first, and an SDK upgrade carries new categories without a toolkit edit.
+export const ListAppsParams = AppPageParams.extend({
+    category: z
+        .enum(AgentMail.AppCategory)
+        .optional()
+        .describe(
+            'Only apps of this kind. A filtered page can hold fewer than limit apps while more remain: page until nextPageToken is absent, and reuse a pageToken only with the category it was returned for'
+        ),
+})
 
 export const SearchAppsParams = z.object({
     q: z.string().min(1).max(128).describe('Name (or name prefix) to search for'),

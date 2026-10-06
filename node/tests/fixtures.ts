@@ -106,9 +106,9 @@ export const app = () => ({
     termsUrl: 'https://example.com/terms',
     privacyUrl: 'https://example.com/privacy',
     ownerSignupLimit: 1,
-    // The API's short name for a catalog app. Not on the SDK's App type before its next release, so
-    // it rides through as a passthrough key the output schema must keep.
+    // A catalog app's slug and its kinds (agentmail 0.5.37), both kept by the output schema.
     slug: 'examplerp',
+    categories: ['search', 'developer-tools'],
     // SDK-passthrough internals the output schemas must strip.
     client_id: 'client-internal-1',
     score: 42,

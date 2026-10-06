@@ -8,6 +8,7 @@ import { AgentMailToolkit } from '../src/mcp.js'
 import { tools } from '../src/tools.js'
 import {
     ListAccountsParams,
+    ListAppsParams,
     SearchInboxesParams,
     GetMessageParams,
     ListListEntriesParams,
@@ -129,6 +130,31 @@ describe('get_app', () => {
         }
         const accounts = await client.callTool({ name: 'list_accounts', arguments: { appId: 'examplerp' } })
         expect((accounts.structuredContent as { app: Record<string, unknown> }).app.slug).toBe('examplerp')
+    })
+})
+
+describe('list_apps', () => {
+    it('forwards a category filter to the SDK with the page controls', async () => {
+        const calls: Call[] = []
+        const client = await connect(recordingClient(calls))
+        await client.callTool({ name: 'list_apps', arguments: { category: 'search', limit: 20 } })
+        expect(calls).toEqual([{ method: 'apps.list', args: [{ category: 'search', limit: 20 }] }])
+    })
+
+    // The SDK's AppCategory is the API's vocabulary; an unknown value is refused locally instead of
+    // as the API's 400.
+    it('accepts exactly the API categories', () => {
+        for (const category of ['ai', 'search', 'developer-tools', 'payments', 'other'])
+            expect(ListAppsParams.safeParse({ category }).success).toBe(true)
+        expect(ListAppsParams.safeParse({ category: 'gaming' }).success).toBe(false)
+        expect(ListAppsParams.safeParse({ category: 'Search' }).success).toBe(false)
+    })
+
+    it("publishes each app's categories", async () => {
+        const client = await connect(mockClient())
+        const result = await client.callTool({ name: 'list_apps', arguments: {} })
+        const apps = (result.structuredContent as { apps: Record<string, unknown>[] }).apps
+        expect(apps[0].categories).toEqual(['search', 'developer-tools'])
     })
 })
 
