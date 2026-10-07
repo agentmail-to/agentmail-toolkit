@@ -280,10 +280,30 @@ const DomainIdSchema = z
     .string()
     .min(1)
     .refine(notDotSegment, 'must be a domain ID')
-    .describe('ID of domain (from list_domains)')
+    .describe('ID of domain (from list_domains or create_domain)')
 
 export const GetDomainParams = z.object({
     domainId: DomainIdSchema,
+})
+
+// The three flags are left unset unless the agent sets them, so the API's own defaults apply.
+export const CreateDomainParams = z.object({
+    domain: z.string().min(1).describe('Domain name, e.g. example.com or mail.example.com'),
+    allowConflictingProvider: z
+        .boolean()
+        .optional()
+        .describe(
+            'Register the domain even though it already receives mail through Google Workspace or Microsoft 365. Default false. Set it only after the user confirms they want to keep that provider'
+        ),
+    feedbackEnabled: z.boolean().optional().describe('Send bounce and complaint notifications to your inboxes. Default true'),
+    subdomainsEnabled: z
+        .boolean()
+        .optional()
+        .describe('Allow inboxes on any subdomain of this domain. Adds a required wildcard MX record. Default false'),
+    trackingEnabled: z
+        .boolean()
+        .optional()
+        .describe('Serve open tracking from this domain. Adds a required link CNAME record. Default false'),
 })
 
 // App schemas

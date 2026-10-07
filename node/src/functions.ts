@@ -8,6 +8,7 @@ import {
     CreateInboxParams,
     UpdateInboxParams,
     GetDomainParams,
+    CreateDomainParams,
     ListThreadsParams,
     SearchInboxItemsParams,
     GetThreadParams,
@@ -70,6 +71,10 @@ export async function listDomains(client: AgentMailClient, args: z.infer<typeof 
 
 export async function getDomain(client: AgentMailClient, args: z.infer<typeof GetDomainParams>) {
     return client.domains.get(args.domainId)
+}
+
+export async function createDomain(client: AgentMailClient, args: z.infer<typeof CreateDomainParams>) {
+    return client.domains.create(args)
 }
 
 export async function listThreads(client: AgentMailClient, args: z.infer<typeof ListThreadsParams>) {

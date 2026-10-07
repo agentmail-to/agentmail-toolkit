@@ -7,8 +7,8 @@ import { toJSONSchema } from 'zod'
 
 import { AgentMailToolkit } from '../src/mcp.js'
 import { tools } from '../src/tools.js'
-import { GetDomainParams, ListItemsParams } from '../src/schemas.js'
-import { getDomain, listDomains } from '../src/functions.js'
+import { CreateDomainParams, GetDomainParams, ListItemsParams } from '../src/schemas.js'
+import { createDomain, getDomain, listDomains } from '../src/functions.js'
 import { mockClient, domain, domainItem, domainRecord } from './fixtures.js'
 
 // The domain tools, driven the way an MCP host drives them: a real client/server pair over an
@@ -28,7 +28,7 @@ async function connect(client: AgentMailClient) {
 }
 
 type Call = { method: string; args: unknown[] }
-type DomainsOverrides = Partial<Record<'list' | 'get', (...args: unknown[]) => Promise<unknown>>>
+type DomainsOverrides = Partial<Record<'list' | 'get' | 'create', (...args: unknown[]) => Promise<unknown>>>
 
 function domainsClient(calls: Call[], overrides: DomainsOverrides = {}): AgentMailClient {
     const record =
@@ -41,6 +41,7 @@ function domainsClient(calls: Call[], overrides: DomainsOverrides = {}): AgentMa
         domains: {
             list: record('domains.list', () => ({ count: 1, domains: [domainItem()] })),
             get: record('domains.get', domain),
+            create: record('domains.create', domain),
             ...overrides,
         },
     })
@@ -54,8 +55,8 @@ describe('catalog: the domain read tools', () => {
     const byName = (name: string) => tools.find((t) => t.name === name)!
 
     it('sit with the inbox tools, after delete_inbox and before the thread tools', () => {
-        expect(names.slice(names.indexOf('delete_inbox') + 1, names.indexOf('delete_inbox') + 3)).toEqual(['list_domains', 'get_domain'])
-        expect(names.indexOf('list_threads')).toBe(names.indexOf('get_domain') + 1)
+        expect(names.slice(names.indexOf('delete_inbox') + 1, names.indexOf('delete_inbox') + 4)).toEqual(['list_domains', 'get_domain', 'create_domain'])
+        expect(names.indexOf('list_threads')).toBe(names.indexOf('create_domain') + 1)
     })
 
     it.each(['list_domains', 'get_domain'])('%s is a read: read-only, idempotent, not destructive, closed world', (name) => {
@@ -102,7 +103,7 @@ describe('GetDomainParams', () => {
         expect(domainId.type).toBe('string')
         expect(domainId).not.toHaveProperty('format')
         expect(domainId).not.toHaveProperty('pattern')
-        expect(domainId.description).toMatch(/list_domains/)
+        expect(domainId.description).toMatch(/list_domains or create_domain/)
     })
 })
 
@@ -297,5 +298,240 @@ describe('get_domain', () => {
         expect(result.isError ?? false).toBe(false)
         expect(result.structuredContent).toMatchObject({ domainId: 'example.com', status: 'NOT_STARTED' })
         expect(result.structuredContent).not.toHaveProperty('clientId')
+    })
+})
+
+describe('create_domain', () => {
+    const tool = tools.find((t) => t.name === 'create_domain')!
+
+    describe('catalog entry', () => {
+        it('creates: not read-only, not idempotent, not destructive, closed world', () => {
+            expect(tool.annotations).toEqual({
+                title: 'Create Domain',
+                readOnlyHint: false,
+                destructiveHint: false,
+                idempotentHint: false,
+                openWorldHint: false,
+            })
+        })
+
+        it('names the permission it needs', () => {
+            expect(tool.description).toContain('domain_create')
+        })
+
+        it('tells the agent what the 422 means and to offer a subdomain first', () => {
+            expect(tool.description).toContain('422')
+            expect(tool.description).toContain('Google Workspace or Microsoft 365')
+            expect(tool.description).toMatch(/subdomain/)
+        })
+
+        it('keeps allowConflictingProvider behind the user, and the existing MX records in place', () => {
+            expect(tool.description).toMatch(/allowConflictingProvider only after the user confirms/)
+            expect(tool.description).toMatch(/leave the domain's existing MX records in place/)
+        })
+
+        it('points at get_domain to follow verification', () => {
+            expect(tool.description).toContain('get_domain')
+        })
+
+        it('returns the full domain, records included', () => {
+            expect(tool.outputSchema.shape).toHaveProperty('records')
+            expect(tool.outputSchema.shape).toHaveProperty('status')
+        })
+    })
+
+    describe('CreateDomainParams', () => {
+        it('needs only the domain name', () => {
+            expect(CreateDomainParams.parse({ domain: 'example.com' })).toEqual({ domain: 'example.com' })
+        })
+
+        it.each([
+            ['a missing domain', {}],
+            ['an empty domain', { domain: '' }],
+            ['a number', { domain: 42 }],
+        ])('rejects %s', (_case, args) => {
+            expect(CreateDomainParams.safeParse(args).success).toBe(false)
+        })
+
+        it.each(['allowConflictingProvider', 'feedbackEnabled', 'subdomainsEnabled', 'trackingEnabled'])(
+            'takes %s only as a real boolean, never a string',
+            (flag) => {
+                expect(CreateDomainParams.safeParse({ domain: 'example.com', [flag]: true }).success).toBe(true)
+                expect(CreateDomainParams.safeParse({ domain: 'example.com', [flag]: false }).success).toBe(true)
+                expect(CreateDomainParams.safeParse({ domain: 'example.com', [flag]: 'true' }).success).toBe(false)
+            }
+        )
+
+        it('drops fields this tool does not offer, so they never reach the API', () => {
+            const parsed = CreateDomainParams.parse({ domain: 'example.com', clientId: 'c-1', inboundEnabled: false, dkimSelector: 'sel' })
+            expect(parsed).toEqual({ domain: 'example.com' })
+        })
+
+        it('advertises domain as the one required field, with no format or pattern', () => {
+            const schema = toJSONSchema(CreateDomainParams) as { required?: string[]; properties?: Record<string, Record<string, unknown>> }
+            expect(schema.required).toEqual(['domain'])
+            expect(schema.properties!.domain).not.toHaveProperty('format')
+            expect(schema.properties!.domain).not.toHaveProperty('pattern')
+        })
+
+        it('states each default, so the agent knows what leaving a flag out does', () => {
+            const schema = toJSONSchema(CreateDomainParams) as { properties?: Record<string, { description?: string }> }
+            expect(schema.properties!.allowConflictingProvider!.description).toMatch(/Default false/)
+            expect(schema.properties!.feedbackEnabled!.description).toMatch(/Default true/)
+            expect(schema.properties!.subdomainsEnabled!.description).toMatch(/Default false/)
+            expect(schema.properties!.trackingEnabled!.description).toMatch(/Default false/)
+        })
+    })
+
+    describe('the request', () => {
+        it('sends only the domain when no flag is set, so the API defaults apply', async () => {
+            const calls: Call[] = []
+            await createDomain(domainsClient(calls), CreateDomainParams.parse({ domain: 'example.com' }))
+            expect(calls).toEqual([{ method: 'domains.create', args: [{ domain: 'example.com' }] }])
+        })
+
+        it('sends every flag the agent sets, false included', async () => {
+            const calls: Call[] = []
+            const client = await connect(domainsClient(calls))
+            const result = await client.callTool({
+                name: 'create_domain',
+                arguments: { domain: 'example.com', allowConflictingProvider: false, feedbackEnabled: false, subdomainsEnabled: true, trackingEnabled: true },
+            })
+
+            expect(result.isError ?? false).toBe(false)
+            expect(calls).toEqual([
+                {
+                    method: 'domains.create',
+                    args: [{ domain: 'example.com', allowConflictingProvider: false, feedbackEnabled: false, subdomainsEnabled: true, trackingEnabled: true }],
+                },
+            ])
+        })
+
+        it('sends allowConflictingProvider when the agent sets it after the user confirms', async () => {
+            const calls: Call[] = []
+            const client = await connect(domainsClient(calls))
+            await client.callTool({ name: 'create_domain', arguments: { domain: 'example.com', allowConflictingProvider: true } })
+
+            expect(calls).toEqual([{ method: 'domains.create', args: [{ domain: 'example.com', allowConflictingProvider: true }] }])
+        })
+
+        it('passes the name as typed and leaves normalizing it to the API', async () => {
+            const calls: Call[] = []
+            const client = await connect(domainsClient(calls))
+            await client.callTool({ name: 'create_domain', arguments: { domain: 'Mail.Example.COM' } })
+
+            expect(calls).toEqual([{ method: 'domains.create', args: [{ domain: 'Mail.Example.COM' }] }])
+        })
+
+        it('does not send an unknown argument a host passes through', async () => {
+            const calls: Call[] = []
+            await new AgentMailToolkit(mockClient()).invoke('create_domain', domainsClient(calls), { domain: 'example.com', podId: 'pod_other' })
+
+            expect(calls).toEqual([{ method: 'domains.create', args: [{ domain: 'example.com' }] }])
+        })
+    })
+
+    describe('the result', () => {
+        it('returns the new domain with its status and the records to add', async () => {
+            const client = await connect(domainsClient([]))
+            const result = await client.callTool({ name: 'create_domain', arguments: { domain: 'example.com' } })
+            const structured = result.structuredContent as { status: string; records: unknown[] }
+
+            expect(result.isError ?? false).toBe(false)
+            expect(structured.status).toBe('NOT_STARTED')
+            expect(structured.records).toHaveLength(2)
+            expect(structured).toMatchObject({ domainId: 'example.com', domain: 'example.com', createdAt: '2026-07-10T12:00:00.000Z' })
+        })
+
+        it('strips pod, client and organization identifiers', async () => {
+            const client = await connect(domainsClient([]))
+            const result = await client.callTool({ name: 'create_domain', arguments: { domain: 'example.com' } })
+
+            for (const key of INTERNAL_KEYS) expect(result.structuredContent).not.toHaveProperty(key)
+            expect(text(result)).not.toContain('pod_1')
+            expect(text(result)).not.toContain('client-domain-1')
+            expect(text(result)).not.toContain('org_internal_1')
+        })
+
+        it('returns the extra records a flag adds', async () => {
+            const wildcard = { type: 'MX', name: '*.example.com', value: 'inbound-smtp.us-east-1.amazonaws.com', status: 'MISSING', priority: 10 }
+            const client = await connect(
+                domainsClient([], { create: async () => ({ ...domain(), subdomainsEnabled: true, records: [...domain().records, wildcard] }) })
+            )
+            const result = await client.callTool({ name: 'create_domain', arguments: { domain: 'example.com', subdomainsEnabled: true } })
+            const structured = result.structuredContent as { subdomainsEnabled: boolean; records: unknown[] }
+
+            expect(structured.subdomainsEnabled).toBe(true)
+            expect(structured.records).toContainEqual(wildcard)
+        })
+    })
+
+    describe('errors', () => {
+        const failing = (statusCode: number, body: Record<string, unknown>) => {
+            const calls: Call[] = []
+            const client = domainsClient(calls, {
+                create: async (...args: unknown[]) => {
+                    calls.push({ method: 'domains.create', args })
+                    throw new AgentMailError({ statusCode, body })
+                },
+            })
+            return { calls, client }
+        }
+
+        it('hands the agent the provider the 422 names, and makes one request only', async () => {
+            const { calls, client } = failing(422, {
+                name: 'UnprocessableEntityError',
+                message:
+                    'Domain "example.com" is configured with Google Workspace. Domains with existing email providers cannot be used simultaneously with AgentMail. Please use a dedicated domain or subdomain.',
+            })
+            const result = await (await connect(client)).callTool({ name: 'create_domain', arguments: { domain: 'example.com' } })
+
+            expect(result.isError).toBe(true)
+            expect(text(result)).toContain('Google Workspace')
+            expect(text(result)).toContain('HTTP 422')
+            expect(calls).toHaveLength(1)
+        })
+
+        it('reports a domain the organization already has', async () => {
+            const { client } = failing(409, {
+                name: 'AlreadyExistsError',
+                message: 'Domain already exists',
+                fix: 'A domain with these details already exists. Fetch or update the existing resource instead of creating a duplicate.',
+            })
+            const result = await (await connect(client)).callTool({ name: 'create_domain', arguments: { domain: 'example.com' } })
+
+            expect(result.isError).toBe(true)
+            expect(text(result)).toContain('already exists')
+            expect(text(result)).toContain('Fetch or update the existing resource')
+        })
+
+        it("passes on the API's own remedy when the plan's domain limit is reached", async () => {
+            const { client } = failing(403, {
+                name: 'LimitExceededError',
+                message: 'Domain limit exceeded',
+                fix: "Your plan's domain limit is 3. Delete an existing domain, or upgrade at https://console.agentmail.to/dashboard/upgrade to raise it.",
+            })
+            const result = await (await connect(client)).callTool({ name: 'create_domain', arguments: { domain: 'example.com' } })
+
+            expect(text(result)).toContain("Your plan's domain limit is 3")
+            expect(text(result)).not.toContain('lacks permission')
+        })
+
+        it('says the credential lacks permission on a bare 403', async () => {
+            const { client } = failing(403, { name: 'ForbiddenError', message: 'Forbidden' })
+            const result = await (await connect(client)).callTool({ name: 'create_domain', arguments: { domain: 'example.com' } })
+
+            expect(result.isError).toBe(true)
+            expect(text(result)).toContain('lacks permission')
+        })
+
+        it('makes no request for arguments that fail validation', async () => {
+            const calls: Call[] = []
+            const client = await connect(domainsClient(calls))
+            const result = await client.callTool({ name: 'create_domain', arguments: { domain: '', trackingEnabled: 'yes' } })
+
+            expect(result.isError).toBe(true)
+            expect(calls).toEqual([])
+        })
     })
 })

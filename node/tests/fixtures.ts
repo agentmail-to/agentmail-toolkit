@@ -202,6 +202,7 @@ export const fixtureByTool: Record<string, () => unknown> = {
     delete_inbox: success,
     list_domains: () => ({ count: 1, domains: [domainItem()] }),
     get_domain: domain,
+    create_domain: domain,
     list_threads: () => ({ count: 1, nextPageToken: 'tok', threads: [threadItem()] }),
     search_threads: () => ({
         count: 1,
@@ -252,6 +253,7 @@ export const argsByTool: Record<string, Record<string, unknown>> = {
     delete_inbox: { inboxId: 'inbox_1' },
     list_domains: {},
     get_domain: { domainId: 'example.com' },
+    create_domain: { domain: 'example.com' },
     list_threads: { inboxId: 'inbox_1' },
     search_threads: { inboxId: 'inbox_1', q: 'hello' },
     get_thread: { inboxId: 'inbox_1', threadId: 'thread_1' },
@@ -335,6 +337,7 @@ export function mockClient(overrides?: Record<string, unknown>): AgentMailClient
         domains: {
             list: async () => f.list_domains(),
             get: async () => f.get_domain(),
+            create: async () => f.create_domain(),
         },
         auth: {
             me: async () => f.auth_me(),
