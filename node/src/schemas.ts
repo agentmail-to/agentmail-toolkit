@@ -280,10 +280,27 @@ const DomainIdSchema = z
     .string()
     .min(1)
     .refine(notDotSegment, 'must be a domain ID')
-    .describe('ID of domain (from list_domains)')
+    .describe('ID of domain (from list_domains or create_domain)')
 
 export const GetDomainParams = z.object({
     domainId: DomainIdSchema,
+})
+
+// The three flags are left unset unless the agent sets them, so the API's own defaults apply.
+// allowConflictingProvider is not offered: every domain made here receives mail, so its MX record is
+// required, and a domain cannot receive at AgentMail and at Google Workspace or Microsoft 365 at once.
+// With the flag the agent could only stop the user's current mail or end up receiving nothing.
+export const CreateDomainParams = z.object({
+    domain: z.string().min(1).describe('Domain name, e.g. example.com or mail.example.com'),
+    feedbackEnabled: z.boolean().optional().describe('Send bounce and complaint notifications to your inboxes. Default true'),
+    subdomainsEnabled: z
+        .boolean()
+        .optional()
+        .describe('Allow inboxes on any subdomain of this domain. Adds a required wildcard MX record. Default false'),
+    trackingEnabled: z
+        .boolean()
+        .optional()
+        .describe('Serve open tracking from this domain. Adds a required link CNAME record. Default false'),
 })
 
 // App schemas
