@@ -24,7 +24,7 @@ export const PaginationSchema = z.object({
     nextPageToken: z.string().optional().describe('Page token for pagination'),
 })
 
-// Stable result for tools whose SDK call returns void (deletes).
+// Stable result for tools whose SDK call returns void (deletes, verify_domain).
 export const VoidResultSchema = z.object({
     success: z.literal(true),
 })
@@ -76,6 +76,17 @@ export const DomainSchema = DomainItemSchema.extend({
 
 export const ListDomainsResponseSchema = PaginationSchema.extend({
     domains: z.array(DomainItemSchema),
+})
+// width, height and state are left out: they size the console's popup and tie its return leg to the
+// click. An agent opens the link in a browser tab and calls verify_domain itself.
+export const DomainSetupLinkSchema = z.object({
+    supported: z.boolean().describe("Whether one-click setup is available for this domain's DNS provider"),
+    providerName: z.string().optional().describe("The domain's DNS provider, e.g. Cloudflare"),
+    url: z.string().optional().describe('The one-click link to open in a browser'),
+    conflictingProvider: z
+        .string()
+        .optional()
+        .describe("Another email provider whose MX records the link would replace, e.g. Google Workspace"),
 })
 
 const AttachmentMetaSchema = z.object({

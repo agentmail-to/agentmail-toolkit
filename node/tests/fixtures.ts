@@ -49,6 +49,17 @@ export const domain = () => ({
     ],
 })
 
+// A setup link as the SDK returns it. width, height and state are for the console's popup and must
+// not reach the model.
+export const domainSetupLink = () => ({
+    supported: true,
+    providerName: 'Cloudflare',
+    url: 'https://dash.cloudflare.com/domainconnect/v2/domainTemplates/providers/agentmail.to/services/email/apply?domain=example.com&sig=SIG&key=dc1',
+    width: 750,
+    height: 750,
+    state: '6f1c2b8e-0d4a-4d55-9a57-3c1f0c1d9e21',
+})
+
 export const threadItem = () => ({
     inboxId: 'inbox_1',
     threadId: 'thread_1',
@@ -203,6 +214,8 @@ export const fixtureByTool: Record<string, () => unknown> = {
     list_domains: () => ({ count: 1, domains: [domainItem()] }),
     get_domain: domain,
     create_domain: domain,
+    get_domain_setup_link: domainSetupLink,
+    verify_domain: success,
     list_threads: () => ({ count: 1, nextPageToken: 'tok', threads: [threadItem()] }),
     search_threads: () => ({
         count: 1,
@@ -254,6 +267,8 @@ export const argsByTool: Record<string, Record<string, unknown>> = {
     list_domains: {},
     get_domain: { domainId: 'example.com' },
     create_domain: { domain: 'example.com' },
+    get_domain_setup_link: { domainId: 'example.com' },
+    verify_domain: { domainId: 'example.com' },
     list_threads: { inboxId: 'inbox_1' },
     search_threads: { inboxId: 'inbox_1', q: 'hello' },
     get_thread: { inboxId: 'inbox_1', threadId: 'thread_1' },
@@ -338,6 +353,8 @@ export function mockClient(overrides?: Record<string, unknown>): AgentMailClient
             list: async () => f.list_domains(),
             get: async () => f.get_domain(),
             create: async () => f.create_domain(),
+            getSetupLink: async () => f.get_domain_setup_link(),
+            verify: async () => undefined,
         },
         auth: {
             me: async () => f.auth_me(),

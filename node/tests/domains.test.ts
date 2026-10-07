@@ -8,8 +8,8 @@ import { toJSONSchema } from 'zod'
 import { AgentMailToolkit } from '../src/mcp.js'
 import { tools } from '../src/tools.js'
 import { CreateDomainParams, GetDomainParams, ListItemsParams } from '../src/schemas.js'
-import { createDomain, getDomain, listDomains } from '../src/functions.js'
-import { mockClient, domain, domainItem, domainRecord } from './fixtures.js'
+import { createDomain, getDomain, getDomainSetupLink, listDomains, verifyDomain } from '../src/functions.js'
+import { mockClient, domain, domainItem, domainRecord, domainSetupLink } from './fixtures.js'
 
 // The domain tools, driven the way an MCP host drives them: a real client/server pair over an
 // in-memory transport, with the SDK stubbed at the method boundary so every argument the tool hands
@@ -28,7 +28,7 @@ async function connect(client: AgentMailClient) {
 }
 
 type Call = { method: string; args: unknown[] }
-type DomainsOverrides = Partial<Record<'list' | 'get' | 'create', (...args: unknown[]) => Promise<unknown>>>
+type DomainsOverrides = Partial<Record<'list' | 'get' | 'create' | 'getSetupLink' | 'verify', (...args: unknown[]) => Promise<unknown>>>
 
 function domainsClient(calls: Call[], overrides: DomainsOverrides = {}): AgentMailClient {
     const record =
@@ -42,6 +42,8 @@ function domainsClient(calls: Call[], overrides: DomainsOverrides = {}): AgentMa
             list: record('domains.list', () => ({ count: 1, domains: [domainItem()] })),
             get: record('domains.get', domain),
             create: record('domains.create', domain),
+            getSetupLink: record('domains.getSetupLink', domainSetupLink),
+            verify: record('domains.verify', () => undefined),
             ...overrides,
         },
     })
@@ -55,8 +57,14 @@ describe('catalog: the domain read tools', () => {
     const byName = (name: string) => tools.find((t) => t.name === name)!
 
     it('sit with the inbox tools, after delete_inbox and before the thread tools', () => {
-        expect(names.slice(names.indexOf('delete_inbox') + 1, names.indexOf('delete_inbox') + 4)).toEqual(['list_domains', 'get_domain', 'create_domain'])
-        expect(names.indexOf('list_threads')).toBe(names.indexOf('create_domain') + 1)
+        expect(names.slice(names.indexOf('delete_inbox') + 1, names.indexOf('delete_inbox') + 6)).toEqual([
+            'list_domains',
+            'get_domain',
+            'create_domain',
+            'get_domain_setup_link',
+            'verify_domain',
+        ])
+        expect(names.indexOf('list_threads')).toBe(names.indexOf('verify_domain') + 1)
     })
 
     it.each(['list_domains', 'get_domain'])('%s is a read: read-only, idempotent, not destructive, closed world', (name) => {
@@ -330,8 +338,9 @@ describe('create_domain', () => {
             expect(tool.description).not.toContain('allowConflictingProvider')
         })
 
-        it('points at get_domain to follow verification', () => {
-            expect(tool.description).toContain('get_domain')
+        it('points at the one-click link and at verify_domain for the next step', () => {
+            expect(tool.description).toContain('get_domain_setup_link')
+            expect(tool.description).toContain('verify_domain')
         })
 
         it('returns the full domain, records included', () => {
@@ -540,5 +549,283 @@ describe('create_domain', () => {
             expect(result.isError).toBe(true)
             expect(calls).toEqual([])
         })
+    })
+})
+
+describe('get_domain_setup_link', () => {
+    const tool = tools.find((t) => t.name === 'get_domain_setup_link')!
+    const SIGNED_URL = domainSetupLink().url
+
+    describe('catalog entry', () => {
+        it('is a read that reaches outside AgentMail: read-only, idempotent, open world', () => {
+            expect(tool.annotations).toEqual({
+                title: 'Get Domain Setup Link',
+                readOnlyHint: true,
+                destructiveHint: false,
+                idempotentHint: true,
+                openWorldHint: true,
+            })
+        })
+
+        it('tells the agent to open the link in a browser, where the domain owner approves', () => {
+            expect(tool.description).toMatch(/open url in a browser/)
+            expect(tool.description).toMatch(/approves/)
+        })
+
+        it('makes the agent confirm before a link that replaces the MX records, whether or not a provider was found', () => {
+            expect(tool.description).toMatch(/When get_domain lists an MX record, the link replaces the domain's current MX records/)
+            expect(tool.description).toMatch(/the check can miss it/)
+            expect(tool.description).toMatch(/confirm with the user that the domain has no other mail provider before opening such a link/)
+        })
+
+        it('gives the manual path when the provider is not supported, and the next step either way', () => {
+            expect(tool.description).toMatch(/supported is false, add the records from get_domain by hand/)
+            expect(tool.description).toContain('verify_domain')
+        })
+
+        it('names the permission it needs', () => {
+            expect(tool.description).toContain('domain_read')
+        })
+    })
+
+    it('asks the SDK for exactly that domain, with nothing else', async () => {
+        const calls: Call[] = []
+        await getDomainSetupLink(domainsClient(calls), GetDomainParams.parse({ domainId: 'example.com' }))
+        expect(calls).toEqual([{ method: 'domains.getSetupLink', args: ['example.com'] }])
+    })
+
+    it('returns the provider and the signed link exactly as the API built it', async () => {
+        const client = await connect(domainsClient([]))
+        const result = await client.callTool({ name: 'get_domain_setup_link', arguments: { domainId: 'example.com' } })
+
+        expect(result.isError ?? false).toBe(false)
+        expect(result.structuredContent).toEqual({ supported: true, providerName: 'Cloudflare', url: SIGNED_URL })
+        // The signature covers the query as sent; any re-encoding would make the provider reject it.
+        expect((result.structuredContent as { url: string }).url.endsWith('&sig=SIG&key=dc1')).toBe(true)
+    })
+
+    it("leaves out the console's popup size and state", async () => {
+        const client = await connect(domainsClient([]))
+        const result = await client.callTool({ name: 'get_domain_setup_link', arguments: { domainId: 'example.com' } })
+
+        for (const key of ['width', 'height', 'state']) expect(result.structuredContent).not.toHaveProperty(key)
+        expect(text(result)).not.toContain(domainSetupLink().state)
+    })
+
+    it('reports an unsupported provider as a normal result, not an error', async () => {
+        const client = await connect(domainsClient([], { getSetupLink: async () => ({ supported: false }) }))
+        const result = await client.callTool({ name: 'get_domain_setup_link', arguments: { domainId: 'example.com' } })
+
+        expect(result.isError ?? false).toBe(false)
+        expect(result.structuredContent).toEqual({ supported: false })
+    })
+
+    it('passes on the email provider the link would replace', async () => {
+        const client = await connect(domainsClient([], { getSetupLink: async () => ({ ...domainSetupLink(), conflictingProvider: 'Google Workspace' }) }))
+        const result = await client.callTool({ name: 'get_domain_setup_link', arguments: { domainId: 'example.com' } })
+
+        expect(result.structuredContent).toMatchObject({ supported: true, url: SIGNED_URL, conflictingProvider: 'Google Workspace' })
+    })
+
+    it('drops a field the API adds later until the toolkit declares it', async () => {
+        const client = await connect(domainsClient([], { getSetupLink: async () => ({ ...domainSetupLink(), debugTrace: 'ns1.example' }) }))
+        const result = await client.callTool({ name: 'get_domain_setup_link', arguments: { domainId: 'example.com' } })
+
+        expect(result.structuredContent).not.toHaveProperty('debugTrace')
+    })
+
+    it('refuses a result that does not say whether setup is supported', async () => {
+        const { supported: _supported, ...withoutSupported } = domainSetupLink()
+        const client = await connect(domainsClient([], { getSetupLink: async () => withoutSupported }))
+        const result = await client.callTool({ name: 'get_domain_setup_link', arguments: { domainId: 'example.com' } })
+
+        expect(result.isError).toBe(true)
+        expect(text(result)).toContain('did not match its declared output schema')
+    })
+
+    it("surfaces the API's 422 when the domain's DKIM records are not ready", async () => {
+        const client = await connect(
+            domainsClient([], {
+                getSetupLink: async () => {
+                    throw new AgentMailError({ statusCode: 422, body: { name: 'UnprocessableEntityError', message: 'Domain DKIM records are not ready yet' } })
+                },
+            })
+        )
+        const result = await client.callTool({ name: 'get_domain_setup_link', arguments: { domainId: 'example.com' } })
+
+        expect(result.isError).toBe(true)
+        expect(text(result)).toContain('Domain DKIM records are not ready yet')
+    })
+
+    it('rejects a "." or ".." ID before any request is made', async () => {
+        const calls: Call[] = []
+        const client = await connect(domainsClient(calls))
+
+        for (const domainId of ['.', '..']) {
+            expect((await client.callTool({ name: 'get_domain_setup_link', arguments: { domainId } })).isError).toBe(true)
+        }
+        expect(calls).toEqual([])
+    })
+})
+
+describe('verify_domain', () => {
+    const tool = tools.find((t) => t.name === 'verify_domain')!
+
+    describe('catalog entry', () => {
+        it('changes state but can be repeated safely: not read-only, idempotent, not destructive', () => {
+            expect(tool.annotations).toEqual({
+                title: 'Verify Domain',
+                readOnlyHint: false,
+                destructiveHint: false,
+                idempotentHint: true,
+                openWorldHint: false,
+            })
+        })
+
+        it('says it returns before the check is done, and how to follow it', () => {
+            expect(tool.description).toMatch(/Returns at once/)
+            expect(tool.description).toMatch(/call get_domain to follow it until status is VERIFIED/)
+        })
+
+        it('maps each kind of reason to the next step', () => {
+            expect(tool.description).toMatch(/a dns_records_\* reason means a record is missing or wrong at the DNS provider/)
+            expect(tool.description).toMatch(/ses_\*_pending and ses_\*_temporary_failure clear on their own/)
+            expect(tool.description).toMatch(/ses_\*_failed and ses_\*_not_started need verify_domain again/)
+        })
+
+        it('tells the agent when to stop polling', () => {
+            expect(tool.description).toMatch(/if nothing changes after several checks, stop and tell the user the reason/)
+        })
+
+        it('names the permission it needs, which a read-only key lacks', () => {
+            expect(tool.description).toContain('domain_update')
+        })
+    })
+
+    it('asks the SDK to verify exactly that domain and reports success', async () => {
+        const calls: Call[] = []
+        const result = await verifyDomain(domainsClient(calls), GetDomainParams.parse({ domainId: 'example.com' }))
+
+        expect(calls).toEqual([{ method: 'domains.verify', args: ['example.com'] }])
+        expect(result).toEqual({ success: true })
+    })
+
+    it('returns success through MCP once the API accepts the request', async () => {
+        const client = await connect(domainsClient([]))
+        const result = await client.callTool({ name: 'verify_domain', arguments: { domainId: 'example.com' } })
+
+        expect(result.isError ?? false).toBe(false)
+        expect(result.structuredContent).toEqual({ success: true })
+    })
+
+    it('does not report success when the API refuses', async () => {
+        const client = await connect(
+            domainsClient([], {
+                verify: async () => {
+                    throw new AgentMailError({
+                        statusCode: 422,
+                        body: { name: 'UnprocessableEntityError', message: 'Domain does not have a DKIM selector configured' },
+                    })
+                },
+            })
+        )
+        const result = await client.callTool({ name: 'verify_domain', arguments: { domainId: 'example.com' } })
+
+        expect(result.isError).toBe(true)
+        expect(result.structuredContent).toBeUndefined()
+        expect(text(result)).toContain('Domain does not have a DKIM selector configured')
+    })
+
+    it('says the credential lacks permission when a read-only key tries it', async () => {
+        const client = await connect(
+            domainsClient([], {
+                verify: async () => {
+                    throw new AgentMailError({ statusCode: 403, body: { name: 'ForbiddenError', message: 'Forbidden' } })
+                },
+            })
+        )
+        const result = await client.callTool({ name: 'verify_domain', arguments: { domainId: 'example.com' } })
+
+        expect(result.isError).toBe(true)
+        expect(text(result)).toContain('lacks permission')
+    })
+
+    it('rejects a "." or ".." ID before any request is made', async () => {
+        const calls: Call[] = []
+        const client = await connect(domainsClient(calls))
+
+        for (const domainId of ['.', '..']) {
+            expect((await client.callTool({ name: 'verify_domain', arguments: { domainId } })).isError).toBe(true)
+        }
+        expect(calls).toEqual([])
+    })
+})
+
+describe('setting up a domain from start to finish', () => {
+    // A domain that moves the way the API's does: NOT_STARTED until verify is called, VERIFYING on
+    // the next read, VERIFIED on the one after (the background check).
+    function lifecycleClient(calls: Call[]) {
+        let reads = 0
+        let verified = false
+        const statusNow = () => {
+            if (!verified) return 'NOT_STARTED'
+            reads += 1
+            return reads === 1 ? 'VERIFYING' : 'VERIFIED'
+        }
+        const records = (status: string) => domain().records.map((r) => ({ ...r, status: status === 'VERIFIED' ? 'VALID' : 'MISSING' }))
+        return domainsClient(calls, {
+            create: async (...args: unknown[]) => {
+                calls.push({ method: 'domains.create', args })
+                return domain()
+            },
+            getSetupLink: async (...args: unknown[]) => {
+                calls.push({ method: 'domains.getSetupLink', args })
+                return domainSetupLink()
+            },
+            verify: async (...args: unknown[]) => {
+                calls.push({ method: 'domains.verify', args })
+                verified = true
+            },
+            get: async (...args: unknown[]) => {
+                calls.push({ method: 'domains.get', args })
+                const status = statusNow()
+                return { ...domain(), status, records: records(status) }
+            },
+        })
+    }
+
+    it('goes create, link, verify, then get until VERIFIED, all on the ID create returned', async () => {
+        const calls: Call[] = []
+        const client = await connect(lifecycleClient(calls))
+
+        const created = (await client.callTool({ name: 'create_domain', arguments: { domain: 'example.com' } })).structuredContent as {
+            domainId: string
+            status: string
+        }
+        expect(created.status).toBe('NOT_STARTED')
+
+        const link = (await client.callTool({ name: 'get_domain_setup_link', arguments: { domainId: created.domainId } })).structuredContent as {
+            supported: boolean
+            url: string
+        }
+        expect(link).toMatchObject({ supported: true, url: domainSetupLink().url })
+
+        // Here the agent opens link.url and the domain owner approves at the provider.
+
+        expect((await client.callTool({ name: 'verify_domain', arguments: { domainId: created.domainId } })).structuredContent).toEqual({ success: true })
+
+        const statuses: string[] = []
+        for (let i = 0; i < 2; i++) {
+            const got = (await client.callTool({ name: 'get_domain', arguments: { domainId: created.domainId } })).structuredContent as {
+                status: string
+                records: Array<{ status: string }>
+            }
+            statuses.push(got.status)
+            if (got.status === 'VERIFIED') expect(got.records.every((r) => r.status === 'VALID')).toBe(true)
+        }
+
+        expect(statuses).toEqual(['VERIFYING', 'VERIFIED'])
+        expect(calls.map((c) => c.method)).toEqual(['domains.create', 'domains.getSetupLink', 'domains.verify', 'domains.get', 'domains.get'])
+        expect(calls.slice(1).every((c) => c.args[0] === 'example.com')).toBe(true)
     })
 })

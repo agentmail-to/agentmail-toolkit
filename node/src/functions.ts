@@ -77,6 +77,15 @@ export async function createDomain(client: AgentMailClient, args: z.infer<typeof
     return client.domains.create(args)
 }
 
+export async function getDomainSetupLink(client: AgentMailClient, args: z.infer<typeof GetDomainParams>) {
+    return client.domains.getSetupLink(args.domainId)
+}
+
+export async function verifyDomain(client: AgentMailClient, args: z.infer<typeof GetDomainParams>) {
+    await client.domains.verify(args.domainId)
+    return { success: true as const }
+}
+
 export async function listThreads(client: AgentMailClient, args: z.infer<typeof ListThreadsParams>) {
     const { inboxId, ...options } = args
     return client.inboxes.threads.list(inboxId, options)
