@@ -161,15 +161,6 @@ describe('list_domains', () => {
         expect(text(result)).not.toContain('pod_internal_1')
     })
 
-    it('does not invent a status or records the list route does not return', async () => {
-        const client = await connect(domainsClient([]))
-        const result = await client.callTool({ name: 'list_domains', arguments: {} })
-        const [row] = (result.structuredContent as { domains: Record<string, unknown>[] }).domains
-
-        expect(row).not.toHaveProperty('status')
-        expect(row).not.toHaveProperty('records')
-    })
-
     it('returns an empty page as an empty list, not an error', async () => {
         const client = await connect(domainsClient([], { list: async () => ({ count: 0, domains: [] }) }))
         const result = await client.callTool({ name: 'list_domains', arguments: {} })

@@ -53,7 +53,7 @@ const DomainRecordSchema = z.object({
     value: z.string().describe('Value of the record'),
     status: z.string().describe('MISSING, INVALID or VALID, as last checked'),
     priority: z.number().optional().describe('Priority, for MX records'),
-    reason: z.string().optional().describe('Why the record is not VALID'),
+    reason: z.string().optional().describe('Why the record is INVALID, when known'),
 })
 
 // What list_domains returns: no status or records. podId and clientId are on the wire but
