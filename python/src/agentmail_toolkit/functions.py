@@ -52,6 +52,26 @@ def delete_inbox(client: AgentMail, kwargs: Kwargs):
     return client.inboxes.delete(**kwargs)
 
 
+def list_domains(client: AgentMail, kwargs: Kwargs):
+    return client.domains.list(**kwargs)
+
+
+def get_domain(client: AgentMail, kwargs: Kwargs):
+    return client.domains.get(**kwargs)
+
+
+def create_domain(client: AgentMail, kwargs: Kwargs):
+    return client.domains.create(**kwargs)
+
+
+def get_domain_setup_link(client: AgentMail, kwargs: Kwargs):
+    return client.domains.get_setup_link(**kwargs)
+
+
+def verify_domain(client: AgentMail, kwargs: Kwargs):
+    return client.domains.verify(**kwargs)
+
+
 def list_threads(client: AgentMail, kwargs: Kwargs):
     return client.inboxes.threads.list(**kwargs)
 

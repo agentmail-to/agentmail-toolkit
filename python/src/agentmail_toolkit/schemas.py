@@ -6,6 +6,7 @@ InboxIdField = Annotated[str, Field(description="ID of inbox")]
 ThreadIdField = Annotated[str, Field(description="ID of thread")]
 MessageIdField = Annotated[str, Field(description="ID of message")]
 AttachmentIdField = Annotated[str, Field(description="ID of attachment")]
+DomainIdField = Annotated[str, Field(description="ID of domain (from list_domains or create_domain)")]
 
 
 class ListItemsParams(BaseModel):
@@ -23,6 +24,32 @@ class CreateInboxParams(BaseModel):
     username: Optional[str] = Field(default=None, description="Username")
     domain: Optional[str] = Field(default=None, description="Domain")
     display_name: Optional[str] = Field(default=None, description="Display name")
+
+
+class GetDomainParams(BaseModel):
+    domain_id: DomainIdField
+
+
+class CreateDomainParams(BaseModel):
+    domain: str = Field(description="Domain name, e.g. example.com or mail.example.com")
+    allow_conflicting_provider: Optional[bool] = Field(
+        default=None,
+        description=(
+            "Register the domain even though it already receives mail through Google Workspace or "
+            "Microsoft 365. Default false. Set it only after the user confirms they want to keep that provider"
+        ),
+    )
+    feedback_enabled: Optional[bool] = Field(
+        default=None, description="Send bounce and complaint notifications to your inboxes. Default true"
+    )
+    subdomains_enabled: Optional[bool] = Field(
+        default=None,
+        description="Allow inboxes on any subdomain of this domain. Adds a required wildcard MX record. Default false",
+    )
+    tracking_enabled: Optional[bool] = Field(
+        default=None,
+        description="Serve open tracking from this domain. Adds a required link CNAME record. Default false",
+    )
 
 
 class ListInboxItemsParams(ListItemsParams):

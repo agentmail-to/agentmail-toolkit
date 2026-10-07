@@ -7,6 +7,8 @@ from .schemas import (
     ListInboxItemsParams,
     GetInboxParams,
     CreateInboxParams,
+    GetDomainParams,
+    CreateDomainParams,
     GetThreadParams,
     GetAttachmentParams,
     SendMessageParams,
@@ -22,6 +24,11 @@ from .functions import (
     get_inbox,
     create_inbox,
     delete_inbox,
+    list_domains,
+    get_domain,
+    create_domain,
+    get_domain_setup_link,
+    verify_domain,
     list_threads,
     get_thread,
     get_attachment,
@@ -65,6 +72,64 @@ tools: List[Tool] = [
         description="Delete inbox",
         params_schema=GetInboxParams,
         func=delete_inbox,
+    ),
+    Tool(
+        name="list_domains",
+        description=(
+            "List custom email domains, paginated. Use get_domain for a domain's verification status and "
+            "DNS records. Requires the domain_read permission."
+        ),
+        params_schema=ListItemsParams,
+        func=list_domains,
+    ),
+    Tool(
+        name="get_domain",
+        description=(
+            "Get a custom email domain by ID: its verification status, the reason it is not verified yet, "
+            "and the DNS records to add at the domain's DNS provider, each with its own status and reason. "
+            "Requires the domain_read permission; inbox-scoped API keys cannot access domains."
+        ),
+        params_schema=GetDomainParams,
+        func=get_domain,
+    ),
+    Tool(
+        name="create_domain",
+        description=(
+            "Add a custom email domain. Returns it with status NOT_STARTED and the DNS records to add at the "
+            "domain's DNS provider. Next, call get_domain_setup_link for a one-click link that adds them, or "
+            "add them by hand, then call verify_domain. Fails with 422 when the domain already receives mail "
+            "through Google Workspace or Microsoft 365: suggest a subdomain such as agents.example.com "
+            "instead. Set allow_conflicting_provider only after the user confirms they want to keep that "
+            "provider, and then leave the domain's existing MX records in place, because replacing them "
+            "stops the user's current mail. Requires the domain_create permission."
+        ),
+        params_schema=CreateDomainParams,
+        func=create_domain,
+    ),
+    Tool(
+        name="get_domain_setup_link",
+        description=(
+            "Get a one-click link that adds a domain's DNS records at its DNS provider, when the provider "
+            "supports it (for example Cloudflare or Vercel). When supported is true, open url in a browser: "
+            "the domain owner signs in at provider_name, reviews the records and approves, and the provider "
+            "writes them; the browser then lands on the AgentMail console. If conflicting_provider is set, "
+            "the link replaces that provider's MX records and the user's current mail stops arriving there, "
+            "so ask the user before opening it. When supported is false, add the records from get_domain by "
+            "hand. Once the records are in place, call verify_domain. Requires the domain_read permission."
+        ),
+        params_schema=GetDomainParams,
+        func=get_domain_setup_link,
+    ),
+    Tool(
+        name="verify_domain",
+        description=(
+            "Start verifying a domain once its DNS records are in place. Returns at once and the check runs "
+            "in the background: call get_domain until status is VERIFIED, and read the reason on any record "
+            "that is not VALID yet. DNS changes can take a while to be seen. Requires the domain_update "
+            "permission."
+        ),
+        params_schema=GetDomainParams,
+        func=verify_domain,
     ),
     Tool(
         name="list_threads",
