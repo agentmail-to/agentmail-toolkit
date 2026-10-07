@@ -30,15 +30,11 @@ class GetDomainParams(BaseModel):
     domain_id: DomainIdField
 
 
+# allow_conflicting_provider is not offered: every domain made here receives mail, so its MX record is
+# required, and a domain cannot receive at AgentMail and at Google Workspace or Microsoft 365 at once.
+# With the flag the agent could only stop the user's current mail or end up receiving nothing.
 class CreateDomainParams(BaseModel):
     domain: str = Field(description="Domain name, e.g. example.com or mail.example.com")
-    allow_conflicting_provider: Optional[bool] = Field(
-        default=None,
-        description=(
-            "Register the domain even though it already receives mail through Google Workspace or "
-            "Microsoft 365. Default false. Set it only after the user confirms they want to keep that provider"
-        ),
-    )
     feedback_enabled: Optional[bool] = Field(
         default=None, description="Send bounce and complaint notifications to your inboxes. Default true"
     )

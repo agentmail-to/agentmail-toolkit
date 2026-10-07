@@ -4,6 +4,8 @@ from urllib.request import HTTPRedirectHandler, build_opener
 from agentmail import AgentMail
 from agentmail.inboxes import CreateInboxRequest
 
+from .schemas import CreateDomainParams
+
 import io
 import logging
 import filetype
@@ -61,7 +63,9 @@ def get_domain(client: AgentMail, kwargs: Kwargs):
 
 
 def create_domain(client: AgentMail, kwargs: Kwargs):
-    return client.domains.create(**kwargs)
+    # Parsed so only the fields this tool offers reach the SDK, whose create also takes
+    # allow_conflicting_provider; the OpenAI and LiveKit adapters hand over raw arguments.
+    return client.domains.create(**CreateDomainParams(**kwargs).model_dump(exclude_none=True))
 
 
 def get_domain_setup_link(client: AgentMail, kwargs: Kwargs):

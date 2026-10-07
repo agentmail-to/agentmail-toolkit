@@ -142,20 +142,21 @@ def test_descriptions_use_the_python_field_names():
             assert camel not in description
 
 
-def test_create_domain_explains_the_conflict_and_keeps_the_override_behind_the_user():
+def test_create_domain_explains_the_conflict_and_offers_no_override():
     description = by_name("create_domain").description
     assert "422" in description
     assert "Google Workspace or Microsoft 365" in description
     assert "subdomain" in description
-    assert "allow_conflicting_provider only after the user confirms" in description
-    assert "leave the domain's existing MX records in place" in description
+    assert "adding its MX record moves mail away from any provider the domain uses today" in description
+    assert "allow_conflicting_provider" not in description
 
 
 def test_setup_link_says_to_open_the_url_and_to_ask_before_replacing_a_provider():
     description = by_name("get_domain_setup_link").description
     assert "open url in a browser" in description
-    assert "If conflicting_provider is set" in description
-    assert "ask the user before opening it" in description
+    assert "When get_domain lists an MX record, the link replaces the domain's current MX records" in description
+    assert "the check can miss it" in description
+    assert "confirm with the user that the domain has no other mail provider before opening such a link" in description
     assert "When supported is false, add the records from get_domain by hand" in description
     assert "verify_domain" in description
 
@@ -163,7 +164,15 @@ def test_setup_link_says_to_open_the_url_and_to_ask_before_replacing_a_provider(
 def test_verify_domain_says_it_returns_before_the_check_is_done():
     description = by_name("verify_domain").description
     assert "Returns at once" in description
-    assert "call get_domain until status is VERIFIED" in description
+    assert "call get_domain to follow it until status is VERIFIED" in description
+
+
+def test_verify_domain_maps_each_kind_of_reason_to_the_next_step_and_says_when_to_stop():
+    description = by_name("verify_domain").description
+    assert "a dns_records_* reason means a record is missing or wrong at the DNS provider" in description
+    assert "ses_*_pending and ses_*_temporary_failure clear on their own" in description
+    assert "ses_*_failed and ses_*_not_started need verify_domain again" in description
+    assert "if nothing changes after several checks, stop and tell the user the reason" in description
 
 
 # --------------------------------------------------------------------------
@@ -182,7 +191,6 @@ def test_create_domain_params_need_only_the_domain():
     assert schema["required"] == ["domain"]
     assert set(schema["properties"]) == {
         "domain",
-        "allow_conflicting_provider",
         "feedback_enabled",
         "subdomains_enabled",
         "tracking_enabled",
@@ -193,7 +201,6 @@ def test_create_domain_params_need_only_the_domain():
 
 def test_create_domain_params_state_each_default():
     properties = CreateDomainParams.model_json_schema()["properties"]
-    assert "Default false" in properties["allow_conflicting_provider"]["description"]
     assert "Default true" in properties["feedback_enabled"]["description"]
     assert "Default false" in properties["subdomains_enabled"]["description"]
     assert "Default false" in properties["tracking_enabled"]["description"]
@@ -235,7 +242,6 @@ def test_create_domain_sends_every_flag_set_false_included():
         sdk(api),
         {
             "domain": "example.com",
-            "allow_conflicting_provider": True,
             "feedback_enabled": False,
             "subdomains_enabled": True,
             "tracking_enabled": False,
@@ -244,11 +250,24 @@ def test_create_domain_sends_every_flag_set_false_included():
 
     assert api.requests[0][3] == {
         "domain": "example.com",
-        "allow_conflicting_provider": True,
         "feedback_enabled": False,
         "subdomains_enabled": True,
         "tracking_enabled": False,
     }
+
+
+def test_create_domain_never_sends_allow_conflicting_provider():
+    api = FakeApi()
+    functions.create_domain(sdk(api), {"domain": "example.com", "allow_conflicting_provider": True, "pod_id": "pod_2"})
+
+    assert api.requests[0][3] == {"domain": "example.com"}
+
+
+def test_create_domain_without_a_domain_makes_no_request():
+    api = FakeApi()
+    with pytest.raises(ValueError):
+        functions.create_domain(sdk(api), {"feedback_enabled": True})
+    assert api.requests == []
 
 
 def test_get_domain_setup_link_returns_the_signed_url_unchanged():
@@ -288,7 +307,6 @@ def test_openai_create_domain_with_every_key_present_as_null():
     tool = openai_tool(api, "create_domain")
     arguments = {
         "domain": "example.com",
-        "allow_conflicting_provider": None,
         "feedback_enabled": None,
         "subdomains_enabled": None,
         "tracking_enabled": None,
@@ -307,7 +325,6 @@ def test_openai_create_domain_schema_is_strict_so_every_key_arrives():
     assert tool.params_json_schema["additionalProperties"] is False
     assert set(tool.params_json_schema["required"]) == {
         "domain",
-        "allow_conflicting_provider",
         "feedback_enabled",
         "subdomains_enabled",
         "tracking_enabled",
@@ -342,8 +359,12 @@ def test_langchain_create_domain_passes_the_flags_through():
     tool = AgentMailToolkit(client=sdk(api))._tools["create_domain"]
     tool.invoke({"domain": "example.com", "subdomains_enabled": True})
 
-    assert api.requests[0][3]["domain"] == "example.com"
-    assert api.requests[0][3]["subdomains_enabled"] is True
+    # Only what the model set reaches the API with a value; nothing else may carry one.
+    sent = api.requests[0][3]
+    assert {key: value for key, value in sent.items() if value is not None} == {
+        "domain": "example.com",
+        "subdomains_enabled": True,
+    }
 
 
 def test_langchain_verify_domain_refusal_is_an_error_message():
@@ -371,6 +392,16 @@ def test_livekit_verify_domain_returns_ok():
 
     tool = AgentMailToolkit(client=sdk(FakeApi()))._tools["verify_domain"]
     assert asyncio.run(tool({"domain_id": "example.com"}, _livekit_context())) == "OK"
+
+
+def test_livekit_create_domain_drops_an_override_the_model_was_not_offered():
+    from agentmail_toolkit.livekit import AgentMailToolkit
+
+    api = FakeApi()
+    tool = AgentMailToolkit(client=sdk(api))._tools["create_domain"]
+    asyncio.run(tool({"domain": "example.com", "allow_conflicting_provider": True}, _livekit_context()))
+
+    assert api.requests[0][3] == {"domain": "example.com"}
 
 
 def test_livekit_get_domain_not_found_raises_tool_error():

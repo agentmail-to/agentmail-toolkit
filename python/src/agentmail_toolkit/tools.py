@@ -97,11 +97,10 @@ tools: List[Tool] = [
         description=(
             "Add a custom email domain. Returns it with status NOT_STARTED and the DNS records to add at the "
             "domain's DNS provider. Next, call get_domain_setup_link for a one-click link that adds them, or "
-            "add them by hand, then call verify_domain. Fails with 422 when the domain already receives mail "
-            "through Google Workspace or Microsoft 365: suggest a subdomain such as agents.example.com "
-            "instead. Set allow_conflicting_provider only after the user confirms they want to keep that "
-            "provider, and then leave the domain's existing MX records in place, because replacing them "
-            "stops the user's current mail. Requires the domain_create permission."
+            "add them by hand, then call verify_domain. AgentMail receives the domain's mail, so adding its "
+            "MX record moves mail away from any provider the domain uses today. Fails with 422 when the "
+            "domain already receives mail through Google Workspace or Microsoft 365: suggest a subdomain such "
+            "as agents.example.com instead. Requires the domain_create permission."
         ),
         params_schema=CreateDomainParams,
         func=create_domain,
@@ -112,10 +111,12 @@ tools: List[Tool] = [
             "Get a one-click link that adds a domain's DNS records at its DNS provider, when the provider "
             "supports it (for example Cloudflare or Vercel). When supported is true, open url in a browser: "
             "the domain owner signs in at provider_name, reviews the records and approves, and the provider "
-            "writes them; the browser then lands on the AgentMail console. If conflicting_provider is set, "
-            "the link replaces that provider's MX records and the user's current mail stops arriving there, "
-            "so ask the user before opening it. When supported is false, add the records from get_domain by "
-            "hand. Once the records are in place, call verify_domain. Requires the domain_read permission."
+            "writes them; the browser then lands on the AgentMail console. When get_domain lists an MX "
+            "record, the link replaces the domain's current MX records, and mail to any provider the domain "
+            "uses today stops. conflicting_provider names such a provider when the check finds one, but the "
+            "check can miss it, so confirm with the user that the domain has no other mail provider before "
+            "opening such a link. When supported is false, add the records from get_domain by hand. Once the "
+            "records are in place, call verify_domain. Requires the domain_read permission."
         ),
         params_schema=GetDomainParams,
         func=get_domain_setup_link,
@@ -124,9 +125,13 @@ tools: List[Tool] = [
         name="verify_domain",
         description=(
             "Start verifying a domain once its DNS records are in place. Returns at once and the check runs "
-            "in the background: call get_domain until status is VERIFIED, and read the reason on any record "
-            "that is not VALID yet. DNS changes can take a while to be seen. Requires the domain_update "
-            "permission."
+            "in the background: call get_domain to follow it until status is VERIFIED. Until then, the "
+            "domain's reason says what is left: a dns_records_* reason means a record is missing or wrong at "
+            "the DNS provider (each record has its own status and reason); ses_*_pending and "
+            "ses_*_temporary_failure clear on their own; ses_*_failed and ses_*_not_started need "
+            "verify_domain again once the records are right. DNS changes can take a while to be seen, so if "
+            "nothing changes after several checks, stop and tell the user the reason. Requires the "
+            "domain_update permission."
         ),
         params_schema=GetDomainParams,
         func=verify_domain,
