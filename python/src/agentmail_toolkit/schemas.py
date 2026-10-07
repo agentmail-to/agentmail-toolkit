@@ -6,6 +6,7 @@ InboxIdField = Annotated[str, Field(description="ID of inbox")]
 ThreadIdField = Annotated[str, Field(description="ID of thread")]
 MessageIdField = Annotated[str, Field(description="ID of message")]
 AttachmentIdField = Annotated[str, Field(description="ID of attachment")]
+DomainIdField = Annotated[str, Field(description="ID of domain (from list_domains or create_domain)")]
 
 
 class ListItemsParams(BaseModel):
@@ -23,6 +24,28 @@ class CreateInboxParams(BaseModel):
     username: Optional[str] = Field(default=None, description="Username")
     domain: Optional[str] = Field(default=None, description="Domain")
     display_name: Optional[str] = Field(default=None, description="Display name")
+
+
+class GetDomainParams(BaseModel):
+    domain_id: DomainIdField
+
+
+# allow_conflicting_provider is not offered: every domain made here receives mail, so its MX record is
+# required, and a domain cannot receive at AgentMail and at Google Workspace or Microsoft 365 at once.
+# With the flag the agent could only stop the user's current mail or end up receiving nothing.
+class CreateDomainParams(BaseModel):
+    domain: str = Field(description="Domain name, e.g. example.com or mail.example.com")
+    feedback_enabled: Optional[bool] = Field(
+        default=None, description="Send bounce and complaint notifications to your inboxes. Default true"
+    )
+    subdomains_enabled: Optional[bool] = Field(
+        default=None,
+        description="Allow inboxes on any subdomain of this domain. Adds a required wildcard MX record. Default false",
+    )
+    tracking_enabled: Optional[bool] = Field(
+        default=None,
+        description="Serve open tracking from this domain. Adds a required link CNAME record. Default false",
+    )
 
 
 class ListInboxItemsParams(ListItemsParams):
