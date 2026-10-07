@@ -287,14 +287,11 @@ export const GetDomainParams = z.object({
 })
 
 // The three flags are left unset unless the agent sets them, so the API's own defaults apply.
+// allowConflictingProvider is not offered: every domain made here receives mail, so its MX record is
+// required, and a domain cannot receive at AgentMail and at Google Workspace or Microsoft 365 at once.
+// With the flag the agent could only stop the user's current mail or end up receiving nothing.
 export const CreateDomainParams = z.object({
     domain: z.string().min(1).describe('Domain name, e.g. example.com or mail.example.com'),
-    allowConflictingProvider: z
-        .boolean()
-        .optional()
-        .describe(
-            'Register the domain even though it already receives mail through Google Workspace or Microsoft 365. Default false. Set it only after the user confirms they want to keep that provider'
-        ),
     feedbackEnabled: z.boolean().optional().describe('Send bounce and complaint notifications to your inboxes. Default true'),
     subdomainsEnabled: z
         .boolean()

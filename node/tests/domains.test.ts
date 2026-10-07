@@ -325,9 +325,9 @@ describe('create_domain', () => {
             expect(tool.description).toMatch(/subdomain/)
         })
 
-        it('keeps allowConflictingProvider behind the user, and the existing MX records in place', () => {
-            expect(tool.description).toMatch(/allowConflictingProvider only after the user confirms/)
-            expect(tool.description).toMatch(/leave the domain's existing MX records in place/)
+        it('says the MX record takes the mail from any current provider, and offers no override', () => {
+            expect(tool.description).toMatch(/adding its MX record moves mail away from any provider the domain uses today/)
+            expect(tool.description).not.toContain('allowConflictingProvider')
         })
 
         it('points at get_domain to follow verification', () => {
@@ -353,18 +353,26 @@ describe('create_domain', () => {
             expect(CreateDomainParams.safeParse(args).success).toBe(false)
         })
 
-        it.each(['allowConflictingProvider', 'feedbackEnabled', 'subdomainsEnabled', 'trackingEnabled'])(
-            'takes %s only as a real boolean, never a string',
-            (flag) => {
-                expect(CreateDomainParams.safeParse({ domain: 'example.com', [flag]: true }).success).toBe(true)
-                expect(CreateDomainParams.safeParse({ domain: 'example.com', [flag]: false }).success).toBe(true)
-                expect(CreateDomainParams.safeParse({ domain: 'example.com', [flag]: 'true' }).success).toBe(false)
-            }
-        )
+        it.each(['feedbackEnabled', 'subdomainsEnabled', 'trackingEnabled'])('takes %s only as a real boolean, never a string', (flag) => {
+            expect(CreateDomainParams.safeParse({ domain: 'example.com', [flag]: true }).success).toBe(true)
+            expect(CreateDomainParams.safeParse({ domain: 'example.com', [flag]: false }).success).toBe(true)
+            expect(CreateDomainParams.safeParse({ domain: 'example.com', [flag]: 'true' }).success).toBe(false)
+        })
 
         it('drops fields this tool does not offer, so they never reach the API', () => {
-            const parsed = CreateDomainParams.parse({ domain: 'example.com', clientId: 'c-1', inboundEnabled: false, dkimSelector: 'sel' })
+            const parsed = CreateDomainParams.parse({
+                domain: 'example.com',
+                allowConflictingProvider: true,
+                clientId: 'c-1',
+                inboundEnabled: false,
+                dkimSelector: 'sel',
+            })
             expect(parsed).toEqual({ domain: 'example.com' })
+        })
+
+        it('advertises exactly the domain and the three flags', () => {
+            const schema = toJSONSchema(CreateDomainParams) as { properties?: Record<string, unknown> }
+            expect(Object.keys(schema.properties!).sort()).toEqual(['domain', 'feedbackEnabled', 'subdomainsEnabled', 'trackingEnabled'])
         })
 
         it('advertises domain as the one required field, with no format or pattern', () => {
@@ -376,7 +384,6 @@ describe('create_domain', () => {
 
         it('states each default, so the agent knows what leaving a flag out does', () => {
             const schema = toJSONSchema(CreateDomainParams) as { properties?: Record<string, { description?: string }> }
-            expect(schema.properties!.allowConflictingProvider!.description).toMatch(/Default false/)
             expect(schema.properties!.feedbackEnabled!.description).toMatch(/Default true/)
             expect(schema.properties!.subdomainsEnabled!.description).toMatch(/Default false/)
             expect(schema.properties!.trackingEnabled!.description).toMatch(/Default false/)
@@ -395,24 +402,24 @@ describe('create_domain', () => {
             const client = await connect(domainsClient(calls))
             const result = await client.callTool({
                 name: 'create_domain',
-                arguments: { domain: 'example.com', allowConflictingProvider: false, feedbackEnabled: false, subdomainsEnabled: true, trackingEnabled: true },
+                arguments: { domain: 'example.com', feedbackEnabled: false, subdomainsEnabled: true, trackingEnabled: true },
             })
 
             expect(result.isError ?? false).toBe(false)
             expect(calls).toEqual([
                 {
                     method: 'domains.create',
-                    args: [{ domain: 'example.com', allowConflictingProvider: false, feedbackEnabled: false, subdomainsEnabled: true, trackingEnabled: true }],
+                    args: [{ domain: 'example.com', feedbackEnabled: false, subdomainsEnabled: true, trackingEnabled: true }],
                 },
             ])
         })
 
-        it('sends allowConflictingProvider when the agent sets it after the user confirms', async () => {
+        it('never sends allowConflictingProvider, even when a host passes it', async () => {
             const calls: Call[] = []
             const client = await connect(domainsClient(calls))
             await client.callTool({ name: 'create_domain', arguments: { domain: 'example.com', allowConflictingProvider: true } })
 
-            expect(calls).toEqual([{ method: 'domains.create', args: [{ domain: 'example.com', allowConflictingProvider: true }] }])
+            expect(calls).toEqual([{ method: 'domains.create', args: [{ domain: 'example.com' }] }])
         })
 
         it('passes the name as typed and leaves normalizing it to the API', async () => {

@@ -266,7 +266,7 @@ export const tools: Tool[] = [
         name: 'create_domain',
         title: 'Create Domain',
         description:
-            "Add a custom email domain. Returns it with status NOT_STARTED and the DNS records to add at the domain's DNS provider; then use get_domain to follow verification. Fails with 422 when the domain already receives mail through Google Workspace or Microsoft 365: suggest a subdomain such as agents.example.com instead. Set allowConflictingProvider only after the user confirms they want to keep that provider, and then leave the domain's existing MX records in place, because replacing them stops the user's current mail. Requires the domain_create permission.",
+            "Add a custom email domain. Returns it with status NOT_STARTED and the DNS records to add at the domain's DNS provider; then use get_domain to follow verification. AgentMail receives the domain's mail, so adding its MX record moves mail away from any provider the domain uses today. Fails with 422 when the domain already receives mail through Google Workspace or Microsoft 365: suggest a subdomain such as agents.example.com instead. Requires the domain_create permission.",
         paramsSchema: CreateDomainParams,
         outputSchema: DomainSchema,
         func: createDomain,
