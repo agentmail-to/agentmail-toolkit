@@ -44,6 +44,40 @@ export const ListInboxesResponseSchema = PaginationSchema.extend({
     inboxes: z.array(InboxSchema),
 })
 
+// Statuses and record types are plain strings, not enums: they are API vocabulary that can grow, and
+// a value this toolkit has not seen yet must still reach the agent instead of failing the whole
+// result against its output schema.
+const DomainRecordSchema = z.object({
+    type: z.string().describe('DNS record type: TXT, CNAME or MX'),
+    name: z.string().describe('Name of the record to create at the DNS provider'),
+    value: z.string().describe('Value of the record'),
+    status: z.string().describe('MISSING, INVALID or VALID, as last checked'),
+    priority: z.number().optional().describe('Priority, for MX records'),
+    reason: z.string().optional().describe('Why the record is INVALID, when known'),
+})
+
+// What list_domains returns: no status or records. podId and clientId are on the wire but
+// deliberately excluded, the InboxSchema internal-identifier rule.
+export const DomainItemSchema = z.object({
+    domainId: z.string(),
+    domain: z.string().describe('The domain name'),
+    feedbackEnabled: z.boolean().describe('Bounce and complaint notifications are sent to your inboxes'),
+    subdomainsEnabled: z.boolean().describe('Inboxes are allowed on any subdomain; adds a required wildcard MX record'),
+    trackingEnabled: z.boolean().describe('Open tracking is served from this domain; adds a required link CNAME record'),
+    updatedAt: isoDate(),
+    createdAt: isoDate(),
+})
+
+export const DomainSchema = DomainItemSchema.extend({
+    status: z.string().describe('NOT_STARTED, PENDING, VERIFYING, VERIFIED, INVALID or FAILED'),
+    reason: z.string().optional().describe('Why the domain is not VERIFIED'),
+    records: z.array(DomainRecordSchema).describe("DNS records to add at the domain's DNS provider, each with its current status"),
+})
+
+export const ListDomainsResponseSchema = PaginationSchema.extend({
+    domains: z.array(DomainItemSchema),
+})
+
 const AttachmentMetaSchema = z.object({
     attachmentId: z.string(),
     filename: z.string().optional(),

@@ -272,6 +272,20 @@ export const AgentVerifyParams = z.object({
     otpCode: z.string().describe('6-digit verification code emailed to the human attached to the organization'),
 })
 
+// Domain schemas
+
+// A plain described string, for the reason AppIdSchema is one: a format keyword would trip
+// schema-strict hosts. The refine keeps '.' and '..' out of the path segment.
+const DomainIdSchema = z
+    .string()
+    .min(1)
+    .refine(notDotSegment, 'must be a domain ID')
+    .describe('ID of domain (from list_domains)')
+
+export const GetDomainParams = z.object({
+    domainId: DomainIdSchema,
+})
+
 // App schemas
 
 // A plain described string, not z.uuid(): the API takes an app ID or a catalog app's slug in the same

@@ -16,6 +16,39 @@ export const inbox = () => ({
     createdAt: NOW,
 })
 
+// A domain as the SDK returns it: podId and clientId are on the wire, and snake_case internals pass
+// through unrecognized. All four must be stripped before a result reaches the model.
+export const domainItem = () => ({
+    podId: 'pod_1',
+    domainId: 'example.com',
+    domain: 'example.com',
+    feedbackEnabled: true,
+    subdomainsEnabled: false,
+    trackingEnabled: false,
+    clientId: 'client-domain-1',
+    updatedAt: NOW,
+    createdAt: NOW,
+    organization_id: 'org_internal_1',
+    pod_id: 'pod_internal_1',
+})
+
+export const domainRecord = () => ({
+    type: 'MX' as const,
+    name: 'example.com',
+    value: 'inbound-smtp.us-east-1.amazonaws.com',
+    status: 'MISSING' as const,
+    priority: 10,
+})
+
+export const domain = () => ({
+    ...domainItem(),
+    status: 'NOT_STARTED' as const,
+    records: [
+        domainRecord(),
+        { type: 'TXT' as const, name: 'agentmail._domainkey.example.com', value: 'v=DKIM1; k=rsa; p=KEY', status: 'MISSING' as const },
+    ],
+})
+
 export const threadItem = () => ({
     inboxId: 'inbox_1',
     threadId: 'thread_1',
@@ -167,6 +200,8 @@ export const fixtureByTool: Record<string, () => unknown> = {
     create_inbox: inbox,
     update_inbox: inbox,
     delete_inbox: success,
+    list_domains: () => ({ count: 1, domains: [domainItem()] }),
+    get_domain: domain,
     list_threads: () => ({ count: 1, nextPageToken: 'tok', threads: [threadItem()] }),
     search_threads: () => ({
         count: 1,
@@ -215,6 +250,8 @@ export const argsByTool: Record<string, Record<string, unknown>> = {
     create_inbox: {},
     update_inbox: { inboxId: 'inbox_1' },
     delete_inbox: { inboxId: 'inbox_1' },
+    list_domains: {},
+    get_domain: { domainId: 'example.com' },
     list_threads: { inboxId: 'inbox_1' },
     search_threads: { inboxId: 'inbox_1', q: 'hello' },
     get_thread: { inboxId: 'inbox_1', threadId: 'thread_1' },
@@ -294,6 +331,10 @@ export function mockClient(overrides?: Record<string, unknown>): AgentMailClient
                 send: async () => f.send_draft(),
                 delete: async () => undefined,
             },
+        },
+        domains: {
+            list: async () => f.list_domains(),
+            get: async () => f.get_domain(),
         },
         auth: {
             me: async () => f.auth_me(),
