@@ -20,7 +20,7 @@ describe('canonical tool catalog', () => {
     it('has unique names and deterministic ordering', () => {
         const names = tools.map((t) => t.name)
         expect(new Set(names).size).toBe(names.length)
-        // Grouped by resource: inboxes, threads, messages, drafts, lists, auth, agent, apps.
+        // Grouped by resource: inboxes, domains, threads, messages, drafts, lists, auth, agent, apps.
         expect(names[0]).toBe('list_inboxes')
         expect(names.slice(-2)).toEqual(['connect_app', 'authorize_inbox'])
     })

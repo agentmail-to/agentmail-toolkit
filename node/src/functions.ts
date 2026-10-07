@@ -7,6 +7,7 @@ import {
     GetInboxParams,
     CreateInboxParams,
     UpdateInboxParams,
+    GetDomainParams,
     ListThreadsParams,
     SearchInboxItemsParams,
     GetThreadParams,
@@ -61,6 +62,14 @@ export async function deleteInbox(client: AgentMailClient, args: z.infer<typeof 
     const { inboxId } = args
     await client.inboxes.delete(inboxId)
     return { success: true as const }
+}
+
+export async function listDomains(client: AgentMailClient, args: z.infer<typeof ListItemsParams>) {
+    return client.domains.list(args)
+}
+
+export async function getDomain(client: AgentMailClient, args: z.infer<typeof GetDomainParams>) {
+    return client.domains.get(args.domainId)
 }
 
 export async function listThreads(client: AgentMailClient, args: z.infer<typeof ListThreadsParams>) {
