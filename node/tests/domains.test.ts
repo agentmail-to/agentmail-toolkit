@@ -572,9 +572,10 @@ describe('get_domain_setup_link', () => {
             expect(tool.description).toMatch(/approves/)
         })
 
-        it('makes the agent ask the user before a link that replaces another provider', () => {
-            expect(tool.description).toMatch(/conflictingProvider is set/)
-            expect(tool.description).toMatch(/ask the user before opening it/)
+        it('makes the agent confirm before a link that replaces the MX records, whether or not a provider was found', () => {
+            expect(tool.description).toMatch(/When get_domain lists an MX record, the link replaces the domain's current MX records/)
+            expect(tool.description).toMatch(/the check can miss it/)
+            expect(tool.description).toMatch(/confirm with the user that the domain has no other mail provider before opening such a link/)
         })
 
         it('gives the manual path when the provider is not supported, and the next step either way', () => {
@@ -683,7 +684,17 @@ describe('verify_domain', () => {
 
         it('says it returns before the check is done, and how to follow it', () => {
             expect(tool.description).toMatch(/Returns at once/)
-            expect(tool.description).toMatch(/call get_domain until status is VERIFIED/)
+            expect(tool.description).toMatch(/call get_domain to follow it until status is VERIFIED/)
+        })
+
+        it('maps each kind of reason to the next step', () => {
+            expect(tool.description).toMatch(/a dns_records_\* reason means a record is missing or wrong at the DNS provider/)
+            expect(tool.description).toMatch(/ses_\*_pending and ses_\*_temporary_failure clear on their own/)
+            expect(tool.description).toMatch(/ses_\*_failed and ses_\*_not_started need verify_domain again/)
+        })
+
+        it('tells the agent when to stop polling', () => {
+            expect(tool.description).toMatch(/if nothing changes after several checks, stop and tell the user the reason/)
         })
 
         it('names the permission it needs, which a read-only key lacks', () => {

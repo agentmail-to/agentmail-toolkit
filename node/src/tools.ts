@@ -285,7 +285,7 @@ export const tools: Tool[] = [
         name: 'get_domain_setup_link',
         title: 'Get Domain Setup Link',
         description:
-            "Get a one-click link that adds a domain's DNS records at its DNS provider, when the provider supports it (for example Cloudflare or Vercel). When supported is true, open url in a browser: the domain owner signs in at providerName, reviews the records and approves, and the provider writes them; the browser then lands on the AgentMail console. If conflictingProvider is set, the link replaces that provider's MX records and the user's current mail stops arriving there, so ask the user before opening it. When supported is false, add the records from get_domain by hand. Once the records are in place, call verify_domain. Requires the domain_read permission.",
+            "Get a one-click link that adds a domain's DNS records at its DNS provider, when the provider supports it (for example Cloudflare or Vercel). When supported is true, open url in a browser: the domain owner signs in at providerName, reviews the records and approves, and the provider writes them; the browser then lands on the AgentMail console. When get_domain lists an MX record, the link replaces the domain's current MX records, and mail to any provider the domain uses today stops. conflictingProvider names such a provider when the check finds one, but the check can miss it, so confirm with the user that the domain has no other mail provider before opening such a link. When supported is false, add the records from get_domain by hand. Once the records are in place, call verify_domain. Requires the domain_read permission.",
         paramsSchema: GetDomainParams,
         outputSchema: DomainSetupLinkSchema,
         func: getDomainSetupLink,
@@ -301,7 +301,7 @@ export const tools: Tool[] = [
         name: 'verify_domain',
         title: 'Verify Domain',
         description:
-            'Start verifying a domain once its DNS records are in place. Returns at once and the check runs in the background: call get_domain until status is VERIFIED, and read the reason on any record that is not VALID yet. DNS changes can take a while to be seen. Requires the domain_update permission.',
+            "Start verifying a domain once its DNS records are in place. Returns at once and the check runs in the background: call get_domain to follow it until status is VERIFIED. Until then, the domain's reason says what is left: a dns_records_* reason means a record is missing or wrong at the DNS provider (each record has its own status and reason); ses_*_pending and ses_*_temporary_failure clear on their own; ses_*_failed and ses_*_not_started need verify_domain again once the records are right. DNS changes can take a while to be seen, so if nothing changes after several checks, stop and tell the user the reason. Requires the domain_update permission.",
         paramsSchema: GetDomainParams,
         outputSchema: VoidResultSchema,
         func: verifyDomain,
