@@ -36,6 +36,7 @@ import {
     CreateListEntryParams,
     DeleteListEntryParams,
     ConnectAppParams,
+    AuthorizeInboxParams,
 } from './schemas.js'
 
 export async function listInboxes(client: AgentMailClient, args: z.infer<typeof ListItemsParams>) {
@@ -288,4 +289,11 @@ export async function connectApp(client: AgentMailClient, args: z.infer<typeof C
     // idempotency key): a blind re-POST after a lost response would mint a second one
     // against the caller's bounded live-session budget.
     return client.apps.connect(appId, body, { maxRetries: 0 })
+}
+
+export async function authorizeInbox(client: AgentMailClient, args: z.infer<typeof AuthorizeInboxParams>) {
+    const { inboxId, ...body } = args
+    // Default retries are safe here, unlike connectApp: a repeat for the same token, inbox and
+    // credential returns the same key ID instead of minting another.
+    return client.inboxes.authorize(inboxId, body)
 }

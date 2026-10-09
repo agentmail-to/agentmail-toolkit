@@ -1,3 +1,4 @@
+import { AgentMail } from 'agentmail'
 import { z } from 'zod'
 
 const InboxIdSchema = z.string().describe('ID of inbox')
@@ -273,15 +274,17 @@ export const AgentVerifyParams = z.object({
 
 // App schemas
 
-// A plain described string, not z.uuid(): zod's uuid emits `format: "uuid"` plus a long `pattern`
-// into every adapter's JSON Schema — the only pattern in the toolkit's input surface — which
-// schema-strict hosts (Gemini's function-declaration subset) reject or drop. The API validates the
-// UUID and answers a named 400; the description steers the model to the right identifier.
+// A plain described string, not z.uuid(): the API takes an app ID or a catalog app's slug in the same
+// path segment, and zod's uuid would also emit `format: "uuid"` plus a long `pattern` into every
+// adapter's JSON Schema, which schema-strict hosts (Gemini's function-declaration subset) reject or
+// drop. The API resolves the reference and answers a named 404 or 400.
 const AppIdSchema = z
     .string()
     .min(1)
-    .refine(notDotSegment, 'must be an app ID')
-    .describe('ID of app (UUID, from list_apps or search_apps)')
+    .refine(notDotSegment, 'must be an app ID or slug')
+    .describe(
+        'ID of app (from list_apps or search_apps), or the slug of an app in the catalog, such as "firecrawl" (case, spaces and punctuation are ignored)'
+    )
 
 // App list params deliberately do NOT reuse ListItemsParams: its `.default(10)` is wrong for
 // the accounts drill-down, which pages a filtered index where short and empty pages are normal —
@@ -293,7 +296,16 @@ const AppPageParams = z.object({
     pageToken: z.string().optional().describe('Page token for pagination'),
 })
 
-export const ListAppsParams = AppPageParams
+// The SDK's AppCategory is the API's vocabulary, so a category the API would 400 is refused here
+// first, and an SDK upgrade carries new categories without a toolkit edit.
+export const ListAppsParams = AppPageParams.extend({
+    category: z
+        .enum(AgentMail.AppCategory)
+        .optional()
+        .describe(
+            'Only apps of this kind. A filtered page can hold fewer than limit apps while more remain: page until nextPageToken is absent, and reuse a pageToken only with the category it was returned for'
+        ),
+})
 
 export const SearchAppsParams = z.object({
     q: z.string().min(1).max(128).describe('Name (or name prefix) to search for'),
@@ -307,7 +319,9 @@ export const GetAppParams = z.object({
 // One account-list tool: across every app by default, narrowed to one app when appId is given
 // (the per-app route is the only server-side filter the API offers).
 export const ListAccountsParams = AppPageParams.extend({
-    appId: AppIdSchema.optional().describe('Narrow to one app (ID from list_apps or search_apps); omit for every app'),
+    appId: AppIdSchema.optional().describe(
+        'Narrow to one app (ID from list_apps or search_apps, or a catalog app slug); omit for every app'
+    ),
 })
 
 export const ConnectAppParams = z.object({
@@ -321,5 +335,21 @@ export const ConnectAppParams = z.object({
         .optional()
         .describe(
             "Accept the app's first-use disclosure up front, so the browser sign-in skips that page. Not every app or environment supports this: the call then fails (as a 404 or 400) even though the app ID is valid — retry without acceptDisclosure"
+        ),
+})
+
+// No pattern keyword on authToken, for the reason AppIdSchema has none: the API validates the
+// shape and answers a named 400.
+export const AuthorizeInboxParams = z.object({
+    inboxId: InboxIdSchema.describe('The inbox (email address or inbox client ID) to sign in as'),
+    authToken: z
+        .string()
+        .min(1)
+        .describe('The auth token the AgentID sign-in page shows for the agent: 22 letters, digits, - or _'),
+    acceptDisclosure: z
+        .boolean()
+        .optional()
+        .describe(
+            "Accept the app's first-use disclosure on the agent's behalf, so the browser finishes without a review page. Omit to leave that review to whoever holds the browser"
         ),
 })

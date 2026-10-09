@@ -8,6 +8,7 @@ import { AgentMailToolkit } from '../src/mcp.js'
 import { tools } from '../src/tools.js'
 import {
     ListAccountsParams,
+    ListAppsParams,
     SearchInboxesParams,
     GetMessageParams,
     ListListEntriesParams,
@@ -63,7 +64,7 @@ describe('catalog: the five additions are registered with complete metadata', ()
         expect(names.slice(names.indexOf('list_list_entries'), names.indexOf('list_list_entries') + 4)).toEqual(['list_list_entries', 'get_list_entry', 'create_list_entry', 'delete_list_entry'])
         expect(names.indexOf('delete_list_entry')).toBe(names.indexOf('auth_me') - 1)
         expect(names.indexOf('list_accounts')).toBeGreaterThan(names.indexOf('get_app'))
-        expect(names[names.length - 1]).toBe('connect_app')
+        expect(names.slice(-2)).toEqual(['connect_app', 'authorize_inbox'])
         expect(names).not.toContain('list_app_accounts')
         expect(names).not.toContain('get_app_connection')
         // Renamed outright, with no alias tools left behind.
@@ -108,6 +109,52 @@ describe('get_app', () => {
         expect(structured.ownerSignupLimit).toBe(1)
         expect(structured).not.toHaveProperty('client_id')
         expect(structured).not.toHaveProperty('score')
+    })
+
+    // The API resolves a catalog app's slug wherever it takes an app ID, so a slug must reach the
+    // SDK verbatim and the app's own slug must reach the model.
+    it('passes a slug through as the app reference and surfaces the app slug', async () => {
+        const calls: Call[] = []
+        const client = await connect(recordingClient(calls))
+        const result = await client.callTool({ name: 'get_app', arguments: { appId: 'Example-RP' } })
+        expect(calls).toEqual([{ method: 'apps.get', args: ['Example-RP'] }])
+        expect((result.structuredContent as Record<string, unknown>).slug).toBe('examplerp')
+    })
+
+    it('surfaces the slug on catalog listings and on the app embedded in an account list', async () => {
+        const client = await connect(mockClient())
+        for (const name of ['list_apps', 'search_apps']) {
+            const result = await client.callTool({ name, arguments: name === 'search_apps' ? { q: 'example' } : {} })
+            const apps = (result.structuredContent as { apps: Record<string, unknown>[] }).apps
+            expect(apps[0].slug).toBe('examplerp')
+        }
+        const accounts = await client.callTool({ name: 'list_accounts', arguments: { appId: 'examplerp' } })
+        expect((accounts.structuredContent as { app: Record<string, unknown> }).app.slug).toBe('examplerp')
+    })
+})
+
+describe('list_apps', () => {
+    it('forwards a category filter to the SDK with the page controls', async () => {
+        const calls: Call[] = []
+        const client = await connect(recordingClient(calls))
+        await client.callTool({ name: 'list_apps', arguments: { category: 'search', limit: 20 } })
+        expect(calls).toEqual([{ method: 'apps.list', args: [{ category: 'search', limit: 20 }] }])
+    })
+
+    // The SDK's AppCategory is the API's vocabulary; an unknown value is refused locally instead of
+    // as the API's 400.
+    it('accepts exactly the API categories', () => {
+        for (const category of ['ai', 'search', 'developer-tools', 'payments', 'other'])
+            expect(ListAppsParams.safeParse({ category }).success).toBe(true)
+        expect(ListAppsParams.safeParse({ category: 'gaming' }).success).toBe(false)
+        expect(ListAppsParams.safeParse({ category: 'Search' }).success).toBe(false)
+    })
+
+    it("publishes each app's categories", async () => {
+        const client = await connect(mockClient())
+        const result = await client.callTool({ name: 'list_apps', arguments: {} })
+        const apps = (result.structuredContent as { apps: Record<string, unknown>[] }).apps
+        expect(apps[0].categories).toEqual(['search', 'developer-tools'])
     })
 })
 

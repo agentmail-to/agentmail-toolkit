@@ -361,4 +361,28 @@ describe('app tools', () => {
         // live session (the endpoint has no idempotency key).
         expect(connectOptions.maxRetries).toBe(0)
     })
+
+    it('authorize_inbox puts the inbox in the path and sends the token and decision as the body', async () => {
+        const calls: unknown[][] = []
+        const base = mockClient() as unknown as { inboxes: Record<string, unknown> }
+        const client = await connect(
+            mockClient({
+                inboxes: {
+                    ...base.inboxes,
+                    authorize: async (...args: unknown[]) => {
+                        calls.push(args)
+                        return fixtureByTool.authorize_inbox()
+                    },
+                },
+            })
+        )
+
+        const result = await client.callTool({
+            name: 'authorize_inbox',
+            arguments: { inboxId: 'agent@agentmail.to', authToken: 'eS6aErPmLQFFU1VFy1RsAg', acceptDisclosure: false },
+        })
+        expect(result.isError).toBeFalsy()
+        expect(calls).toEqual([['agent@agentmail.to', { authToken: 'eS6aErPmLQFFU1VFy1RsAg', acceptDisclosure: false }]])
+        expect(result.structuredContent).toEqual(fixtureByTool.authorize_inbox())
+    })
 })
