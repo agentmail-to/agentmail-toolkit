@@ -64,7 +64,7 @@
     },
     "peerDependencies": {
         "@mariozechner/pi-agent-core": "^0.50.1",
-        "@modelcontextprotocol/sdk": "^1.24.1",
+        "@modelcontextprotocol/sdk": "^1.31.0",
         "ai": "^6.0.0-beta.150",
         "clawdbot": "^2026.1.24-3",
         "langchain": "^1.2.0"
@@ -107,13 +107,12 @@
         "overrides": {
             "nanoid@5": "^5.1.16",
             "@hono/node-server": ">=1.19.15",
-            "@modelcontextprotocol/sdk": ">=1.26.0",
+            "@modelcontextprotocol/sdk": ">=1.31.0",
             "@protobufjs/utf8": ">=1.1.1",
             "@whiskeysockets/baileys": ">=7.0.0-rc12",
-            "axios": ">=1.18.0",
-            "basic-ftp": ">=5.2.2",
+            "axios": ">=1.20.0",
+            "basic-ftp": ">=6.2.1",
             "body-parser": ">=2.3.0",
-            "brace-expansion": ">=2.1.2",
             "fast-uri@3": "^3.1.8",
             "fast-uri@4": "^4.1.5",
             "fast-xml-parser": ">=5.7.0",
@@ -133,16 +132,23 @@
             "protobufjs": ">=7.5.6",
             "qs": ">=6.15.2",
             "rollup": ">=4.59.0",
-            "sharp": ">=0.35.0",
-            "simple-git": ">=3.36.0",
+            "sharp": ">=0.35.5",
+            "simple-git": ">=4.0.1",
             "tar": ">=7.5.18",
-            "undici": ">=7.29.0",
             "uuid": ">=11.1.1",
             "ws": ">=8.21.0",
             "langchain": ">=1.2.3 <1.3.0",
             "ajv": ">=8.18.0",
             "@eslint/eslintrc>ajv": "^6.12.6",
-            "eslint>ajv": "^6.12.6"
+            "eslint>ajv": "^6.12.6",
+            "@simple-git/argv-parser": ">=2.0.1",
+            "proxy-addr": ">=2.0.8",
+            "source-map-js": ">=1.2.2",
+            "undici@7": ">=7.29.1 <8",
+            "undici@8": ">=8.10.2 <9",
+            "brace-expansion@1": ">=1.1.20 <2",
+            "brace-expansion@2": ">=2.1.6 <3",
+            "brace-expansion@5": ">=5.0.12 <6"
         }
     }
 }
