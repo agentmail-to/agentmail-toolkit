@@ -637,7 +637,7 @@ export const tools: Tool[] = [
         name: 'get_labs',
         title: 'Get Labs',
         description:
-            "Check whether the organization is in AgentMail Labs, which turns on features still in preview (calendar first) for every inbox, and whether Labs is offered in this deployment. Needs organization-level access.",
+            'Check whether the organization is in AgentMail Labs, which turns on features still in preview (calendar first) for every inbox, and whether Labs is offered in this deployment. Needs organization-level access.',
         paramsSchema: GetLabsParams,
         outputSchema: LabsSchema,
         func: getLabs,
@@ -653,7 +653,7 @@ export const tools: Tool[] = [
         name: 'join_labs',
         title: 'Join Labs',
         description:
-            "Join AgentMail Labs for the whole organization, turning on every feature in Labs (calendar first) for every inbox. Only do this when your human asked for a Labs feature: it changes what the whole organization can do, and only an organization admin can leave, in the console under Settings, then Labs. Joining again has no effect. Works only with an organization API key that has no permissions restriction, in a verified organization; when signed in through OAuth, ask an organization admin to join in the console instead. Existing API keys see the change within five minutes.",
+            'Join AgentMail Labs for the whole organization, turning on every feature in Labs (calendar first) for every inbox. Only do this when your human asked for a Labs feature: it changes what the whole organization can do, and only an organization admin can leave, in the console under Settings, then Labs. Joining again has no effect. Works only with an organization API key that has no permissions restriction, in a verified organization; when signed in through OAuth, ask an organization admin to join in the console instead. Existing API keys see the change within five minutes.',
         paramsSchema: JoinLabsParams,
         outputSchema: LabsSchema,
         func: joinLabs,
