@@ -260,7 +260,7 @@ export const DeleteDraftParams = z.object({
     draftId: DraftIdSchema,
 })
 
-export const AuthMeParams = z.object({})
+export const NoParams = z.object({})
 
 // Agent schemas
 
@@ -271,12 +271,6 @@ export const AgentAttachHumanParams = z.object({
 export const AgentVerifyParams = z.object({
     otpCode: z.string().describe('6-digit verification code emailed to the human attached to the organization'),
 })
-
-// Organization schemas
-
-export const GetLabsParams = z.object({})
-
-export const JoinLabsParams = z.object({})
 
 // App schemas
 

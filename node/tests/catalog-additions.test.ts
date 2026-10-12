@@ -461,3 +461,13 @@ describe('delete_list_entry', () => {
         expect(DeleteListEntryParams.safeParse({ inboxId: 'inbox_1', direction: 'send', listType: 'block' }).success).toBe(false)
     })
 })
+
+describe('get_labs', () => {
+    // Outside Labs is the usual answer, and enabledAt is the catalog's first nullable output field.
+    it('returns an organization outside Labs with a null enabledAt', async () => {
+        const client = await connect(mockClient({ organizations: { getLabs: async () => ({ enabled: false, enabledAt: null, available: true }) } }))
+        const result = await client.callTool({ name: 'get_labs', arguments: {} })
+        expect(result.isError).toBeFalsy()
+        expect(result.structuredContent).toEqual({ enabled: false, enabledAt: null, available: true })
+    })
+})
