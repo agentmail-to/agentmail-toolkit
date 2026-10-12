@@ -220,6 +220,12 @@ export const AgentVerifyResponseSchema = z.object({
     verified: z.boolean().describe('Whether the organization was verified'),
 })
 
+export const LabsSchema = z.object({
+    enabled: z.boolean().describe('Whether the organization is in AgentMail Labs; false both when it never joined and when an organization admin left on purpose'),
+    enabledAt: isoDate().nullable().describe('When the organization joined Labs; null when it is not in Labs'),
+    available: z.boolean().describe('Whether Labs is offered in this deployment (US production only, for now)'),
+})
+
 // One shape for both projections GET /apps/{id} serves: a curated catalog entry (name +
 // updatedAt + display fields) and the bare identity resolved for an app the catalog does not
 // list — one the caller holds an account at, or any registered app (id, maybe a name,

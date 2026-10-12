@@ -260,7 +260,7 @@ export const DeleteDraftParams = z.object({
     draftId: DraftIdSchema,
 })
 
-export const AuthMeParams = z.object({})
+export const NoParams = z.object({})
 
 // Agent schemas
 

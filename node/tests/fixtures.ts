@@ -96,6 +96,7 @@ export const agentAttachHumanResult = () => ({
 })
 
 export const agentVerifyResult = () => ({ verified: true })
+export const labs = () => ({ enabled: true, enabledAt: NOW, available: true })
 
 export const app = () => ({
     appId: '11111111-1111-4111-8111-111111111111',
@@ -194,6 +195,8 @@ export const fixtureByTool: Record<string, () => unknown> = {
     auth_me: identity,
     agent_attach_human: agentAttachHumanResult,
     agent_verify: agentVerifyResult,
+    get_labs: labs,
+    join_labs: labs,
     list_apps: () => ({ count: 1, limit: 10, apps: [app()] }),
     search_apps: () => ({ count: 1, limit: 10, apps: [app()] }),
     get_app: app,
@@ -236,6 +239,8 @@ export const argsByTool: Record<string, Record<string, unknown>> = {
     auth_me: {},
     agent_attach_human: { humanEmail: 'human@example.com' },
     agent_verify: { otpCode: '123456' },
+    get_labs: {},
+    join_labs: {},
     list_apps: {},
     search_apps: { q: 'example' },
     get_app: { appId: '11111111-1111-4111-8111-111111111111' },
@@ -301,6 +306,10 @@ export function mockClient(overrides?: Record<string, unknown>): AgentMailClient
         agent: {
             attachHuman: async () => f.agent_attach_human(),
             verify: async () => f.agent_verify(),
+        },
+        organizations: {
+            getLabs: async () => f.get_labs(),
+            joinLabs: async () => f.join_labs(),
         },
         apps: {
             list: async () => f.list_apps(),
