@@ -272,6 +272,12 @@ export const AgentVerifyParams = z.object({
     otpCode: z.string().describe('6-digit verification code emailed to the human attached to the organization'),
 })
 
+// Organization schemas
+
+export const GetLabsParams = z.object({})
+
+export const JoinLabsParams = z.object({})
+
 // App schemas
 
 // A plain described string, not z.uuid(): the API takes an app ID or a catalog app's slug in the same

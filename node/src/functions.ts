@@ -282,6 +282,14 @@ export async function agentVerify(client: AgentMailClient, args: z.infer<typeof 
     return client.agent.verify(args)
 }
 
+export async function getLabs(client: AgentMailClient) {
+    return client.organizations.getLabs()
+}
+
+export async function joinLabs(client: AgentMailClient) {
+    return client.organizations.joinLabs()
+}
+
 export async function connectApp(client: AgentMailClient, args: z.infer<typeof ConnectAppParams>) {
     const { appId, ...body } = args
     // maxRetries: 0 because the SDK's fetcher retries POSTs on 408/429/5xx, and this
