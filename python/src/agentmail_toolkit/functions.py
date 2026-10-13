@@ -4,6 +4,8 @@ from urllib.request import HTTPRedirectHandler, build_opener
 from agentmail import AgentMail
 from agentmail.inboxes import CreateInboxRequest
 
+from .schemas import CreateDomainParams
+
 import io
 import logging
 import filetype
@@ -50,6 +52,28 @@ def create_inbox(client: AgentMail, kwargs: Kwargs):
 
 def delete_inbox(client: AgentMail, kwargs: Kwargs):
     return client.inboxes.delete(**kwargs)
+
+
+def list_domains(client: AgentMail, kwargs: Kwargs):
+    return client.domains.list(**kwargs)
+
+
+def get_domain(client: AgentMail, kwargs: Kwargs):
+    return client.domains.get(**kwargs)
+
+
+def create_domain(client: AgentMail, kwargs: Kwargs):
+    # Parsed so only the fields this tool offers reach the SDK, whose create also takes
+    # allow_conflicting_provider; the OpenAI and LiveKit adapters hand over raw arguments.
+    return client.domains.create(**CreateDomainParams(**kwargs).model_dump(exclude_none=True))
+
+
+def get_domain_setup_link(client: AgentMail, kwargs: Kwargs):
+    return client.domains.get_setup_link(**kwargs)
+
+
+def verify_domain(client: AgentMail, kwargs: Kwargs):
+    return client.domains.verify(**kwargs)
 
 
 def list_threads(client: AgentMail, kwargs: Kwargs):
