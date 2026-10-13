@@ -47,11 +47,12 @@ describe.each(tools.map((tool) => [tool.name, tool] as const))('%s', (_name, too
             expect(tool.annotations.destructiveHint, 'read-only tools must not be destructive').toBe(false)
             expect(tool.annotations.idempotentHint, 'read-only tools must be idempotent').toBe(true)
         }
-        if (tool.name === 'delete_thread') {
-            // A second delete_thread call on an already-trashed thread permanently
-            // purges it - a qualitatively more severe, non-recoverable action than the
-            // first call's soft-trash - see node-audit.md section 3b. Must stay false.
-            expect(tool.annotations.idempotentHint, 'delete_thread must not claim idempotency').toBe(false)
+        if (tool.name.startsWith('delete_')) {
+            // Every delete is permanent on the first call, so repeating it changes nothing.
+            // delete_thread used to soft-trash first and purge on a second call; the API
+            // dropped that step on 2026-04-03 (agentmail-api bd2e5a626).
+            expect(tool.annotations.destructiveHint, `${tool.name} is destructive`).toBe(true)
+            expect(tool.annotations.idempotentHint, `${tool.name} is idempotent`).toBe(true)
         }
     })
 

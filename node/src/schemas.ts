@@ -1,20 +1,25 @@
 import { AgentMail } from 'agentmail'
 import { z } from 'zod'
 
-const InboxIdSchema = z.string().describe('ID of inbox')
+// Where each ID comes from, so an agent can fill it without guessing. Message IDs are RFC 5322
+// Message-IDs and keep their angle brackets; get_attachment reads the thread's attachment list,
+// so an attachment ID is taken from there.
+const InboxIdSchema = z.string().describe("Inbox ID: the inbox's email address, from list_inboxes")
 
 // Shared by every id or value the SDK splices into a URL path. A refine adds no JSON-schema
 // keyword for a host to choke on; it only keeps '.' and '..' out of a segment the URL parser
 // would otherwise normalize onto a different route.
 const notDotSegment = (value: string) => value !== '.' && value !== '..'
-const ThreadIdSchema = z.string().describe('ID of thread')
-const MessageIdSchema = z.string().describe('ID of message')
-const AttachmentIdSchema = z.string().describe('ID of attachment')
-const DraftIdSchema = z.string().describe('ID of draft')
+const ThreadIdSchema = z.string().describe("Thread ID, from list_threads, search_threads, or a message's threadId")
+const MessageIdSchema = z.string().describe('Message ID with its angle brackets, from list_messages, search_messages, or get_thread')
+const AttachmentIdSchema = z.string().describe("Attachment ID, from a thread's attachments in list_threads or get_thread")
+const DraftIdSchema = z.string().describe('Draft ID, from list_drafts or create_draft')
+
+const PageTokenSchema = z.string().optional().describe("nextPageToken from the previous page's result; omit for the first page")
 
 export const ListItemsParams = z.object({
-    limit: z.number().optional().default(10).describe('Max number of items to return'),
-    pageToken: z.string().optional().describe('Page token for pagination'),
+    limit: z.number().optional().default(10).describe('Number of items per page'),
+    pageToken: PageTokenSchema,
 })
 
 export const GetInboxParams = z.object({
@@ -22,19 +27,19 @@ export const GetInboxParams = z.object({
 })
 
 export const CreateInboxParams = z.object({
-    username: z.string().optional().describe('Username'),
-    domain: z.string().optional().describe('Domain'),
-    displayName: z.string().optional().describe('Display name'),
-    clientId: z.string().optional().describe('Client-provided ID for idempotent creation'),
+    username: z.string().optional().describe('Part of the address before the @; a random one is generated when omitted'),
+    domain: z.string().optional().describe('Domain of the address, agentmail.to when omitted; a custom domain must be verified first'),
+    displayName: z.string().optional().describe('Sender name recipients see; "AgentMail" when omitted, and an empty string sends none'),
+    clientId: z.string().optional().describe('Your idempotency key: creating again with the same clientId returns the existing inbox'),
     metadata: z
         .record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
         .optional()
-        .describe('Custom metadata key-value pairs to attach to the inbox'),
+        .describe('Your own key-value data, stored on the inbox and returned with it; recipients never see it'),
 })
 
 export const UpdateInboxParams = z.object({
     inboxId: InboxIdSchema,
-    displayName: z.string().optional().describe('Display name'),
+    displayName: z.string().optional().describe('New sender name recipients see on mail from this inbox'),
     metadata: z
         .record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()]))
         .nullable()
@@ -42,27 +47,45 @@ export const UpdateInboxParams = z.object({
         .describe('Metadata to merge into existing metadata. Set a key to null to remove it, or the whole field to null to clear all metadata'),
 })
 
+// The toolkit parses these with Date and sends UTC, so any ISO 8601 offset works; a time
+// without one would be read in the server's own timezone.
+const BeforeSchema = z
+    .string()
+    .pipe(z.coerce.date())
+    .optional()
+    .describe('Only items before this time, as ISO 8601 with a timezone (e.g. 2026-04-01T09:00:00Z)')
+const AfterSchema = z
+    .string()
+    .pipe(z.coerce.date())
+    .optional()
+    .describe('Only items at or after this time, as ISO 8601 with a timezone (e.g. 2026-04-01T09:00:00Z)')
+
 export const ListInboxItemsParams = ListItemsParams.extend({
     inboxId: InboxIdSchema,
-    labels: z.array(z.string()).optional().describe('Labels to filter items by'),
-    before: z.string().pipe(z.coerce.date()).optional().describe('Filter items before datetime'),
-    after: z.string().pipe(z.coerce.date()).optional().describe('Filter items after datetime'),
+    labels: z.array(z.string()).optional().describe('Only items carrying all of these labels, such as unread or your own'),
+    before: BeforeSchema,
+    after: AfterSchema,
     ascending: z.boolean().optional().describe('Sort by oldest first instead of most recent first'),
 })
 
+// The API matches these by word prefix, case- and accent-insensitive: every word of every value
+// must start a word in the field ("acme" matches bob@acme.com; "voice" does not match "invoice").
 export const ListThreadsParams = ListInboxItemsParams.extend({
-    senders: z.array(z.string()).optional().describe('Filter threads by senders (substring match; all values must match)'),
-    recipients: z.array(z.string()).optional().describe('Filter threads by recipients (substring match; all values must match)'),
-    subject: z.array(z.string()).optional().describe('Filter threads by subject (substring match; all values must match)'),
-    includeSpam: z.boolean().optional().describe('Include threads in spam'),
-    includeTrash: z.boolean().optional().describe('Include threads in trash'),
+    senders: z
+        .array(z.string())
+        .optional()
+        .describe('Only threads whose senders match every value by word prefix, e.g. "acme" matches bob@acme.com'),
+    recipients: z.array(z.string()).optional().describe('Only threads whose To, Cc or Bcc addresses match every value by word prefix'),
+    subject: z.array(z.string()).optional().describe("Only threads whose subject (the first message's) matches every value by word prefix"),
+    includeSpam: z.boolean().optional().describe('Also return threads labeled spam, which are left out when omitted'),
+    includeTrash: z.boolean().optional().describe('Also return threads labeled trash, which are left out when omitted'),
 })
 
 export const SearchInboxItemsParams = ListItemsParams.extend({
     inboxId: InboxIdSchema,
-    q: z.string().describe('Full-text search query'),
-    before: z.string().pipe(z.coerce.date()).optional().describe('Filter items before datetime'),
-    after: z.string().pipe(z.coerce.date()).optional().describe('Filter items after datetime'),
+    q: z.string().describe('Words to find, all required, in the sender, recipients, subject or body; quotes and operators are literal'),
+    before: BeforeSchema,
+    after: AfterSchema,
 })
 
 export const GetMessageParams = z.object({
@@ -73,8 +96,8 @@ export const GetMessageParams = z.object({
 // q bounds mirror the API's (2 to 256 characters); default page size matches list_inboxes, and the
 // cap mirrors the API's MAX_SEARCH_LIMIT so an oversized ask is rejected locally with a named message.
 export const SearchInboxesParams = ListItemsParams.extend({
-    q: z.string().min(2).max(256).describe('Address or display name to search for; matches word prefixes'),
-    limit: z.number().int().positive().max(100).optional().default(10).describe('Max number of items to return'),
+    q: z.string().min(2).max(256).describe('Words matched by prefix against inbox addresses and display names, or a full address'),
+    limit: z.number().int().positive().max(100).optional().default(10).describe('Number of items per page'),
 })
 
 // One set of tools for every allow/block list an inbox has: which list is a parameter, not a
@@ -84,9 +107,15 @@ const ListDirectionSchema = z
     .describe(
         'Which traffic the list governs: send filters the recipients of outbound mail; receive filters the senders of new inbound mail; reply filters the senders of inbound mail that continues a thread this inbox already replied to'
     )
-const ListTypeSchema = z.enum(['allow', 'block']).describe('allow or block list')
+const ListTypeSchema = z
+    .enum(['allow', 'block'])
+    .describe('allow: once the list has an entry, only listed addresses pass; block: listed addresses are blocked')
 // The same dot-segment guard as AppIdSchema: the SDK splices the entry into the URL path.
-const ListEntryValueSchema = z.string().min(1).refine(notDotSegment, 'must be an email address or domain').describe('Email address or domain')
+const ListEntryValueSchema = z
+    .string()
+    .min(1)
+    .refine(notDotSegment, 'must be an email address or domain')
+    .describe('The email address (name@example.com) or domain (example.com) the entry matches')
 
 export const ListListEntriesParams = ListItemsParams.extend({
     inboxId: InboxIdSchema,
@@ -105,8 +134,8 @@ export const CreateListEntryParams = z.object({
     inboxId: InboxIdSchema,
     direction: ListDirectionSchema,
     listType: ListTypeSchema,
-    entry: ListEntryValueSchema.describe('Email address or domain to add'),
-    reason: z.string().optional().describe('Why the entry was added'),
+    entry: ListEntryValueSchema.describe('Email address (name@example.com) or domain (example.com) to add; a domain matches only itself'),
+    reason: z.string().optional().describe('Your note on why the entry was added, returned when the entry is read'),
 })
 
 export const DeleteListEntryParams = GetListEntryParams
@@ -117,8 +146,11 @@ export const GetThreadParams = z.object({
 })
 
 export const UpdateThreadParams = GetThreadParams.extend({
-    addLabels: z.array(z.string()).optional().describe('Labels to add'),
-    removeLabels: z.array(z.string()).optional().describe('Labels to remove'),
+    addLabels: z
+        .array(z.string())
+        .optional()
+        .describe('Labels to add to every message in the thread, e.g. trash to move it to trash, or your own'),
+    removeLabels: z.array(z.string()).optional().describe('Labels to remove from every message in the thread, e.g. unread to mark it read'),
 })
 
 export const GetAttachmentParams = z.object({
@@ -128,10 +160,13 @@ export const GetAttachmentParams = z.object({
 })
 
 const AttachmentBaseSchema = z.object({
-    filename: z.string().optional().describe('Filename'),
-    contentType: z.string().optional().describe('MIME type of the attachment'),
-    contentDisposition: z.enum(['inline', 'attachment']).optional().describe('Content disposition'),
-    contentId: z.string().optional().describe('Content ID for inline attachments'),
+    filename: z.string().optional().describe('File name recipients see, e.g. report.pdf'),
+    contentType: z.string().optional().describe('MIME type, e.g. application/pdf; inferred when omitted'),
+    contentDisposition: z
+        .enum(['inline', 'attachment'])
+        .optional()
+        .describe('inline to show it in the HTML body, attachment to offer it as a download'),
+    contentId: z.string().optional().describe('ID the HTML body references as cid:<contentId> to show it inline'),
 })
 
 // A two-variant union so the ADVERTISED JSON Schema expresses content/url
@@ -155,11 +190,25 @@ const AttachmentSchema = z
     ])
     .describe('Attachment: provide exactly one of content (base64) or url')
 
+// Addresses take a bare address or "Name <address>" form. Send and forward need at least one of
+// to, cc or bcc; a draft needs a recipient only once it is scheduled.
+const ADDRESSES = 'each a bare address or "Name <address>"'
+const ToSchema = z.array(z.string()).describe(`Recipient addresses, ${ADDRESSES}`)
+const CcSchema = z.array(z.string()).optional().describe('Copied addresses, visible to every recipient')
+const BccSchema = z.array(z.string()).optional().describe('Blind-copied addresses, hidden from the other recipients')
+const SubjectSchema = z.string().optional().describe('Subject line recipients see')
+const ReplyToSchema = z.array(z.string()).optional().describe('Addresses that replies should go to instead of this inbox')
+const TextSchema = z.string().optional().describe('Plain-text body; include it even with html, since no text version is generated from html')
+const HtmlSchema = z.string().optional().describe('HTML body for formatted mail; inline images use cid:<contentId>')
+
 const BaseMessageParams = z.object({
     inboxId: InboxIdSchema,
-    text: z.string().optional().describe('Plain text body'),
-    html: z.string().optional().describe('HTML body'),
-    labels: z.array(z.string()).optional().describe('Labels'),
+    text: TextSchema,
+    html: HtmlSchema,
+    labels: z
+        .array(z.string())
+        .optional()
+        .describe('Your own labels for the message; AgentMail sets system labels such as sent'),
     attachments: z
         .array(AttachmentSchema)
         .optional()
@@ -167,11 +216,11 @@ const BaseMessageParams = z.object({
 })
 
 export const SendMessageParams = BaseMessageParams.extend({
-    to: z.array(z.string()).describe('Recipients'),
-    cc: z.array(z.string()).optional().describe('CC recipients'),
-    bcc: z.array(z.string()).optional().describe('BCC recipients'),
-    subject: z.string().optional().describe('Subject'),
-    replyTo: z.array(z.string()).optional().describe('Reply-to addresses'),
+    to: ToSchema.describe(`Recipient addresses, ${ADDRESSES}; at least one of to, cc or bcc is required`),
+    cc: CcSchema,
+    bcc: BccSchema,
+    subject: SubjectSchema,
+    replyTo: ReplyToSchema,
 })
 
 export const ReplyToMessageParams = BaseMessageParams.extend({
@@ -183,10 +232,12 @@ export const ReplyToMessageParams = BaseMessageParams.extend({
     to: z
         .array(z.string())
         .optional()
-        .describe('Override reply recipients, replacing the default (the original sender). Omit to reply to the sender only. Cannot be combined with replyAll'),
+        .describe(
+            "Recipients, replacing the default: the original's Reply-To, else its sender (for a message this inbox sent, that is this inbox). Cannot be combined with replyAll"
+        ),
     cc: z.array(z.string()).optional().describe('Override CC recipients. Cannot be combined with replyAll'),
     bcc: z.array(z.string()).optional().describe('Override BCC recipients. Cannot be combined with replyAll'),
-    replyTo: z.array(z.string()).optional().describe('Reply-to addresses'),
+    replyTo: ReplyToSchema,
     // Mirrors the API's ReplyMessageSchema refine (agentmail-api schemas/message.ts),
     // predicate and error text both - reject the combination locally instead of
     // round-tripping a request the API will reject. NOTE: the MCP SDK validates
@@ -199,35 +250,45 @@ export const ReplyToMessageParams = BaseMessageParams.extend({
 })
 
 export const ForwardMessageParams = SendMessageParams.extend({
-    messageId: MessageIdSchema,
+    messageId: z.string().describe('ID of the message to forward, with its angle brackets; its body and all attachments are included'),
+    subject: z.string().optional().describe('Subject line; "Fwd: " plus the original subject when omitted'),
 })
 
 export const UpdateMessageParams = z.object({
     inboxId: InboxIdSchema,
     messageId: MessageIdSchema,
-    addLabels: z.array(z.string()).optional().describe('Labels to add'),
-    removeLabels: z.array(z.string()).optional().describe('Labels to remove'),
+    addLabels: z.array(z.string()).optional().describe('Labels to add to the message, e.g. unread or your own'),
+    removeLabels: z.array(z.string()).optional().describe('Labels to remove from the message, e.g. unread to mark it read'),
 })
 
 export const ListMessagesParams = ListInboxItemsParams.extend({
-    from: z.array(z.string()).optional().describe('Filter messages by sender (substring match; all values must match)'),
-    to: z.array(z.string()).optional().describe('Filter messages by recipients (substring match; all values must match)'),
-    subject: z.array(z.string()).optional().describe('Filter messages by subject (substring match; all values must match)'),
-    includeSpam: z.boolean().optional().describe('Include messages in spam'),
-    includeTrash: z.boolean().optional().describe('Include messages in trash'),
+    from: z
+        .array(z.string())
+        .optional()
+        .describe('Only messages whose sender matches every value by word prefix, e.g. "acme" matches bob@acme.com'),
+    to: z.array(z.string()).optional().describe('Only messages whose To, Cc or Bcc addresses match every value by word prefix'),
+    subject: z.array(z.string()).optional().describe('Only messages whose subject matches every value by word prefix'),
+    includeSpam: z.boolean().optional().describe('Also return messages labeled spam, which are left out when omitted'),
+    includeTrash: z.boolean().optional().describe('Also return messages labeled trash, which are left out when omitted'),
 })
 
 // Draft schemas
 
+// The same Date parse as before/after; a time already past sends within a minute.
+const SendAtSchema = z.string().pipe(z.coerce.date()).optional()
+
 export const CreateDraftParams = BaseMessageParams.extend({
-    to: z.array(z.string()).optional().describe('Recipients'),
-    cc: z.array(z.string()).optional().describe('CC recipients'),
-    bcc: z.array(z.string()).optional().describe('BCC recipients'),
-    subject: z.string().optional().describe('Subject'),
-    replyTo: z.array(z.string()).optional().describe('Reply-to addresses'),
-    inReplyTo: z.string().optional().describe('Message ID this draft is replying to'),
-    sendAt: z.string().pipe(z.coerce.date()).optional().describe('ISO 8601 datetime to schedule sending (e.g. 2026-04-01T09:00:00Z)'),
-    clientId: z.string().optional().describe('Client-provided ID for idempotent creation'),
+    to: ToSchema.optional(),
+    cc: CcSchema,
+    bcc: BccSchema,
+    subject: SubjectSchema,
+    replyTo: ReplyToSchema,
+    inReplyTo: z
+        .string()
+        .optional()
+        .describe('Message ID (angle brackets included) of a message in this inbox to reply to; the draft then joins its thread'),
+    sendAt: SendAtSchema.describe('When to send it, as ISO 8601 with a timezone (e.g. 2026-04-01T09:00:00Z); a past time sends within a minute'),
+    clientId: z.string().optional().describe('Your idempotency key: creating again with the same clientId returns the existing draft'),
 })
 
 export const ListDraftsParams = ListInboxItemsParams
@@ -240,14 +301,14 @@ export const GetDraftParams = z.object({
 export const UpdateDraftParams = z.object({
     inboxId: InboxIdSchema,
     draftId: DraftIdSchema,
-    to: z.array(z.string()).optional().describe('Recipients'),
-    cc: z.array(z.string()).optional().describe('CC recipients'),
-    bcc: z.array(z.string()).optional().describe('BCC recipients'),
-    subject: z.string().optional().describe('Subject'),
-    text: z.string().optional().describe('Plain text body'),
-    html: z.string().optional().describe('HTML body'),
-    replyTo: z.array(z.string()).optional().describe('Reply-to addresses'),
-    sendAt: z.string().pipe(z.coerce.date()).optional().describe('ISO 8601 datetime to reschedule sending'),
+    to: ToSchema.optional(),
+    cc: CcSchema,
+    bcc: BccSchema,
+    subject: SubjectSchema,
+    text: TextSchema,
+    html: HtmlSchema,
+    replyTo: ReplyToSchema,
+    sendAt: SendAtSchema.describe('New send time, as ISO 8601 with a timezone (e.g. 2026-04-01T09:00:00Z)'),
 })
 
 export const SendDraftParams = z.object({
@@ -292,8 +353,8 @@ const AppIdSchema = z
 // bounds mirror the API's own caps (100 list / 50 search) so an oversized ask is rejected locally
 // with a named message instead of an opaque upstream 400.
 const AppPageParams = z.object({
-    limit: z.number().int().positive().max(100).optional().describe('Max number of items to return'),
-    pageToken: z.string().optional().describe('Page token for pagination'),
+    limit: z.number().int().positive().max(100).optional().describe('Number of items per page'),
+    pageToken: PageTokenSchema,
 })
 
 // The SDK's AppCategory is the API's vocabulary, so a category the API would 400 is refused here
@@ -309,7 +370,7 @@ export const ListAppsParams = AppPageParams.extend({
 
 export const SearchAppsParams = z.object({
     q: z.string().min(1).max(128).describe('Name (or name prefix) to search for'),
-    limit: z.number().int().positive().max(50).optional().describe('Max number of items to return'),
+    limit: z.number().int().positive().max(50).optional().describe('Number of apps to return'),
 })
 
 export const GetAppParams = z.object({
