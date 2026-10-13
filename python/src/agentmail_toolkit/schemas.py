@@ -2,17 +2,26 @@ from typing import Annotated, Optional, List
 from pydantic import BaseModel, Field
 from datetime import datetime
 
-InboxIdField = Annotated[str, Field(description="ID of inbox")]
-ThreadIdField = Annotated[str, Field(description="ID of thread")]
-MessageIdField = Annotated[str, Field(description="ID of message")]
-AttachmentIdField = Annotated[str, Field(description="ID of attachment")]
+# Where each ID comes from, so an agent can fill it without guessing. Message IDs are RFC 5322
+# Message-IDs and keep their angle brackets; get_attachment reads the thread's attachment list,
+# so an attachment ID is taken from there.
+InboxIdField = Annotated[str, Field(description="Inbox ID: the inbox's email address, from list_inboxes")]
+ThreadIdField = Annotated[str, Field(description="Thread ID, from list_threads or a message's thread_id")]
+MessageIdField = Annotated[str, Field(description="Message ID with its angle brackets, from get_thread")]
+AttachmentIdField = Annotated[
+    str, Field(description="Attachment ID, from a thread's attachments in list_threads or get_thread")
+]
+
+# The SDK sends a datetime with its own offset (or the runtime's, if it has none), and the API
+# accepts only UTC ending in Z, so ask for UTC.
+UTC_EXAMPLE = "ISO 8601 UTC ending in Z, e.g. 2026-04-01T09:00:00Z"
 
 
 class ListItemsParams(BaseModel):
-    limit: Optional[int] = Field(
-        default=10, description="Max number of items to return"
+    limit: Optional[int] = Field(default=10, description="Number of items per page")
+    page_token: Optional[str] = Field(
+        default=None, description="next_page_token from the previous page's result; omit for the first page"
     )
-    page_token: Optional[str] = Field(default=None, description="Pagination page token")
 
 
 class GetInboxParams(BaseModel):
@@ -20,20 +29,35 @@ class GetInboxParams(BaseModel):
 
 
 class CreateInboxParams(BaseModel):
-    username: Optional[str] = Field(default=None, description="Username")
-    domain: Optional[str] = Field(default=None, description="Domain")
-    display_name: Optional[str] = Field(default=None, description="Display name")
+    username: Optional[str] = Field(
+        default=None, description="Part of the address before the @; a random one is generated when omitted"
+    )
+    domain: Optional[str] = Field(
+        default=None, description="Domain of the address, agentmail.to when omitted; a custom domain must be verified first"
+    )
+    display_name: Optional[str] = Field(
+        default=None, description='Sender name recipients see; "AgentMail" when omitted, and an empty string sends none'
+    )
 
 
 class ListInboxItemsParams(ListItemsParams):
     inbox_id: InboxIdField
-    labels: Optional[List[str]] = Field(default=None, description="Filter items with labels")
-    before: Optional[datetime] = Field(default=None, description="Filter items before datetime")
-    after: Optional[datetime] = Field(default=None, description="Filter items after datetime")
-    ascending: Optional[bool] = Field(default=None, description="Sort in ascending order")
-    include_spam: Optional[bool] = Field(default=None, description="Include spam items")
-    include_blocked: Optional[bool] = Field(default=None, description="Include blocked items")
-    include_trash: Optional[bool] = Field(default=None, description="Include trash items")
+    labels: Optional[List[str]] = Field(
+        default=None, description="Only items carrying all of these labels, such as unread or your own"
+    )
+    before: Optional[datetime] = Field(default=None, description=f"Only items before this time, as {UTC_EXAMPLE}")
+    after: Optional[datetime] = Field(default=None, description=f"Only items at or after this time, as {UTC_EXAMPLE}")
+    ascending: Optional[bool] = Field(default=None, description="Sort by oldest first instead of most recent first")
+    include_spam: Optional[bool] = Field(
+        default=None, description="Also return items labeled spam, which are left out when omitted"
+    )
+    include_blocked: Optional[bool] = Field(
+        default=None,
+        description="Also return mail labeled blocked (its sender is on a block list), which is left out when omitted",
+    )
+    include_trash: Optional[bool] = Field(
+        default=None, description="Also return items labeled trash, which are left out when omitted"
+    )
 
 
 class GetThreadParams(BaseModel):
@@ -48,50 +72,72 @@ class GetAttachmentParams(BaseModel):
 
 
 class Attachment(BaseModel):
-    filename: Optional[str] = Field(default=None, description="Filename")
-    content_id: Optional[str] = Field(default=None, description="Content ID for inline attachments")
+    filename: Optional[str] = Field(default=None, description="File name recipients see, e.g. report.pdf")
+    content_id: Optional[str] = Field(
+        default=None, description="ID the HTML body references as cid:<content_id> to show it inline"
+    )
     content: Optional[str] = Field(
-        default=None, description="Base64 encoded content. Exactly one of content or url must be provided"
+        default=None,
+        description="Base64-encoded file content: standard, padded, no data: prefix. Exactly one of content or url must be provided",
     )
     url: Optional[str] = Field(
         default=None,
-        description="Publicly accessible URL to fetch the attachment from. Exactly one of content or url must be provided",
+        description="Public http(s) URL AgentMail fetches the file from. Exactly one of content or url must be provided",
     )
 
 
 class BaseMessageParams(BaseModel):
     inbox_id: InboxIdField
-    text: Optional[str] = Field(default=None, description="Plain text body")
-    html: Optional[str] = Field(default=None, description="HTML body")
-    labels: Optional[List[str]] = Field(default=None, description="Labels")
+    text: Optional[str] = Field(
+        default=None,
+        description="Plain-text body; include it even with html, since no text version is generated from html",
+    )
+    html: Optional[str] = Field(
+        default=None, description="HTML body for formatted mail; inline images use cid:<content_id>"
+    )
+    labels: Optional[List[str]] = Field(
+        default=None, description="Your own labels for the message; AgentMail sets system labels such as sent"
+    )
     attachments: Optional[List[Attachment]] = Field(
         default=None, description="Attachments. Each item must specify exactly one of content (base64) or url"
     )
 
 
 class SendMessageParams(BaseMessageParams):
-    to: List[str] = Field(description="Recipients")
-    cc: Optional[List[str]] = Field(default=None, description="CC recipients")
-    bcc: Optional[List[str]] = Field(default=None, description="BCC recipients")
-    subject: Optional[str] = Field(default=None, description="Subject")
+    to: List[str] = Field(
+        description='Recipient addresses, each a bare address or "Name <address>"; at least one of to, cc or bcc is required'
+    )
+    cc: Optional[List[str]] = Field(default=None, description="Copied addresses, visible to every recipient")
+    bcc: Optional[List[str]] = Field(default=None, description="Blind-copied addresses, hidden from the other recipients")
+    subject: Optional[str] = Field(default=None, description="Subject line recipients see")
 
 
 class ReplyToMessageParams(BaseMessageParams):
     message_id: MessageIdField
     reply_all: Optional[bool] = Field(
-        default=None, description="Reply to all original recipients. Omit or set false to reply to the sender only"
+        default=None,
+        description="Also reply to all original recipients; when omitted the reply goes to the original's Reply-To, else its sender",
     )
 
 
 class ForwardMessageParams(SendMessageParams):
-    message_id: MessageIdField
+    message_id: str = Field(
+        description="ID of the message to forward, with its angle brackets; its body and all attachments are included"
+    )
+    subject: Optional[str] = Field(
+        default=None, description='Subject line; "Fwd: " plus the original subject when omitted'
+    )
 
 
 class UpdateMessageParams(BaseModel):
     inbox_id: InboxIdField
     message_id: MessageIdField
-    add_labels: Optional[List[str]] = Field(default=None, description="Labels to add")
-    remove_labels: Optional[List[str]] = Field(default=None, description="Labels to remove")
+    add_labels: Optional[List[str]] = Field(
+        default=None, description="Labels to add to the message, e.g. unread or your own"
+    )
+    remove_labels: Optional[List[str]] = Field(
+        default=None, description="Labels to remove from the message, e.g. unread to mark it read"
+    )
 
 
 class AgentAttachHumanParams(BaseModel):
