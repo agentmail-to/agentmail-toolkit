@@ -98,6 +98,26 @@ export const agentAttachHumanResult = () => ({
 export const agentVerifyResult = () => ({ verified: true })
 export const labs = () => ({ enabled: true, enabledAt: NOW, available: true })
 
+// As the SDK returns a file: camelCase, Dates, and the fields the toolkit leaves out (sha256, email).
+export const fileItem = () => ({
+    fileId: '6f1c2f4e-8d3b-4a5e-9c7d-1b2a3c4d5e6f',
+    inboxId: 'inbox@agentmail.to',
+    email: 'inbox@agentmail.to',
+    path: 'reports/q3.txt',
+    name: 'q3.txt',
+    size: 11,
+    contentType: 'text/plain; charset=utf-8',
+    sha256: 'uU0nuZNNPgilLlLX2n2r+sSE7+N6U4DukIj3rOLvzek=',
+    status: 'ready',
+    createdAt: NOW,
+    updatedAt: NOW,
+})
+export const file = () => ({
+    ...fileItem(),
+    downloadUrl: 'https://cdn.agentmail.to/files/6f1c2f4e-8d3b-4a5e-9c7d-1b2a3c4d5e6f?filename=71332e747874',
+    downloadExpiresAt: NOW,
+})
+
 export const app = () => ({
     appId: '11111111-1111-4111-8111-111111111111',
     name: 'Example RP',
@@ -192,6 +212,10 @@ export const fixtureByTool: Record<string, () => unknown> = {
     update_draft: draft,
     send_draft: sendResult,
     delete_draft: success,
+    upload_file: file,
+    list_files: () => ({ count: 1, limit: 10, files: [fileItem()] }),
+    get_file: file,
+    delete_file: success,
     auth_me: identity,
     agent_attach_human: agentAttachHumanResult,
     agent_verify: agentVerifyResult,
@@ -236,6 +260,10 @@ export const argsByTool: Record<string, Record<string, unknown>> = {
     update_draft: { inboxId: 'inbox_1', draftId: 'draft_1', subject: 'Hi' },
     send_draft: { inboxId: 'inbox_1', draftId: 'draft_1' },
     delete_draft: { inboxId: 'inbox_1', draftId: 'draft_1' },
+    upload_file: { inboxId: 'inbox_1', path: 'reports/q3.txt', content: 'hello world' },
+    list_files: { inboxId: 'inbox_1' },
+    get_file: { inboxId: 'inbox_1', fileId: '6f1c2f4e-8d3b-4a5e-9c7d-1b2a3c4d5e6f' },
+    delete_file: { inboxId: 'inbox_1', fileId: '6f1c2f4e-8d3b-4a5e-9c7d-1b2a3c4d5e6f' },
     auth_me: {},
     agent_attach_human: { humanEmail: 'human@example.com' },
     agent_verify: { otpCode: '123456' },
@@ -297,6 +325,14 @@ export function mockClient(overrides?: Record<string, unknown>): AgentMailClient
                 get: async () => f.get_draft(),
                 update: async () => f.update_draft(),
                 send: async () => f.send_draft(),
+                delete: async () => undefined,
+            },
+            // create returns the file already ready, as an identical retry does, so the catalog tests make no PUT.
+            files: {
+                create: async () => f.upload_file(),
+                complete: async () => f.upload_file(),
+                list: async () => f.list_files(),
+                get: async () => f.get_file(),
                 delete: async () => undefined,
             },
         },
