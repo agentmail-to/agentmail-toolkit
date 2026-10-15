@@ -189,3 +189,17 @@ describe('normalize', () => {
         })
     })
 })
+
+describe('attachment download cancellation', () => {
+    it("passes the caller's signal to the download", async () => {
+        const fetchSpy = vi.fn(async () => new Response(null, { status: 404 }))
+        vi.stubGlobal('fetch', fetchSpy)
+        const controller = new AbortController()
+        controller.abort()
+
+        await expect(getAttachment(clientWith(attachmentResponse()), ARGS, { signal: controller.signal })).rejects.toThrow()
+
+        const [, init] = fetchSpy.mock.calls[0] as unknown as [string, RequestInit]
+        expect(init.signal?.aborted).toBe(true)
+    })
+})

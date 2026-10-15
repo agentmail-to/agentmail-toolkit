@@ -1,7 +1,7 @@
 import { AgentMailClient } from 'agentmail'
 import { z } from 'zod'
 
-import { detectFileType, extractPdfText, extractDocxText } from './util.js'
+import { detectFileType, extractPdfText, extractDocxText, type ToolCallOptions } from './util.js'
 import {
     ListItemsParams,
     GetInboxParams,
@@ -103,7 +103,10 @@ export async function deleteThread(client: AgentMailClient, args: z.infer<typeof
 // debug data OpenAI app review requires kept out of tool results).
 const MAX_ATTACHMENT_BYTES = 5.95 * 1024 * 1024
 
-export async function getAttachment(client: AgentMailClient, args: z.infer<typeof GetAttachmentParams>) {
+// A direct fetch's own timeout, cancelled early by the caller's signal when there is one.
+const fetchSignal = (ms: number, signal?: AbortSignal) => (signal ? AbortSignal.any([AbortSignal.timeout(ms), signal]) : AbortSignal.timeout(ms))
+
+export async function getAttachment(client: AgentMailClient, args: z.infer<typeof GetAttachmentParams>, { signal }: ToolCallOptions = {}) {
     const { inboxId, threadId, attachmentId } = args
 
     const attachment = await client.inboxes.threads.getAttachment(inboxId, threadId, attachmentId)
@@ -124,7 +127,7 @@ export async function getAttachment(client: AgentMailClient, args: z.infer<typeo
     // redirect: 'error' - the signed CDN URL should never redirect; following one could
     // silently downgrade the https-only check above (fetch follows redirects by default
     // with no scheme restriction on the target).
-    const response = await fetch(attachment.downloadUrl, { signal: AbortSignal.timeout(15_000), redirect: 'error' })
+    const response = await fetch(attachment.downloadUrl, { signal: fetchSignal(15_000, signal), redirect: 'error' })
     if (!response.ok) {
         throw new Error(`failed to download attachment: HTTP ${response.status}`)
     }
@@ -233,7 +236,11 @@ const fileBytes = (content: string, encoding: 'utf8' | 'base64'): Uint8Array<Arr
     } catch {
         throw new Error('content is not valid base64')
     }
-    return Uint8Array.from(binary, (char) => char.charCodeAt(0))
+    // An indexed loop: Uint8Array.from(binary, fn) goes through the iterator, which holds about
+    // twelve times the file in heap and blocks for ~250 ms on a 7.5 MB file.
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+    return bytes
 }
 
 const sha256Base64 = async (bytes: Uint8Array<ArrayBuffer>) => {
@@ -244,7 +251,7 @@ const sha256Base64 = async (bytes: Uint8Array<ArrayBuffer>) => {
 // One tool for the API's three-step upload: create the file, PUT its bytes to the presigned URL, complete it.
 // A model can't make the PUT itself. Retrying the identical call is safe: the API returns the file it already
 // made, completing it if its bytes landed, so only a file still waiting for its bytes gets another PUT.
-export async function uploadFile(client: AgentMailClient, args: z.infer<typeof UploadFileParams>) {
+export async function uploadFile(client: AgentMailClient, args: z.infer<typeof UploadFileParams>, { signal }: ToolCallOptions = {}) {
     const { inboxId, path, content, encoding, contentType, expiresAt } = args
     const bytes = fileBytes(content, encoding)
     const file = await client.inboxes.files.create(inboxId, {
@@ -260,10 +267,12 @@ export async function uploadFile(client: AgentMailClient, args: z.infer<typeof U
         method: 'PUT',
         headers: file.upload.headers,
         body: bytes,
-        signal: AbortSignal.timeout(60_000),
+        signal: fetchSignal(60_000, signal),
         redirect: 'error',
     })
-    if (!response.ok) throw new Error(`failed to upload the file's bytes: HTTP ${response.status}`)
+    // 412: the PUT is signed If-None-Match: *, so another PUT of this file's bytes already landed
+    // (a concurrent or abandoned identical call). Complete checks the stored bytes either way.
+    if (!response.ok && response.status !== 412) throw new Error(`failed to upload the file's bytes: HTTP ${response.status}`)
     return client.inboxes.files.complete(inboxId, file.fileId)
 }
 

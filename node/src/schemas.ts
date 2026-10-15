@@ -342,8 +342,10 @@ export const UploadFileParams = z.object({
         .string()
         .optional()
         .describe('MIME type, e.g. application/pdf; text/plain; charset=utf-8 for utf8 content and application/octet-stream for base64 when omitted'),
-    expiresAt: z
-        .string()
+    // Unlike before/after, a time without a timezone is refused rather than read in the host's own zone:
+    // the expiry decides when the file is deleted, and an identical retry has to name the same instant.
+    expiresAt: z.iso
+        .datetime({ offset: true, error: 'expiresAt must be ISO 8601 with a timezone, e.g. 2026-11-01T00:00:00Z' })
         .pipe(z.coerce.date())
         .optional()
         .describe('When the file deletes itself, as ISO 8601 with a timezone (e.g. 2026-11-01T00:00:00Z); in the future. It never expires when omitted'),

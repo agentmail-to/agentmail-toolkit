@@ -120,6 +120,7 @@ import {
     connectApp,
     authorizeInbox,
 } from './functions.js'
+import { type ToolCallOptions } from './util.js'
 
 // All five ToolAnnotations fields (title, readOnlyHint, destructiveHint, idempotentHint,
 // openWorldHint) explicit and required for every tool - see node-audit.md section 3.
@@ -136,7 +137,7 @@ export interface Tool<TParams extends z.ZodObject = z.ZodObject, TResult extends
     // constrained to `z.infer<TResult>` directly; a caller normalizes before validating
     // against outputSchema.
     outputSchema: TResult
-    func: (client: AgentMailClient, args: z.infer<TParams>) => Promise<unknown>
+    func: (client: AgentMailClient, args: z.infer<TParams>, options?: ToolCallOptions) => Promise<unknown>
     annotations: Annotations
 }
 

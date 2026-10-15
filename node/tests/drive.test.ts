@@ -40,7 +40,10 @@ const pendingClient = () => {
 
 const parse = (args: Record<string, unknown>) => UploadFileParams.parse({ inboxId: 'inbox_1', path: 'reports/q3.txt', ...args })
 
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+})
 
 describe('upload_file', () => {
     it("creates the file with the content's size and SHA-256, PUTs exactly the signed headers, then completes it", async () => {
@@ -87,6 +90,22 @@ describe('upload_file', () => {
         })
     })
 
+    it('decodes every byte value of base64 content', async () => {
+        const fetchMock = vi.fn(async () => new Response(null, { status: 200 }))
+        vi.stubGlobal('fetch', fetchMock)
+        const bytes = Uint8Array.from({ length: 256 }, (_, i) => i)
+
+        await uploadFile(pendingClient().client, parse({ content: btoa(String.fromCharCode(...bytes)), encoding: 'base64' }))
+
+        const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+        expect(init.body).toEqual(bytes)
+    })
+
+    it('refuses an expiry without a timezone', () => {
+        const result = UploadFileParams.safeParse({ inboxId: 'inbox_1', path: 'reports/q3.txt', content: 'x', expiresAt: '2026-11-01T00:00:00' })
+        expect(result.error?.issues[0].message).toBe('expiresAt must be ISO 8601 with a timezone, e.g. 2026-11-01T00:00:00Z')
+    })
+
     it('refuses content that is not base64, before any call', async () => {
         const { client, calls } = pendingClient()
         await expect(uploadFile(client, parse({ content: 'not base64!', encoding: 'base64' }))).rejects.toThrow('content is not valid base64')
@@ -101,6 +120,41 @@ describe('upload_file', () => {
         const { client, calls } = pendingClient()
 
         await expect(uploadFile(client, parse({ content: 'hello world' }))).rejects.toThrow("failed to upload the file's bytes: HTTP 403")
+        expect(calls.map(({ method }) => method)).toEqual(['create'])
+    })
+
+    it('completes the file when the PUT gets 412 because its bytes already landed', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async () => new Response(null, { status: 412 }))
+        )
+        const { client, calls } = pendingClient()
+
+        const result = await uploadFile(client, parse({ content: 'hello world' }))
+
+        expect(calls.map(({ method }) => method)).toEqual(['create', 'complete'])
+        expect(result).toEqual(file())
+    })
+
+    it("stops the PUT when invoke's signal aborts, without completing", async () => {
+        const fetchMock = vi.fn(
+            (_url: string, init: RequestInit) => new Promise<Response>((_, reject) => init.signal?.addEventListener('abort', () => reject(init.signal?.reason)))
+        )
+        vi.stubGlobal('fetch', fetchMock)
+        vi.spyOn(console, 'error').mockImplementation(() => {})
+        const { client, calls } = pendingClient()
+        const controller = new AbortController()
+
+        const result = new AgentMailToolkit(client).invoke(
+            'upload_file',
+            client,
+            { inboxId: 'inbox_1', path: 'reports/q3.txt', content: 'hello world' },
+            { signal: controller.signal }
+        )
+        await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled())
+        controller.abort()
+
+        expect((await result).isError).toBe(true)
         expect(calls.map(({ method }) => method)).toEqual(['create'])
     })
 
