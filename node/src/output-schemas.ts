@@ -207,6 +207,35 @@ export const ListDraftsResponseSchema = PaginationSchema.extend({
     drafts: z.array(DraftItemSchema).describe('The drafts on this page'),
 })
 
+// Agent Drive. The file's sha256 and the inbox's duplicate email stay out: nothing an agent does with a file
+// needs them.
+export const FileItemSchema = z.object({
+    fileId: z.string().describe('File ID; pass it as fileId to get_file or delete_file'),
+    inboxId: z.string().describe('Inbox whose drive holds the file'),
+    path: z.string().describe("Where the file lives in the inbox's drive"),
+    name: z.string().describe("The path's last segment; a download saves under this name"),
+    size: z.number().describe('Size in bytes'),
+    contentType: z.string().describe('MIME type'),
+    status: z.enum(['pending', 'ready']).describe('ready once uploaded; only a ready file can be downloaded'),
+    createdAt: isoDate('When the file was created'),
+    updatedAt: isoDate('When the file last changed'),
+    expiresAt: isoDate('When the file deletes itself; absent if it never expires').optional(),
+})
+
+export const FileSchema = FileItemSchema.extend({
+    downloadUrl: z
+        .string()
+        .optional()
+        .describe(
+            'Link that downloads the file, no API key needed, so share it only with whoever should have the file; absent unless ready and the credential may read files'
+        ),
+    downloadExpiresAt: isoDate('When downloadUrl stops working, at most an hour from now; get the file again for a fresh one').optional(),
+})
+
+export const ListFilesResponseSchema = PaginationSchema.extend({
+    files: z.array(FileItemSchema).describe('The files on this page, in path order; get_file returns a download link'),
+})
+
 const ScopeTypeSchema = z.enum(['organization', 'pod', 'inbox'])
 
 export const IdentitySchema = z.object({

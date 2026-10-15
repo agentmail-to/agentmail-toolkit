@@ -23,6 +23,10 @@ import {
     UpdateDraftParams,
     SendDraftParams,
     DeleteDraftParams,
+    UploadFileParams,
+    ListFilesParams,
+    GetFileParams,
+    DeleteFileParams,
     AgentAttachHumanParams,
     AgentVerifyParams,
     ListAppsParams,
@@ -218,6 +222,64 @@ export async function sendDraft(client: AgentMailClient, args: z.infer<typeof Se
 export async function deleteDraft(client: AgentMailClient, args: z.infer<typeof DeleteDraftParams>) {
     const { inboxId, draftId } = args
     await client.inboxes.drafts.delete(inboxId, draftId)
+    return { success: true as const }
+}
+
+const fileBytes = (content: string, encoding: 'utf8' | 'base64'): Uint8Array<ArrayBuffer> => {
+    if (encoding === 'utf8') return new TextEncoder().encode(content)
+    let binary: string
+    try {
+        binary = atob(content)
+    } catch {
+        throw new Error('content is not valid base64')
+    }
+    return Uint8Array.from(binary, (char) => char.charCodeAt(0))
+}
+
+const sha256Base64 = async (bytes: Uint8Array<ArrayBuffer>) => {
+    const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))
+    return btoa(String.fromCharCode(...digest))
+}
+
+// One tool for the API's three-step upload: create the file, PUT its bytes to the presigned URL, complete it.
+// A model can't make the PUT itself. Retrying the identical call is safe: the API returns the file it already
+// made, completing it if its bytes landed, so only a file still waiting for its bytes gets another PUT.
+export async function uploadFile(client: AgentMailClient, args: z.infer<typeof UploadFileParams>) {
+    const { inboxId, path, content, encoding, contentType, expiresAt } = args
+    const bytes = fileBytes(content, encoding)
+    const file = await client.inboxes.files.create(inboxId, {
+        path,
+        size: bytes.length,
+        sha256: await sha256Base64(bytes),
+        contentType: contentType ?? (encoding === 'utf8' ? 'text/plain; charset=utf-8' : undefined),
+        expiresAt,
+    })
+    if (!file.upload) return file
+    // redirect: 'error' - a presigned S3 URL never redirects, and following one would send the bytes elsewhere.
+    const response = await fetch(file.upload.url, {
+        method: 'PUT',
+        headers: file.upload.headers,
+        body: bytes,
+        signal: AbortSignal.timeout(60_000),
+        redirect: 'error',
+    })
+    if (!response.ok) throw new Error(`failed to upload the file's bytes: HTTP ${response.status}`)
+    return client.inboxes.files.complete(inboxId, file.fileId)
+}
+
+export async function listFiles(client: AgentMailClient, args: z.infer<typeof ListFilesParams>) {
+    const { inboxId, ...options } = args
+    return client.inboxes.files.list(inboxId, options)
+}
+
+export async function getFile(client: AgentMailClient, args: z.infer<typeof GetFileParams>) {
+    const { inboxId, fileId } = args
+    return client.inboxes.files.get(inboxId, fileId)
+}
+
+export async function deleteFile(client: AgentMailClient, args: z.infer<typeof DeleteFileParams>) {
+    const { inboxId, fileId } = args
+    await client.inboxes.files.delete(inboxId, fileId)
     return { success: true as const }
 }
 

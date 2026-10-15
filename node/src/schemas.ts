@@ -321,6 +321,49 @@ export const DeleteDraftParams = z.object({
     draftId: DraftIdSchema,
 })
 
+// Agent Drive schemas
+
+const FileIdSchema = z.string().refine(notDotSegment, 'must be a file ID').describe('File ID, from upload_file or list_files')
+
+export const UploadFileParams = z.object({
+    inboxId: InboxIdSchema,
+    path: z
+        .string()
+        .describe(
+            "Where the file goes in the inbox's drive, e.g. reports/q3.pdf: segments separated by /, no leading or trailing /. A path holds one file; its last segment is the name a download saves under"
+        ),
+    content: z.string().describe("The file's content: plain text, or base64 when encoding is base64"),
+    encoding: z
+        .enum(['utf8', 'base64'])
+        .optional()
+        .default('utf8')
+        .describe('utf8 when content is the text itself, base64 for any other bytes (a PDF, an image)'),
+    contentType: z
+        .string()
+        .optional()
+        .describe('MIME type, e.g. application/pdf; text/plain; charset=utf-8 for utf8 content and application/octet-stream for base64 when omitted'),
+    expiresAt: z
+        .string()
+        .pipe(z.coerce.date())
+        .optional()
+        .describe('When the file deletes itself, as ISO 8601 with a timezone (e.g. 2026-11-01T00:00:00Z); in the future. It never expires when omitted'),
+})
+
+export const ListFilesParams = ListItemsParams.extend({
+    inboxId: InboxIdSchema,
+    pathPrefix: z
+        .string()
+        .optional()
+        .describe('Only files whose path starts with this, e.g. reports/ (it matches characters, so reports/q matches reports/q3.pdf)'),
+})
+
+export const GetFileParams = z.object({
+    inboxId: InboxIdSchema,
+    fileId: FileIdSchema,
+})
+
+export const DeleteFileParams = GetFileParams
+
 export const NoParams = z.object({})
 
 // Agent schemas
