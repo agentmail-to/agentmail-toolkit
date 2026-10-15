@@ -61,13 +61,18 @@ export function errorMessage(error: unknown): string {
     return 'Unknown error'
 }
 
+// Per-call options a host passes to a tool. `signal` cancels the tool's own fetches (a presigned
+// upload, an attachment download), which a signal bound into the SDK client never reaches.
+export type ToolCallOptions = { signal?: AbortSignal }
+
 export const safeFunc = async <A, T>(
-    func: (client: AgentMailClient, args: A) => Promise<T>,
+    func: (client: AgentMailClient, args: A, options?: ToolCallOptions) => Promise<T>,
     client: AgentMailClient,
-    args: A
+    args: A,
+    options?: ToolCallOptions
 ): Promise<{ isError: boolean; result: T | string; statusCode?: number; body?: unknown }> => {
     try {
-        return { isError: false, result: await func(client, args) }
+        return { isError: false, result: await func(client, args, options) }
     } catch (error) {
         return {
             isError: true,

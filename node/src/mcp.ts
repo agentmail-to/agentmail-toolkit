@@ -5,7 +5,7 @@ import { type AgentMailClient } from 'agentmail'
 
 import { ListToolkit } from './toolkit.js'
 import { type Tool, tools } from './tools.js'
-import { safeFunc, normalize, truncateForLog } from './util.js'
+import { safeFunc, normalize, truncateForLog, type ToolCallOptions } from './util.js'
 
 interface McpTool {
     name: string
@@ -28,7 +28,8 @@ const toolsByName: ReadonlyMap<string, Tool> = new Map(tools.map((tool) => [tool
 async function runTool(
     tool: Tool,
     client: AgentMailClient,
-    args: Record<string, unknown>
+    args: Record<string, unknown>,
+    options?: ToolCallOptions
 ): Promise<CallToolResult> {
     // The MCP SDK validates tools/call args against a plain z.object it rebuilds
     // from the raw shape we register, which drops root-level refinements (e.g.
@@ -49,7 +50,7 @@ async function runTool(
         }
     }
 
-    const { isError, result, statusCode, body } = await safeFunc(tool.func, client, preflight.data as Record<string, unknown>)
+    const { isError, result, statusCode, body } = await safeFunc(tool.func, client, preflight.data as Record<string, unknown>, options)
     if (isError) {
         // Errors are returned as isError tool results (HTTP 200), so they never
         // reach the host's error logs on their own. Log here, at the real catch
@@ -130,11 +131,16 @@ export class AgentMailToolkit extends ListToolkit<McpTool> {
      * bad name can never crash the caller. `args` is assumed already validated
      * against the tool's paramsSchema (the MCP SDK validates tools/call
      * arguments before dispatch).
+     *
+     * `options.signal` is the request's cancellation: pass it so the fetches a
+     * tool makes itself (upload_file's PUT, get_attachment's download) stop when
+     * the request does. A signal bound into the client only reaches SDK calls.
      */
     async invoke(
         name: string,
         client: AgentMailClient,
-        args: Record<string, unknown>
+        args: Record<string, unknown>,
+        options?: ToolCallOptions
     ): Promise<CallToolResult> {
         const tool = toolsByName.get(name)
         if (!tool) {
@@ -143,6 +149,6 @@ export class AgentMailToolkit extends ListToolkit<McpTool> {
                 isError: true,
             }
         }
-        return runTool(tool, client, args)
+        return runTool(tool, client, args, options)
     }
 }
