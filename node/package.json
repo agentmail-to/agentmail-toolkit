@@ -65,7 +65,7 @@
     "peerDependencies": {
         "@mariozechner/pi-agent-core": "^0.50.1",
         "@modelcontextprotocol/sdk": "^1.31.0",
-        "ai": "^6.0.0-beta.150",
+        "ai": "^6.0.0-beta.150 || ^7.0.0",
         "clawdbot": "^2026.1.24-3",
         "langchain": "^1.2.0"
     },
@@ -93,6 +93,7 @@
         "@sinclair/typebox": "^0.34.47",
         "@types/node": "^24.10.1",
         "ai": "6.0.224",
+        "ai-v7": "npm:ai@7.0.140",
         "clawdbot": "2026.1.24-3",
         "eslint": "^9.39.1",
         "eslint-config-prettier": "^10.1.8",
