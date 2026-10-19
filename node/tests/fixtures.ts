@@ -45,6 +45,7 @@ export const messageItem = () => ({
     to: ['agent@agentmail.to'],
     subject: 'Hello',
     preview: 'Hello there',
+    calendarEventId: '3f8a2c1e-6b4d-4e9f-a7c2-5d1b8e0f9a36',
     size: 123,
     updatedAt: NOW,
     createdAt: NOW,
@@ -116,6 +117,44 @@ export const file = () => ({
     ...fileItem(),
     downloadUrl: 'https://cdn.agentmail.to/files/6f1c2f4e-8d3b-4a5e-9c7d-1b2a3c4d5e6f?filename=71332e747874',
     downloadExpiresAt: NOW,
+})
+
+// As the SDK returns an event: camelCase, Dates, and the iCalendar bookkeeping the toolkit leaves out.
+export const calendarEvent = () => ({
+    eventId: '3f8a2c1e-6b4d-4e9f-a7c2-5d1b8e0f9a36',
+    kind: 'single' as const,
+    title: 'Intro call with Acme',
+    description: 'Walk Jane through the onboarding plan.',
+    location: 'https://meet.example.com/acme-intro',
+    metadata: { crm_deal_id: 'D-1042' },
+    status: 'confirmed' as const,
+    allDay: false,
+    start: '2026-10-15T14:00:00',
+    end: '2026-10-15T14:30:00',
+    timezone: 'America/New_York',
+    durationMode: 'exact' as const,
+    durationValue: 1_800_000,
+    startAt: new Date('2026-10-15T18:00:00.000Z'),
+    endAt: new Date('2026-10-15T18:30:00.000Z'),
+    attendees: [{ email: 'jane@acme.com', name: 'Jane Doe', status: 'needs_action' as const, role: 'required' as const }],
+    attendeeCount: 1,
+    uid: '3f8a2c1e-6b4d-4e9f-a7c2-5d1b8e0f9a36@agentmail.to',
+    sequence: 0,
+    source: 'api' as const,
+    organizerEmail: 'agent@agentmail.to',
+    resourceRevision: 0,
+    createdAt: NOW,
+    updatedAt: NOW,
+    etag: '"rv-0"',
+})
+export const calendarMutation = () => ({ event: calendarEvent(), operationId: 'op_1' })
+export const calendar = () => ({
+    inboxId: 'agent@agentmail.to',
+    timezone: 'UTC',
+    eventCount: 1,
+    createdAt: NOW,
+    updatedAt: NOW,
+    etag: '"rv-0"',
 })
 
 export const app = () => ({
@@ -216,6 +255,17 @@ export const fixtureByTool: Record<string, () => unknown> = {
     list_files: () => ({ count: 1, limit: 10, files: [fileItem()] }),
     get_file: file,
     delete_file: success,
+    get_agenda: () => {
+        const { description: _d, metadata: _m, attendees: _a, etag: _e, ...item } = calendarEvent()
+        return { count: 1, limit: 50, events: [item] }
+    },
+    get_event: calendarEvent,
+    create_event: calendarMutation,
+    update_event: calendarMutation,
+    delete_event: () => ({ success: true as const, deletionId: 'del_1' }),
+    respond_to_invitation: calendarMutation,
+    get_calendar: calendar,
+    update_calendar: calendar,
     auth_me: identity,
     agent_attach_human: agentAttachHumanResult,
     agent_verify: agentVerifyResult,
@@ -264,6 +314,14 @@ export const argsByTool: Record<string, Record<string, unknown>> = {
     list_files: { inboxId: 'inbox_1' },
     get_file: { inboxId: 'inbox_1', fileId: '6f1c2f4e-8d3b-4a5e-9c7d-1b2a3c4d5e6f' },
     delete_file: { inboxId: 'inbox_1', fileId: '6f1c2f4e-8d3b-4a5e-9c7d-1b2a3c4d5e6f' },
+    get_agenda: { inboxId: 'agent@agentmail.to' },
+    get_event: { inboxId: 'agent@agentmail.to', eventId: '3f8a2c1e-6b4d-4e9f-a7c2-5d1b8e0f9a36' },
+    create_event: { inboxId: 'agent@agentmail.to', title: 'Intro call', start: '2026-10-15T14:00:00', end: '2026-10-15T14:30:00' },
+    update_event: { inboxId: 'agent@agentmail.to', eventId: '3f8a2c1e-6b4d-4e9f-a7c2-5d1b8e0f9a36', title: 'Intro call' },
+    delete_event: { inboxId: 'agent@agentmail.to', eventId: '3f8a2c1e-6b4d-4e9f-a7c2-5d1b8e0f9a36' },
+    respond_to_invitation: { inboxId: 'agent@agentmail.to', eventId: '3f8a2c1e-6b4d-4e9f-a7c2-5d1b8e0f9a36', status: 'accepted' },
+    get_calendar: { inboxId: 'agent@agentmail.to' },
+    update_calendar: { inboxId: 'agent@agentmail.to', timezone: 'America/New_York' },
     auth_me: {},
     agent_attach_human: { humanEmail: 'human@example.com' },
     agent_verify: { otpCode: '123456' },
@@ -334,6 +392,17 @@ export function mockClient(overrides?: Record<string, unknown>): AgentMailClient
                 list: async () => f.list_files(),
                 get: async () => f.get_file(),
                 delete: async () => undefined,
+            },
+            calendar: {
+                getAgenda: async () => f.get_agenda(),
+                getEvent: async () => f.get_event(),
+                createEvent: async () => f.create_event(),
+                updateEvent: async () => f.update_event(),
+                // The SDK's delete response, without the success flag the toolkit adds.
+                deleteEvent: async () => ({ deletionId: 'del_1' }),
+                respondToEvent: async () => f.respond_to_invitation(),
+                get: async () => f.get_calendar(),
+                update: async () => f.update_calendar(),
             },
         },
         auth: {

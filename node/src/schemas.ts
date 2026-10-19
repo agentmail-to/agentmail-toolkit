@@ -366,6 +366,195 @@ export const GetFileParams = z.object({
 
 export const DeleteFileParams = GetFileParams
 
+// Calendar schemas
+
+const CalendarEventIdSchema = z
+    .string()
+    .refine(notDotSegment, 'must be an event ID')
+    .describe(
+        "Event ID: a one-off or recurring event's UUID, or a dated ID (<uuid>_<slot>) for one date of a recurring event; from get_agenda, create_event, or a message's calendarEventId"
+    )
+
+// Wall-clock times without an offset, read in the event's timezone. No pattern keyword, for the
+// reason AppIdSchema has none: the API names a malformed time in its 400.
+const WallTimeSchema = z.string()
+const StartSchema = WallTimeSchema.describe(
+    'Local start in timezone, without an offset: YYYY-MM-DDTHH:mm:ss for a timed event, YYYY-MM-DD for an all-day one; for a recurring event, its first date'
+)
+const EndSchema = WallTimeSchema.describe(
+    'Local end in the same format as start: after start for a timed event; for an all-day event, the last day (inclusive)'
+)
+
+// api#1704: the API takes any case and IANA aliases, and stores the zone under its canonical
+// spelling, which Intl decides; so the description promises no particular canonical name.
+const CalendarTimezoneSchema = z
+    .string()
+    .describe(
+        'IANA time zone, e.g. America/New_York, Europe/London or UTC. Any case and aliases such as US/Eastern are accepted and stored under the canonical name, which can differ from the spelling sent; abbreviations such as PST and UTC offsets are refused'
+    )
+
+const IfMatchSchema = z
+    .string()
+    .optional()
+    .describe(
+        'Optional: the etag from your latest read or write of it. The change is then refused with 412 if it changed since; without it the change applies to it as it is now'
+    )
+
+const SendInvitesSchema = z
+    .boolean()
+    .optional()
+    .describe(
+        'Email every attendee the invitation (one send per attendee against send limits). Applies to this request only, so pass it again on each change attendees should hear about. Only for events this inbox organizes'
+    )
+
+const InstanceModeSchema = z
+    .enum(['single', 'future'])
+    .optional()
+    .describe('For a dated ID only: single (the default) changes just that date, future that date and every later one')
+
+const ConsistencySchema = z
+    .enum(['eventual', 'primary'])
+    .optional()
+    .describe('primary to read a change made moments ago; the default, eventual, can trail a change by a few seconds')
+
+const AttendeeInputSchema = z.object({
+    email: z.string().describe("Attendee's email address, unique within the event"),
+    name: z.string().optional().describe('Name shown for the attendee in the invitation'),
+    role: z.enum(['required', 'optional']).optional().describe('Whether their presence is required (the default) or optional'),
+    status: z
+        .enum(['needs_action', 'accepted', 'declined', 'tentative'])
+        .optional()
+        .describe("Their response so far, needs_action when omitted; when replacing the list, keep each status get_event returned"),
+})
+
+const RecurrenceInputSchema = z.object({
+    rule: z
+        .string()
+        .describe("RFC 5545 RRULE evaluated in the event's timezone from its start, e.g. FREQ=WEEKLY;BYDAY=MO,WE,FR or FREQ=MONTHLY;BYDAY=-1FR;COUNT=12"),
+    exdates: z
+        .array(z.string())
+        .optional()
+        .describe('Dates to skip, each the original start of a date: YYYY-MM-DDTHH:mm:ss for a timed event, YYYY-MM-DD for an all-day one'),
+})
+
+const EventMetadataSchema = z
+    .record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
+    .describe('Your own key-value data, returned when the event is read; never sent to attendees')
+
+export const GetAgendaParams = z.object({
+    inboxId: InboxIdSchema,
+    after: z
+        .string()
+        .pipe(z.coerce.date())
+        .optional()
+        .describe('Start of the window, as ISO 8601 with a timezone (e.g. 2026-10-20T00:00:00-04:00); now when omitted. Events still running then are included'),
+    before: z
+        .string()
+        .pipe(z.coerce.date())
+        .optional()
+        .describe('End of the window, as ISO 8601 with a timezone; 90 days after after when omitted. The window is at most 366 days'),
+    limit: z.number().int().positive().max(100).optional().describe('Number of events per page, 50 when omitted'),
+    pageToken: PageTokenSchema,
+    consistency: ConsistencySchema,
+})
+
+export const GetEventParams = z.object({
+    inboxId: InboxIdSchema,
+    eventId: CalendarEventIdSchema,
+    consistency: ConsistencySchema,
+})
+
+export const CreateEventParams = z.object({
+    inboxId: InboxIdSchema,
+    title: z.string().describe('Title attendees see, 1 to 1,000 characters'),
+    start: StartSchema,
+    end: EndSchema,
+    timezone: CalendarTimezoneSchema.optional().describe(
+        "Time zone of start and end; the calendar's default (see get_calendar) when omitted. " + CalendarTimezoneSchema.description
+    ),
+    allDay: z.boolean().optional().describe('true for an all-day event, with start and end as dates'),
+    description: z.string().optional().describe('Details attendees see in the invitation'),
+    location: z.string().optional().describe('A place or a meeting link'),
+    status: z
+        .enum(['confirmed', 'tentative'])
+        .optional()
+        .describe('confirmed (the default), or tentative for a hold that is not settled'),
+    recurrence: RecurrenceInputSchema.optional().describe('Makes this a recurring event'),
+    attendees: z.array(AttendeeInputSchema).optional().describe('People to invite, at most 100; they are emailed only with sendInvites'),
+    sendInvites: SendInvitesSchema,
+    clientId: z.string().optional().describe('Your idempotency key: creating again with the same clientId and fields returns the event already created'),
+    metadata: EventMetadataSchema.optional(),
+})
+
+export const UpdateEventParams = z.object({
+    inboxId: InboxIdSchema,
+    eventId: CalendarEventIdSchema,
+    mode: InstanceModeSchema,
+    ifMatch: IfMatchSchema,
+    title: z.string().optional().describe('New title'),
+    start: StartSchema.optional().describe(
+        "New local start in the event's timezone, as in create_event; for a one-off or recurring event send it with end"
+    ),
+    end: EndSchema.optional().describe("New local end in the event's timezone; a dated ID accepts end alone"),
+    timezone: CalendarTimezoneSchema.optional().describe(
+        'New time zone; not for a dated ID. ' + CalendarTimezoneSchema.description
+    ),
+    description: z.string().nullable().optional().describe('New details; null clears them'),
+    location: z.string().nullable().optional().describe('New place or meeting link; null clears it'),
+    status: z
+        .enum(['confirmed', 'tentative', 'cancelled'])
+        .optional()
+        .describe('confirmed, tentative, or cancelled (the event stays readable but no longer happens)'),
+    recurrence: RecurrenceInputSchema.nullable()
+        .optional()
+        .describe('Replaces the whole recurrence, exdates included; null makes it a one-off event. Not for a dated ID'),
+    attendees: z
+        .array(AttendeeInputSchema)
+        .optional()
+        .describe(
+            "Replaces the whole list: to add or remove someone, send the list get_event returned with the change, keeping each status, and pass ifMatch so a response that arrived meanwhile isn't overwritten"
+        ),
+    sendInvites: SendInvitesSchema,
+    metadata: EventMetadataSchema.nullable().optional().describe('Replaces your key-value data; null clears it. Never sent to attendees'),
+})
+
+export const DeleteEventParams = z.object({
+    inboxId: InboxIdSchema,
+    eventId: CalendarEventIdSchema,
+    mode: InstanceModeSchema,
+    sendInvites: z
+        .boolean()
+        .optional()
+        .describe('Email every attendee a cancellation (one send per attendee against send limits). Only for events this inbox organizes'),
+    ifMatch: IfMatchSchema,
+})
+
+export const RespondToInvitationParams = z.object({
+    inboxId: InboxIdSchema,
+    eventId: CalendarEventIdSchema.describe(
+        "The invitation's event ID, from a message's calendarEventId or get_agenda: its UUID answers for every date, a dated ID (<uuid>_<slot>) for that date only"
+    ),
+    status: z.enum(['accepted', 'declined', 'tentative']).describe('Your answer to the invitation'),
+    comment: z.string().optional().describe('Note sent to the organizer with the answer, at most 4,096 bytes'),
+    sendReply: z
+        .boolean()
+        .optional()
+        .describe('Email the answer to the organizer (the default, one send against send limits); false records it only on this calendar'),
+    ifMatch: IfMatchSchema,
+})
+
+export const GetCalendarParams = z.object({
+    inboxId: InboxIdSchema,
+})
+
+export const UpdateCalendarParams = z.object({
+    inboxId: InboxIdSchema,
+    timezone: CalendarTimezoneSchema.describe(
+        'New default time zone for events created without one; existing events keep theirs. ' + CalendarTimezoneSchema.description
+    ),
+    ifMatch: IfMatchSchema,
+})
+
 export const NoParams = z.object({})
 
 // Agent schemas
