@@ -27,6 +27,14 @@ import {
     ListFilesParams,
     GetFileParams,
     DeleteFileParams,
+    GetAgendaParams,
+    GetEventParams,
+    CreateEventParams,
+    UpdateEventParams,
+    DeleteEventParams,
+    RespondToInvitationParams,
+    GetCalendarParams,
+    UpdateCalendarParams,
     AgentAttachHumanParams,
     AgentVerifyParams,
     ListAppsParams,
@@ -290,6 +298,48 @@ export async function deleteFile(client: AgentMailClient, args: z.infer<typeof D
     const { inboxId, fileId } = args
     await client.inboxes.files.delete(inboxId, fileId)
     return { success: true as const }
+}
+
+// Calendar functions
+
+export async function getAgenda(client: AgentMailClient, args: z.infer<typeof GetAgendaParams>) {
+    const { inboxId, ...options } = args
+    return client.inboxes.calendar.getAgenda(inboxId, options)
+}
+
+export async function getEvent(client: AgentMailClient, args: z.infer<typeof GetEventParams>) {
+    const { inboxId, eventId, ...options } = args
+    return client.inboxes.calendar.getEvent(inboxId, eventId, options)
+}
+
+export async function createEvent(client: AgentMailClient, args: z.infer<typeof CreateEventParams>) {
+    const { inboxId, ...body } = args
+    return client.inboxes.calendar.createEvent(inboxId, body)
+}
+
+export async function updateEvent(client: AgentMailClient, args: z.infer<typeof UpdateEventParams>) {
+    const { inboxId, eventId, ...body } = args
+    return client.inboxes.calendar.updateEvent(inboxId, eventId, body)
+}
+
+export async function deleteEvent(client: AgentMailClient, args: z.infer<typeof DeleteEventParams>) {
+    const { inboxId, eventId, ...options } = args
+    return { success: true as const, ...(await client.inboxes.calendar.deleteEvent(inboxId, eventId, options)) }
+}
+
+export async function respondToInvitation(client: AgentMailClient, args: z.infer<typeof RespondToInvitationParams>) {
+    const { inboxId, eventId, ...body } = args
+    return client.inboxes.calendar.respondToEvent(inboxId, eventId, body)
+}
+
+export async function getCalendar(client: AgentMailClient, args: z.infer<typeof GetCalendarParams>) {
+    const { inboxId, ...options } = args
+    return client.inboxes.calendar.get(inboxId, options)
+}
+
+export async function updateCalendar(client: AgentMailClient, args: z.infer<typeof UpdateCalendarParams>) {
+    const { inboxId, ...body } = args
+    return client.inboxes.calendar.update(inboxId, body)
 }
 
 export async function authMe(client: AgentMailClient) {
