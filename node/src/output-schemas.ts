@@ -1,3 +1,4 @@
+import { AgentMail } from 'agentmail'
 import { z } from 'zod'
 
 // Output (result) schemas for the AgentMail SDK's response shapes, derived from the
@@ -108,7 +109,7 @@ export const MessageItemSchema = z.object({
         .string()
         .optional()
         .describe(
-            "The calendar event this email's invitation, update, cancellation or reply changed, set a few seconds after it arrives (a dated ID for one date of a recurring event); pass it to get_event or respond_to_invitation. Absent on other mail"
+            "The calendar event this email's invitation, update, cancellation or reply changed, set a few seconds after it arrives (a dated ID for one date of a recurring event); pass it to get_event. Only an invitation this inbox received can be answered with respond_to_invitation, not a reply or cancellation. Absent on other mail"
         ),
     // Raw RFC-822 `headers` deliberately excluded: they carry personal identifiers
     // (Received-chain IPs, Return-Path) a model never needs — flagged by OpenAI app
@@ -258,10 +259,10 @@ const AttendeeSchema = z.object({
     email: z.string().describe("Attendee's email address"),
     name: z.string().optional().describe('Name shown for the attendee'),
     status: z
-        .enum(['needs_action', 'accepted', 'declined', 'tentative'])
+        .enum(AgentMail.AttendeeStatus)
         .optional()
         .describe('Their response: needs_action until they answer, then accepted, declined, or tentative'),
-    role: z.enum(['required', 'optional']).optional().describe('Whether their presence is required or optional'),
+    role: z.enum(AgentMail.AttendeeRole).optional().describe('Whether their presence is required or optional'),
     comment: z.string().optional().describe('Note the attendee sent with their response'),
     respondedAt: isoDate('When they last responded').optional(),
 })
@@ -269,7 +270,7 @@ const AttendeeSchema = z.object({
 export const CalendarEventSchema = z.object({
     eventId: z.string().describe('Event ID; pass it to get_event, update_event, delete_event, or respond_to_invitation'),
     kind: z
-        .enum(['single', 'series', 'instance'])
+        .enum(AgentMail.CalendarEventKind)
         .describe('single: a one-off event; series: a recurring event; instance: one date of a recurring event, with a dated ID'),
     seriesId: z.string().optional().describe('For an instance, the UUID of the recurring event it belongs to'),
     originalStart: z.string().optional().describe('For an instance, its start as the rule generated it, before any edit'),
@@ -279,7 +280,7 @@ export const CalendarEventSchema = z.object({
     location: z.string().optional().describe('Place or meeting link'),
     metadata: z.unknown().optional().describe('Your own data stored on the event; get_agenda leaves it out'),
     status: z
-        .enum(['confirmed', 'tentative', 'cancelled'])
+        .enum(AgentMail.CalendarEventStatus)
         .describe('confirmed, tentative, or cancelled (still readable, but it no longer happens)'),
     allDay: z.boolean().describe('Whether it is an all-day event'),
     start: z.string().describe('Local start in timezone; for an all-day event, the first day'),
@@ -291,17 +292,34 @@ export const CalendarEventSchema = z.object({
         .object({
             rule: z.string().describe('RFC 5545 RRULE, stored in a normalized form'),
             exdates: z.array(z.string()).optional().describe('Original starts of skipped dates'),
+            rdates: z
+                .array(
+                    z.union([
+                        z.string(),
+                        z.object({
+                            start: z.string().describe('Local start of the extra date'),
+                            end: z.string().optional().describe('Local end of the extra date, when given as an end'),
+                            duration: z.string().optional().describe('ISO 8601 length of the extra date, when given as a duration'),
+                        }),
+                    ])
+                )
+                .optional()
+                .describe('Extra dates the rule does not produce, as wall times or periods'),
+            truncateBefore: z
+                .string()
+                .optional()
+                .describe('Set when the event was ended early with a mode future delete: no date starting at or after this local time occurs'),
         })
         .optional()
         .describe('For a recurring event, how it repeats'),
     attendees: z.array(AttendeeSchema).optional().describe('Attendees and their responses; get_agenda leaves them out, so get the event for them'),
     attendeeCount: z.number().describe('Number of attendees'),
     responseStatus: z
-        .enum(['needs_action', 'accepted', 'declined', 'tentative'])
+        .enum(AgentMail.AttendeeStatus)
         .optional()
         .describe("This inbox's own answer, on invitations it received; needs_action means the invitation awaits a reply"),
     source: z
-        .enum(['api', 'email'])
+        .enum(AgentMail.CalendarEventSource)
         .describe('api: created through the API, with this inbox as organizer; email: imported from an invitation the inbox received'),
     organizerEmail: z.string().optional().describe("Organizer's email address; this inbox for an api event"),
     originMessageId: z.string().optional().describe('For an email event, the message whose invitation last created or changed it'),

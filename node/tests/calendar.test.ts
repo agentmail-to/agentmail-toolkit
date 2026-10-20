@@ -13,7 +13,7 @@ import { calendar, calendarEvent, calendarMutation, mockClient } from './fixture
 
 type Call = { method: string; args: unknown[] }
 
-async function connect(calls: Call[]) {
+async function connect(calls: Call[], overrides: Record<string, unknown> = {}) {
     const record = (method: string, result: unknown) => async (...args: unknown[]) => {
         calls.push({ method, args })
         return result
@@ -31,6 +31,7 @@ async function connect(calls: Call[]) {
                 respondToEvent: record('respondToEvent', calendarMutation()),
                 get: record('get', calendar()),
                 update: record('update', calendar()),
+                ...overrides,
             },
         },
     }) as AgentMailClient
@@ -65,6 +66,16 @@ describe('calendar tools', () => {
         ])
     })
 
+    it("refuses an agenda window without a timezone rather than reading it in the server's", async () => {
+        const calls: Call[] = []
+        const client = await connect(calls)
+
+        const result = await client.callTool({ name: 'get_agenda', arguments: { inboxId: INBOX, after: '2026-10-20T00:00:00' } })
+
+        expect(result.isError).toBe(true)
+        expect(calls).toEqual([])
+    })
+
     it('creates an event with the body the SDK takes, and returns it without the iCalendar bookkeeping', async () => {
         const calls: Call[] = []
         const client = await connect(calls)
@@ -97,6 +108,43 @@ describe('calendar tools', () => {
         })
 
         expect(calls).toEqual([{ method: 'updateEvent', args: [INBOX, DATED, { mode: 'future', ifMatch: '"occ-1"', location: null, sendInvites: true }] }])
+    })
+
+    it('sends back everything get_event returned when its attendees, recurrence and metadata go to update_event', async () => {
+        const calls: Call[] = []
+        const series = {
+            ...calendarEvent(),
+            kind: 'series' as const,
+            recurrence: {
+                rule: 'FREQ=WEEKLY;BYDAY=TH',
+                exdates: ['2026-10-22T14:00:00'],
+                rdates: ['2026-10-30T14:00:00', { start: '2026-11-03T09:00:00', duration: 'PT1H' }],
+            },
+            attendees: [
+                { email: 'jane@acme.com', status: 'declined' as const, role: 'required' as const, comment: 'Out that week.', respondedAt: new Date('2026-10-10T12:00:00.000Z') },
+            ],
+            metadata: { crm: { dealId: 'D-1042' }, tags: ['vip'] },
+        }
+        const client = await connect(calls, { getEvent: async () => series })
+
+        const read = await client.callTool({ name: 'get_event', arguments: { inboxId: INBOX, eventId: EVENT } })
+        const { attendees, recurrence, metadata } = read.structuredContent as { attendees: unknown[]; recurrence: unknown; metadata: object }
+        const result = await client.callTool({
+            name: 'update_event',
+            arguments: { inboxId: INBOX, eventId: EVENT, attendees: [...attendees, { email: 'bob@acme.com' }], recurrence, metadata: { ...metadata, followUp: true } },
+        })
+
+        expect(result.isError).toBeFalsy()
+        expect(calls).toEqual([
+            {
+                method: 'updateEvent',
+                args: [
+                    INBOX,
+                    EVENT,
+                    { attendees: [...series.attendees, { email: 'bob@acme.com' }], recurrence: series.recurrence, metadata: { ...series.metadata, followUp: true } },
+                ],
+            },
+        ])
     })
 
     it('reports a delete as a success carrying the deletion ID', async () => {

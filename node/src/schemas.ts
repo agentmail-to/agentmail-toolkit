@@ -408,23 +408,34 @@ const SendInvitesSchema = z
     )
 
 const InstanceModeSchema = z
-    .enum(['single', 'future'])
+    .enum(AgentMail.InstanceMutationMode)
     .optional()
     .describe('For a dated ID only: single (the default) changes just that date, future that date and every later one')
 
 const ConsistencySchema = z
-    .enum(['eventual', 'primary'])
+    .enum(AgentMail.CalendarConsistency)
     .optional()
     .describe('primary to read a change made moments ago; the default, eventual, can trail a change by a few seconds')
+
+// Instants, unlike wall times, need an offset: Date reads a time without one in the server's own
+// timezone and a bare date as UTC, which would shift the window silently. A refine, so no pattern
+// keyword reaches the JSON schema.
+const hasOffset = (value: string) => /(?:Z|[+-]\d{2}:\d{2})$/i.test(value)
+const InstantSchema = z
+    .string()
+    .refine(hasOffset, 'must be ISO 8601 with a timezone offset or Z, e.g. 2026-10-20T00:00:00-04:00')
+    .pipe(z.coerce.date())
 
 const AttendeeInputSchema = z.object({
     email: z.string().describe("Attendee's email address, unique within the event"),
     name: z.string().optional().describe('Name shown for the attendee in the invitation'),
-    role: z.enum(['required', 'optional']).optional().describe('Whether their presence is required (the default) or optional'),
+    role: z.enum(AgentMail.AttendeeRole).optional().describe('Whether their presence is required (the default) or optional'),
     status: z
-        .enum(['needs_action', 'accepted', 'declined', 'tentative'])
+        .enum(AgentMail.AttendeeStatus)
         .optional()
         .describe("Their response so far, needs_action when omitted; when replacing the list, keep each status get_event returned"),
+    comment: z.string().optional().describe('Note the attendee sent with their response; when replacing the list, keep the one get_event returned'),
+    respondedAt: InstantSchema.optional().describe('When the attendee last responded; when replacing the list, keep the one get_event returned'),
 })
 
 const RecurrenceInputSchema = z.object({
@@ -435,24 +446,33 @@ const RecurrenceInputSchema = z.object({
         .array(z.string())
         .optional()
         .describe('Dates to skip, each the original start of a date: YYYY-MM-DDTHH:mm:ss for a timed event, YYYY-MM-DD for an all-day one'),
+    rdates: z
+        .array(
+            z.union([
+                z.string(),
+                z.object({
+                    start: z.string().describe('Local start of the extra date, YYYY-MM-DDTHH:mm:ss'),
+                    end: z.string().optional().describe('Local end of the extra date; give end or duration'),
+                    duration: z.string().optional().describe('ISO 8601 length of the extra date, e.g. PT30M; give end or duration'),
+                }),
+            ])
+        )
+        .optional()
+        .describe('Extra dates the rule does not produce: YYYY-MM-DDTHH:mm:ss for a timed event, YYYY-MM-DD for an all-day one, or for a timed event a period'),
 })
 
 const EventMetadataSchema = z
-    .record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
-    .describe('Your own key-value data, returned when the event is read; never sent to attendees')
+    .record(z.string(), z.unknown())
+    .describe('Your own JSON object, returned when the event is read; never sent to attendees')
 
 export const GetAgendaParams = z.object({
     inboxId: InboxIdSchema,
-    after: z
-        .string()
-        .pipe(z.coerce.date())
-        .optional()
-        .describe('Start of the window, as ISO 8601 with a timezone (e.g. 2026-10-20T00:00:00-04:00); now when omitted. Events still running then are included'),
-    before: z
-        .string()
-        .pipe(z.coerce.date())
-        .optional()
-        .describe('End of the window, as ISO 8601 with a timezone; 90 days after after when omitted. The window is at most 366 days'),
+    after: InstantSchema.optional().describe(
+        'Start of the window, as ISO 8601 with a timezone offset or Z (e.g. 2026-10-20T00:00:00-04:00); a time without one is refused. Now when omitted. Events still running then are included'
+    ),
+    before: InstantSchema.optional().describe(
+        'End of the window, as ISO 8601 with a timezone offset or Z; 90 days after after when omitted. The window is at most 366 days'
+    ),
     limit: z.number().int().positive().max(100).optional().describe('Number of events per page, 50 when omitted'),
     pageToken: PageTokenSchema,
     consistency: ConsistencySchema,
@@ -476,7 +496,8 @@ export const CreateEventParams = z.object({
     description: z.string().optional().describe('Details attendees see in the invitation'),
     location: z.string().optional().describe('A place or a meeting link'),
     status: z
-        .enum(['confirmed', 'tentative'])
+        .enum(AgentMail.CalendarEventStatus)
+        .exclude(['Cancelled'])
         .optional()
         .describe('confirmed (the default), or tentative for a hold that is not settled'),
     recurrence: RecurrenceInputSchema.optional().describe('Makes this a recurring event'),
@@ -493,21 +514,27 @@ export const UpdateEventParams = z.object({
     ifMatch: IfMatchSchema,
     title: z.string().optional().describe('New title'),
     start: StartSchema.optional().describe(
-        "New local start in the event's timezone, as in create_event; for a one-off or recurring event send it with end"
+        "New local start in the event's timezone, as in create_event; for a one-off or recurring event send it with end. Refused with mode future: to move every date of a recurring event, send start and end with its UUID"
     ),
     end: EndSchema.optional().describe("New local end in the event's timezone; a dated ID accepts end alone"),
     timezone: CalendarTimezoneSchema.optional().describe(
         'New time zone; not for a dated ID. ' + CalendarTimezoneSchema.description
     ),
+    allDay: z
+        .boolean()
+        .optional()
+        .describe('Switches between a timed and an all-day event; send start, end (as dates for all-day) and timezone with it. Not for a dated ID'),
     description: z.string().nullable().optional().describe('New details; null clears them'),
     location: z.string().nullable().optional().describe('New place or meeting link; null clears it'),
     status: z
-        .enum(['confirmed', 'tentative', 'cancelled'])
+        .enum(AgentMail.CalendarEventStatus)
         .optional()
         .describe('confirmed, tentative, or cancelled (the event stays readable but no longer happens)'),
     recurrence: RecurrenceInputSchema.nullable()
         .optional()
-        .describe('Replaces the whole recurrence, exdates included; null makes it a one-off event. Not for a dated ID'),
+        .describe(
+            'Replaces the whole recurrence, exdates and rdates included, so send what get_event returned with your change; null makes it a one-off event. Not for a dated ID'
+        ),
     attendees: z
         .array(AttendeeInputSchema)
         .optional()
@@ -515,7 +542,9 @@ export const UpdateEventParams = z.object({
             "Replaces the whole list: to add or remove someone, send the list get_event returned with the change, keeping each status, and pass ifMatch so a response that arrived meanwhile isn't overwritten"
         ),
     sendInvites: SendInvitesSchema,
-    metadata: EventMetadataSchema.nullable().optional().describe('Replaces your key-value data; null clears it. Never sent to attendees'),
+    metadata: EventMetadataSchema.nullable()
+        .optional()
+        .describe('Replaces your data whole, so send what get_event returned with your change; null clears it. Never sent to attendees'),
 })
 
 export const DeleteEventParams = z.object({
@@ -534,7 +563,7 @@ export const RespondToInvitationParams = z.object({
     eventId: CalendarEventIdSchema.describe(
         "The invitation's event ID, from a message's calendarEventId or get_agenda: its UUID answers for every date, a dated ID (<uuid>_<slot>) for that date only"
     ),
-    status: z.enum(['accepted', 'declined', 'tentative']).describe('Your answer to the invitation'),
+    status: z.enum(AgentMail.RespondStatus).describe('Your answer to the invitation'),
     comment: z.string().optional().describe('Note sent to the organizer with the answer, at most 4,096 bytes'),
     sendReply: z
         .boolean()
@@ -545,6 +574,7 @@ export const RespondToInvitationParams = z.object({
 
 export const GetCalendarParams = z.object({
     inboxId: InboxIdSchema,
+    consistency: ConsistencySchema,
 })
 
 export const UpdateCalendarParams = z.object({

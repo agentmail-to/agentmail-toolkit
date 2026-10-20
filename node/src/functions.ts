@@ -333,7 +333,8 @@ export async function respondToInvitation(client: AgentMailClient, args: z.infer
 }
 
 export async function getCalendar(client: AgentMailClient, args: z.infer<typeof GetCalendarParams>) {
-    return client.inboxes.calendar.get(args.inboxId)
+    const { inboxId, ...options } = args
+    return client.inboxes.calendar.get(inboxId, options)
 }
 
 export async function updateCalendar(client: AgentMailClient, args: z.infer<typeof UpdateCalendarParams>) {
