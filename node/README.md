@@ -53,6 +53,21 @@ for (const tool of new AgentMailToolkit().getTools()) {
 
 Every tool declares an `outputSchema` and returns matching `structuredContent` alongside a JSON-stringified text block on success. On error, the result carries `isError: true` and an actionable text message instead of structured content.
 
+Failed calls and attachments returned without their extracted text are reported to a logger. By default each is one console line: AgentMail API 4xx errors on `console.warn`, everything else on `console.error`. A host with its own log format passes `logger`, whose `warn` and `error` each receive a typed `ToolkitLogEvent` (the tool, its status and API error body, the message the caller got):
+
+```typescript
+import { AgentMailToolkit, type ToolkitLogEvent } from 'agentmail-toolkit/mcp'
+
+const toolkit = new AgentMailToolkit(client, {
+    logger: {
+        warn: (event: ToolkitLogEvent) => myLogger.warn(event),
+        error: (event: ToolkitLogEvent) => myLogger.error(event),
+    },
+})
+```
+
+`invoke(name, client, args, { logger })` overrides it for one call.
+
 ### LangChain (`agentmail-toolkit/langchain`)
 
 ```typescript
