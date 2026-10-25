@@ -6,6 +6,7 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 
 import { AgentMailToolkit } from '../src/mcp.js'
 import { tools } from '../src/tools.js'
+import { type ToolkitLogEvent } from '../src/util.js'
 import { mockClient, argsByTool, inbox, fixtureByTool, connectAccepted } from './fixtures.js'
 
 // Real MCP SDK client <-> server over an in-memory transport: the same protocol
@@ -33,6 +34,7 @@ beforeAll(() => {
 
 afterEach(() => {
     vi.spyOn(console, 'error').mockRestore()
+    vi.spyOn(console, 'warn').mockRestore()
 })
 
 describe('tools/list', () => {
@@ -83,7 +85,7 @@ describe('tools/call', () => {
     })
 
     it('returns isError with a concise API message on AgentMail errors', async () => {
-        vi.spyOn(console, 'error').mockImplementation(() => {})
+        vi.spyOn(console, 'warn').mockImplementation(() => {})
         const failing = mockClient()
         ;(failing.inboxes as { get: unknown }).get = async () => {
             throw new AgentMailError({
@@ -271,7 +273,7 @@ describe('invoke (stateless per-call client)', () => {
     })
 
     it('surfaces AgentMail errors as an isError result with a concise, bounded message', async () => {
-        vi.spyOn(console, 'error').mockImplementation(() => {})
+        vi.spyOn(console, 'warn').mockImplementation(() => {})
         const failing = {
             inboxes: {
                 list: async () => {
@@ -291,6 +293,133 @@ describe('invoke (stateless per-call client)', () => {
         expect(content[0].text).toContain('Forbidden')
         expect(content[0].text).toContain('403')
         expect(result.structuredContent).toBeUndefined()
+    })
+})
+
+// A logger that keeps what it is told, by level.
+function recordingLogger() {
+    const events: Array<{ level: 'warn' | 'error'; event: ToolkitLogEvent }> = []
+    return {
+        events,
+        logger: {
+            warn: (event: ToolkitLogEvent) => events.push({ level: 'warn', event }),
+            error: (event: ToolkitLogEvent) => events.push({ level: 'error', event }),
+        },
+    }
+}
+
+function failingInboxes(error: Error): AgentMailClient {
+    return {
+        inboxes: {
+            list: async () => {
+                throw error
+            },
+        },
+    } as unknown as AgentMailClient
+}
+
+const notFound = () =>
+    new AgentMailError({
+        message: 'Status code: 404\nBody: ...',
+        statusCode: 404,
+        body: { name: 'NotFoundError', message: 'Inbox not found', fix: 'x'.repeat(2000) },
+    })
+
+describe('logging', () => {
+    it('reports an API 4xx to the logger as a warning, with the status and body, and prints nothing', async () => {
+        const errorSpy = vi.spyOn(console, 'error')
+        const warnSpy = vi.spyOn(console, 'warn')
+        const { events, logger } = recordingLogger()
+        const toolkit = new AgentMailToolkit(mockClient(), { logger })
+
+        const result = await toolkit.invoke('list_inboxes', failingInboxes(notFound()), {})
+        expect(result.isError).toBe(true)
+        expect(events).toHaveLength(1)
+        expect(events[0].level).toBe('warn')
+        expect(events[0].event).toMatchObject({
+            type: 'tool_error',
+            tool: 'list_inboxes',
+            statusCode: 404,
+            body: { name: 'NotFoundError', message: 'Inbox not found' },
+        })
+        // The message is the text the caller got.
+        expect(events[0].event.message).toBe((result.content as Array<{ text: string }>)[0].text)
+        expect(errorSpy).not.toHaveBeenCalled()
+        expect(warnSpy).not.toHaveBeenCalled()
+    })
+
+    it('reports a 5xx and a failure with no status as errors', async () => {
+        const { events, logger } = recordingLogger()
+        const toolkit = new AgentMailToolkit(mockClient(), { logger })
+
+        await toolkit.invoke('list_inboxes', failingInboxes(new AgentMailError({ message: 'x', statusCode: 503, body: 'down' })), {})
+        await toolkit.invoke('list_inboxes', failingInboxes(new TypeError('fetch failed')), {})
+        expect(events.map(({ level, event }) => [level, event.type, 'statusCode' in event ? event.statusCode : 'n/a'])).toEqual([
+            ['error', 'tool_error', 503],
+            ['error', 'tool_error', undefined],
+        ])
+        expect(events[1].event.message).toBe('fetch failed')
+    })
+
+    it('uses the logger given to invoke over the one given to the constructor', async () => {
+        const constructed = recordingLogger()
+        const perCall = recordingLogger()
+        const toolkit = new AgentMailToolkit(mockClient(), { logger: constructed.logger })
+
+        await toolkit.invoke('list_inboxes', failingInboxes(notFound()), {}, { logger: perCall.logger })
+        expect(constructed.events).toEqual([])
+        expect(perCall.events).toHaveLength(1)
+    })
+
+    it('reports through the constructor logger on the registered-callback path too', async () => {
+        const { events, logger } = recordingLogger()
+        const server = new McpServer({ name: 'agentmail-test', version: '0.0.0' })
+        for (const tool of new AgentMailToolkit(failingInboxes(notFound()), { logger }).getTools()) {
+            server.registerTool(tool.name, tool, tool.callback)
+        }
+        const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
+        const mcpClient = new Client({ name: 'test-client', version: '0.0.0' })
+        await Promise.all([mcpClient.connect(clientTransport), server.connect(serverTransport)])
+
+        const result = await mcpClient.callTool({ name: 'list_inboxes', arguments: {} })
+        expect(result.isError).toBe(true)
+        expect(events).toEqual([{ level: 'warn', event: expect.objectContaining({ type: 'tool_error', statusCode: 404 }) }])
+    })
+
+    it('reports a schema drift with where it broke, never the values', async () => {
+        const { events, logger } = recordingLogger()
+        const drifted = mockClient()
+        ;(drifted.inboxes as { list: unknown }).list = async () => ({ count: 'not a number, secret-value', inboxes: [] })
+        const toolkit = new AgentMailToolkit(mockClient(), { logger })
+
+        const result = await toolkit.invoke('list_inboxes', drifted, {})
+        expect(result.isError).toBe(true)
+        expect(events).toHaveLength(1)
+        expect(events[0].level).toBe('error')
+        expect(events[0].event).toMatchObject({ type: 'output_schema_mismatch', tool: 'list_inboxes', issues: [{ path: ['count'] }] })
+        expect(JSON.stringify(events)).not.toContain('secret-value')
+    })
+
+    it('without a logger, prints each failure as one console line: 4xx on warn, the rest on error', async () => {
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+        const toolkit = new AgentMailToolkit(mockClient())
+
+        await toolkit.invoke('list_inboxes', failingInboxes(notFound()), {})
+        await toolkit.invoke('list_inboxes', failingInboxes(new TypeError('fetch failed')), {})
+
+        expect(warnSpy).toHaveBeenCalledTimes(1)
+        expect(errorSpy).toHaveBeenCalledTimes(1)
+        for (const call of [warnSpy.mock.calls[0], errorSpy.mock.calls[0]]) {
+            expect(call).toHaveLength(1)
+            const line = call[0] as string
+            expect(line).not.toContain('\n')
+            expect(line).toMatch(/^\[agentmail-toolkit\] tool error \{/)
+        }
+        const warned = JSON.parse((warnSpy.mock.calls[0][0] as string).replace('[agentmail-toolkit] tool error ', ''))
+        expect(warned).toMatchObject({ tool: 'list_inboxes', statusCode: 404 })
+        // The body is bounded the way it always was.
+        expect((warned.body as string).length).toBeLessThanOrEqual(500 + '...[truncated]'.length)
     })
 })
 

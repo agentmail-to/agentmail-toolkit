@@ -61,9 +61,71 @@ export function errorMessage(error: unknown): string {
     return 'Unknown error'
 }
 
+/**
+ * What the toolkit reports while running a tool: a failure, or a result it had to degrade. Each
+ * event is data; the host's logger decides what to write, so a hosted server can keep its own
+ * format, levels and sampling.
+ */
+export type ToolkitLogEvent =
+    | {
+          type: 'tool_error'
+          tool: string
+          /** The text of the isError result the caller got. */
+          message: string
+          /** HTTP status of an AgentMail API error; absent for any other failure. */
+          statusCode?: number
+          /** The API's error body, as the SDK parsed it. */
+          body?: unknown
+      }
+    | {
+          type: 'output_schema_mismatch'
+          tool: string
+          message: string
+          /** Where the result broke its declared schema, never the values. */
+          issues: Array<{ code: string; path: PropertyKey[] }>
+      }
+    | {
+          type: 'attachment_not_extracted'
+          message: string
+          reason: 'not_https' | 'too_large' | 'content_length_exceeds_cap' | 'download_exceeds_cap' | 'extraction_failed'
+          attachmentId: string
+          size?: number
+          /** The extraction library's error, for `extraction_failed`. */
+          error?: string
+      }
+
+/**
+ * Receives the toolkit's events. `warn` gets failures the caller can fix (an AgentMail API 4xx)
+ * and attachments returned without their text; `error` gets everything else.
+ */
+export interface ToolkitLogger {
+    warn(event: ToolkitLogEvent): void
+    error(event: ToolkitLogEvent): void
+}
+
+const LOG_LABELS: Record<ToolkitLogEvent['type'], string> = {
+    tool_error: 'tool error',
+    output_schema_mismatch: 'output schema mismatch',
+    attachment_not_extracted: 'attachment not extracted',
+}
+
+// One line per event. Node prints an object argument over several lines, which a log collector
+// that splits on newlines interleaves with other requests' output.
+function formatLogEvent({ type, ...fields }: ToolkitLogEvent): string {
+    const detail = 'body' in fields ? { ...fields, body: truncateForLog(fields.body) } : fields
+    return `[agentmail-toolkit] ${LOG_LABELS[type]} ${JSON.stringify(detail)}`
+}
+
+/** The logger used when the host passes none: each event as one console line. */
+export const consoleLogger: ToolkitLogger = {
+    warn: (event) => console.warn(formatLogEvent(event)),
+    error: (event) => console.error(formatLogEvent(event)),
+}
+
 // Per-call options a host passes to a tool. `signal` cancels the tool's own fetches (a presigned
 // upload, an attachment download), which a signal bound into the SDK client never reaches.
-export type ToolCallOptions = { signal?: AbortSignal }
+// `logger` receives what the tool reports (see ToolkitLogger); without one, the console does.
+export type ToolCallOptions = { signal?: AbortSignal; logger?: ToolkitLogger }
 
 export const safeFunc = async <A, T>(
     func: (client: AgentMailClient, args: A, options?: ToolCallOptions) => Promise<T>,
@@ -84,8 +146,8 @@ export const safeFunc = async <A, T>(
 
 // Bounds error-body *logging* regardless of whether the body is a string or a parsed
 // JSON object - object bodies (e.g. ValidationErrorResponse) can be just as large/
-// sensitive as string ones, so both need the same cap. Exported for adapters (e.g.
-// mcp.ts's console.error call) to use instead of only truncating string bodies.
+// sensitive as string ones, so both need the same cap. Used by consoleLogger, and
+// exported for adapters that log bodies themselves.
 export function truncateForLog(body: unknown, max = 500): unknown {
     if (typeof body === 'string') return body.slice(0, max)
     if (body && typeof body === 'object') {

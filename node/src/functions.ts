@@ -1,7 +1,7 @@
 import { AgentMailClient } from 'agentmail'
 import { z } from 'zod'
 
-import { detectFileType, extractPdfText, extractDocxText, type ToolCallOptions } from './util.js'
+import { consoleLogger, detectFileType, extractPdfText, extractDocxText, type ToolCallOptions } from './util.js'
 import {
     ListItemsParams,
     GetInboxParams,
@@ -114,18 +114,34 @@ const MAX_ATTACHMENT_BYTES = 5.95 * 1024 * 1024
 // A direct fetch's own timeout, cancelled early by the caller's signal when there is one.
 const fetchSignal = (ms: number, signal?: AbortSignal) => (signal ? AbortSignal.any([AbortSignal.timeout(ms), signal]) : AbortSignal.timeout(ms))
 
-export async function getAttachment(client: AgentMailClient, args: z.infer<typeof GetAttachmentParams>, { signal }: ToolCallOptions = {}) {
+export async function getAttachment(
+    client: AgentMailClient,
+    args: z.infer<typeof GetAttachmentParams>,
+    { signal, logger = consoleLogger }: ToolCallOptions = {}
+) {
     const { inboxId, threadId, attachmentId } = args
 
     const attachment = await client.inboxes.threads.getAttachment(inboxId, threadId, attachmentId)
 
+    // The API only hands out https URLs, so anything else is an error, not a skip reason.
     if (!attachment.downloadUrl.startsWith('https://')) {
-        console.error('[agentmail-toolkit] attachment download URL is not https, skipping extraction', { attachmentId })
+        logger.error({
+            type: 'attachment_not_extracted',
+            reason: 'not_https',
+            attachmentId,
+            message: 'attachment download URL is not https, skipping extraction',
+        })
         return attachment
     }
 
     if (attachment.size > MAX_ATTACHMENT_BYTES) {
-        console.error('[agentmail-toolkit] attachment too large to extract, skipping', { attachmentId, size: attachment.size })
+        logger.warn({
+            type: 'attachment_not_extracted',
+            reason: 'too_large',
+            attachmentId,
+            size: attachment.size,
+            message: 'attachment too large to extract, skipping',
+        })
         return attachment
     }
 
@@ -142,13 +158,25 @@ export async function getAttachment(client: AgentMailClient, args: z.infer<typeo
 
     const contentLength = Number(response.headers.get('content-length'))
     if (contentLength && contentLength > MAX_ATTACHMENT_BYTES) {
-        console.error('[agentmail-toolkit] content-length exceeds cap, skipping', { attachmentId, contentLength })
+        logger.warn({
+            type: 'attachment_not_extracted',
+            reason: 'content_length_exceeds_cap',
+            attachmentId,
+            size: contentLength,
+            message: 'content-length exceeds cap, skipping',
+        })
         return attachment
     }
 
     const arrayBuffer = await response.arrayBuffer()
     if (arrayBuffer.byteLength > MAX_ATTACHMENT_BYTES) {
-        console.error('[agentmail-toolkit] downloaded attachment exceeds cap, skipping', { attachmentId, size: arrayBuffer.byteLength })
+        logger.warn({
+            type: 'attachment_not_extracted',
+            reason: 'download_exceeds_cap',
+            attachmentId,
+            size: arrayBuffer.byteLength,
+            message: 'downloaded attachment exceeds cap, skipping',
+        })
         return attachment
     }
     const fileBytes = new Uint8Array(arrayBuffer)
@@ -165,9 +193,12 @@ export async function getAttachment(client: AgentMailClient, args: z.infer<typeo
         // A malformed/adversarial PDF/DOCX or a bug in unpdf/jszip degrades gracefully
         // to the bare attachment. The failure reason goes to server logs only - library
         // error strings are debug data that must not reach tool results.
-        console.error('[agentmail-toolkit] attachment extraction failed', {
+        logger.warn({
+            type: 'attachment_not_extracted',
+            reason: 'extraction_failed',
             attachmentId,
             error: err instanceof Error ? err.message : String(err),
+            message: 'attachment extraction failed',
         })
         return attachment
     }

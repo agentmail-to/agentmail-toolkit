@@ -3,10 +3,22 @@ import { AgentMailError, type AgentMailClient } from 'agentmail'
 import JSZip from 'jszip'
 
 import { getAttachment } from '../src/functions.js'
-import { normalize, truncateForLog, errorMessage, extractDocxText } from '../src/util.js'
+import { normalize, truncateForLog, errorMessage, extractDocxText, type ToolkitLogEvent } from '../src/util.js'
 import { attachmentResponse } from './fixtures.js'
 
 const ARGS = { inboxId: 'inbox_1', threadId: 'thread_1', attachmentId: 'att_1' }
+
+// A logger that keeps what it is told, by level.
+function recordingLogger() {
+    const events: Array<{ level: 'warn' | 'error'; event: ToolkitLogEvent }> = []
+    return {
+        events,
+        logger: {
+            warn: (event: ToolkitLogEvent) => events.push({ level: 'warn', event }),
+            error: (event: ToolkitLogEvent) => events.push({ level: 'error', event }),
+        },
+    }
+}
 
 function clientWith(attachment: Record<string, unknown>): AgentMailClient {
     return {
@@ -27,59 +39,72 @@ afterEach(() => {
 
 describe('attachment download bounds', () => {
     it('refuses non-https download URLs without fetching', async () => {
-        vi.spyOn(console, 'error').mockImplementation(() => {})
         const fetchSpy = vi.fn()
         vi.stubGlobal('fetch', fetchSpy)
 
-        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-        const result = await getAttachment(clientWith({ ...attachmentResponse(), downloadUrl: 'http://attacker.example/x' }), ARGS)
+        const { events, logger } = recordingLogger()
+        const result = await getAttachment(clientWith({ ...attachmentResponse(), downloadUrl: 'http://attacker.example/x' }), ARGS, { logger })
         // Skip reasons are server-log-only (debug data must not reach tool results).
         expect(result).not.toHaveProperty('text')
         expect(result).not.toHaveProperty('extractionError')
-        expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('not https'), expect.anything())
+        expect(events).toEqual([
+            { level: 'error', event: expect.objectContaining({ type: 'attachment_not_extracted', reason: 'not_https', attachmentId: 'att_1' }) },
+        ])
         expect(fetchSpy).not.toHaveBeenCalled()
     })
 
     it('skips download when declared size exceeds the cap', async () => {
-        vi.spyOn(console, 'error').mockImplementation(() => {})
         const fetchSpy = vi.fn()
         vi.stubGlobal('fetch', fetchSpy)
 
-        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-        const result = await getAttachment(clientWith({ ...attachmentResponse(), size: 26 * 1024 * 1024 }), ARGS)
+        const { events, logger } = recordingLogger()
+        const result = await getAttachment(clientWith({ ...attachmentResponse(), size: 26 * 1024 * 1024 }), ARGS, { logger })
         expect(result).not.toHaveProperty('text')
         expect(result).not.toHaveProperty('extractionError')
-        expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('too large'), expect.anything())
+        expect(events).toEqual([
+            { level: 'warn', event: expect.objectContaining({ reason: 'too_large', size: 26 * 1024 * 1024 }) },
+        ])
         expect(fetchSpy).not.toHaveBeenCalled()
     })
 
     it('skips extraction when content-length exceeds the cap', async () => {
-        vi.spyOn(console, 'error').mockImplementation(() => {})
         vi.stubGlobal(
             'fetch',
             vi.fn(async () => new Response('x', { status: 200, headers: { 'content-length': String(26 * 1024 * 1024) } }))
         )
 
-        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-        const result = await getAttachment(clientWith(attachmentResponse()), ARGS)
+        const { events, logger } = recordingLogger()
+        const result = await getAttachment(clientWith(attachmentResponse()), ARGS, { logger })
         expect(result).not.toHaveProperty('text')
         expect(result).not.toHaveProperty('extractionError')
-        expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('content-length'), expect.anything())
+        expect(events).toEqual([{ level: 'warn', event: expect.objectContaining({ reason: 'content_length_exceeds_cap' }) }])
     })
 
     it('skips extraction when the downloaded body exceeds the cap (no Content-Length header)', async () => {
-        vi.spyOn(console, 'error').mockImplementation(() => {})
         const oversized = new Uint8Array(26 * 1024 * 1024)
         vi.stubGlobal(
             'fetch',
             vi.fn(async () => new Response(oversized, { status: 200 }))
         )
 
-        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-        const result = await getAttachment(clientWith(attachmentResponse()), ARGS)
+        const { events, logger } = recordingLogger()
+        const result = await getAttachment(clientWith(attachmentResponse()), ARGS, { logger })
         expect(result).not.toHaveProperty('text')
         expect(result).not.toHaveProperty('extractionError')
-        expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('exceeds'), expect.anything())
+        expect(events).toEqual([{ level: 'warn', event: expect.objectContaining({ reason: 'download_exceeds_cap' }) }])
+    })
+
+    it('reports a skip as one console line when no logger is passed', async () => {
+        vi.stubGlobal('fetch', vi.fn())
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+        await getAttachment(clientWith({ ...attachmentResponse(), size: 26 * 1024 * 1024 }), ARGS)
+        expect(warnSpy).toHaveBeenCalledTimes(1)
+        expect(warnSpy.mock.calls[0]).toHaveLength(1)
+        const [line] = warnSpy.mock.calls[0] as [string]
+        expect(line).not.toContain('\n')
+        expect(line).toMatch(/^\[agentmail-toolkit\] attachment not extracted \{/)
+        expect(JSON.parse(line.slice(line.indexOf('{')))).toMatchObject({ reason: 'too_large', attachmentId: 'att_1' })
     })
 
     it('propagates download failures as tool errors', async () => {
@@ -113,18 +138,20 @@ describe('attachment download bounds', () => {
 
 describe('attachment extraction bounds', () => {
     it('degrades malformed PDF extraction to bare metadata, logging the reason server-side only', async () => {
-        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
         const malformedPdf = new TextEncoder().encode('%PDF-1.4 this is not a real pdf')
         vi.stubGlobal(
             'fetch',
             vi.fn(async () => new Response(malformedPdf, { status: 200 }))
         )
 
-        const result = await getAttachment(clientWith(attachmentResponse()), ARGS)
+        const { events, logger } = recordingLogger()
+        const result = await getAttachment(clientWith(attachmentResponse()), ARGS, { logger })
         // Library error strings are debug data - server logs only, never the result.
         expect(result).not.toHaveProperty('extractionError')
         expect(result).not.toHaveProperty('text')
-        expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('attachment extraction failed'), expect.anything())
+        expect(events).toEqual([
+            { level: 'warn', event: expect.objectContaining({ reason: 'extraction_failed', error: expect.any(String) }) },
+        ])
     })
 
     it('extracts text from a real DOCX', async () => {
