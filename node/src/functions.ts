@@ -2,6 +2,7 @@ import { AgentMailClient } from 'agentmail'
 import { z } from 'zod'
 
 import { detectFileType, extractPdfText, extractDocxText, type ToolCallOptions } from './util.js'
+import { MessageAuthenticationResultsSchema } from './output-schemas.js'
 import {
     ListItemsParams,
     GetInboxParams,
@@ -87,7 +88,38 @@ export async function searchThreads(client: AgentMailClient, args: z.infer<typeo
 
 export async function getThread(client: AgentMailClient, args: z.infer<typeof GetThreadParams>) {
     const { inboxId, threadId, ...options } = args
-    return client.inboxes.threads.get(inboxId, threadId, options)
+    return withMessagesAuthentication(await client.inboxes.threads.get(inboxId, threadId, options))
+}
+
+const AUTHENTICATION_RESULT_KEYS = Object.keys(MessageAuthenticationResultsSchema.shape)
+const snakeCase = (key: string) => key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`)
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value)
+
+// SDK 0.5.46 passes this public API field through in snake_case; an SDK built from the current
+// Fern definition, which already declares it, returns it in camelCase. Drop the snake_case branch
+// once the toolkit requires that SDK. Either way, keep only the string values of the keys
+// MessageAuthenticationResultsSchema declares, so undeclared keys of this field reach no adapter.
+// That covers this field only: the non-MCP adapters don't strip results to the output schema, so
+// they still return the message's other undeclared fields (headers, organization_id).
+function withMessageAuthentication<T extends object>(message: T) {
+    const { authentication_results: raw, authenticationResults: typed, ...rest } = message as T & {
+        authentication_results?: unknown
+        authenticationResults?: unknown
+    }
+    const [source, keyOf] = isRecord(typed) ? [typed, (key: string) => key] : [raw, snakeCase]
+    if (!isRecord(source)) return rest
+    const verdicts = AUTHENTICATION_RESULT_KEYS.flatMap((key) => {
+        const value = source[keyOf(key)]
+        return typeof value === 'string' ? [[key, value] as const] : []
+    })
+    return { ...rest, authenticationResults: Object.fromEntries(verdicts) }
+}
+
+// The SDK parses responses without validating them, so a page or thread missing its messages
+// passes through rather than throwing.
+function withMessagesAuthentication<T extends { messages: object[] }>(container: T) {
+    if (!Array.isArray(container.messages)) return container
+    return { ...container, messages: container.messages.map(withMessageAuthentication) }
 }
 
 export async function updateThread(client: AgentMailClient, args: z.infer<typeof UpdateThreadParams>) {
@@ -175,12 +207,12 @@ export async function getAttachment(client: AgentMailClient, args: z.infer<typeo
 
 export async function listMessages(client: AgentMailClient, args: z.infer<typeof ListMessagesParams>) {
     const { inboxId, ...options } = args
-    return client.inboxes.messages.list(inboxId, options)
+    return withMessagesAuthentication(await client.inboxes.messages.list(inboxId, options))
 }
 
 export async function searchMessages(client: AgentMailClient, args: z.infer<typeof SearchInboxItemsParams>) {
     const { inboxId, q, ...options } = args
-    return client.inboxes.messages.search(inboxId, { q, ...options })
+    return withMessagesAuthentication(await client.inboxes.messages.search(inboxId, { q, ...options }))
 }
 
 export async function sendMessage(client: AgentMailClient, args: z.infer<typeof SendMessageParams>) {
@@ -367,7 +399,7 @@ export async function listAccounts(client: AgentMailClient, args: z.infer<typeof
 
 export async function getMessage(client: AgentMailClient, args: z.infer<typeof GetMessageParams>) {
     const { inboxId, messageId } = args
-    return client.inboxes.messages.get(inboxId, messageId)
+    return withMessageAuthentication(await client.inboxes.messages.get(inboxId, messageId))
 }
 
 export async function searchInboxes(client: AgentMailClient, args: z.infer<typeof SearchInboxesParams>) {

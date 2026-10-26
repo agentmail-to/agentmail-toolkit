@@ -7,12 +7,15 @@ call raising TypeError against the real SDK) and F7 (get_attachment calling
 the unscoped client.threads.get_attachment instead of the inbox-scoped one).
 """
 
+import inspect
 from datetime import datetime, timezone
 
 from agentmail.inboxes import CreateInboxRequest
+from agentmail.inboxes.threads.client import ThreadsClient
 from agentmail.inboxes.types.inbox import Inbox
 
 from agentmail_toolkit import functions
+from agentmail_toolkit.schemas import ListInboxItemsParams
 
 
 def test_list_inboxes_call_shape(mock_client):
@@ -53,11 +56,18 @@ def test_delete_inbox_returns_stable_none(mock_client):
 def test_list_threads_call_shape(mock_client):
     functions.list_threads(
         mock_client,
-        {"inbox_id": "in_1", "ascending": True, "include_spam": True},
+        {"inbox_id": "in_1", "ascending": True, "include_spam": True, "include_unauthenticated": True},
     )
     mock_client.inboxes.threads.list.assert_called_once_with(
-        inbox_id="in_1", ascending=True, include_spam=True
+        inbox_id="in_1", ascending=True, include_spam=True, include_unauthenticated=True
     )
+
+
+def test_list_threads_offers_every_restricted_label_opt_in():
+    """Read from the SDK's signature, so an opt-in a newer SDK adds fails here until it's exposed."""
+    sdk = {name for name in inspect.signature(ThreadsClient.list).parameters if name.startswith("include_")}
+    assert "include_unauthenticated" in sdk
+    assert {name for name in ListInboxItemsParams.model_fields if name.startswith("include_")} == sdk
 
 
 def test_get_thread_call_shape(mock_client):
