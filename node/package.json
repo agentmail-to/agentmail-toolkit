@@ -148,7 +148,9 @@
             "music-metadata": ">=11.16.0 <12",
             "@humanfs/node": "^0.16.8",
             "zod@4": ">=4.6.7 <5",
-            "vite": "8.3.4"
+            "vite": "8.3.4",
+            "@mistralai/mistralai@1": "1.15.1",
+            "@mistralai/mistralai>zod": "4.6.7"
         }
     }
 }

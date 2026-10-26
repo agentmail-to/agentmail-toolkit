@@ -53,6 +53,8 @@ overrides:
   '@humanfs/node': ^0.16.8
   zod@4: '>=4.6.7 <5'
   vite: 8.3.4
+  '@mistralai/mistralai@1': 1.15.1
+  '@mistralai/mistralai>zod': 4.6.7
 
 importers:
 
@@ -629,8 +631,8 @@ packages:
     engines: {node: '>=20.0.0'}
     deprecated: please use @earendil-works/pi-tui instead going forward
 
-  '@mistralai/mistralai@1.10.0':
-    resolution: {integrity: sha512-tdIgWs4Le8vpvPiUEWne6tK0qbVc+jMenujnvTqOjogrJUsCSQhus0tHTU1avDDh5//Rq2dFgP9mWRAdIEoBqg==}
+  '@mistralai/mistralai@1.15.1':
+    resolution: {integrity: sha512-fb995eiz3r0KsBGtRjFV+/iLbX+UpfalxpF+YitT3R6ukrPD4PN+FGwwmYcRFhNAzVzDUtTVxQYnjQWEnwV5nw==}
 
   '@modelcontextprotocol/sdk@1.32.1':
     resolution: {integrity: sha512-2DdE+SJDtzLEEWzY1ZjY7Q+VcPhcV1KisD3zI4u0XZyktsjHum1mwbMI+JaulUBi2OZk+KJAi2uPXzxichPkdw==}
@@ -2774,9 +2776,6 @@ packages:
     peerDependencies:
       zod: '>=4.6.7 <5'
 
-  zod@3.25.76:
-    resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
-
   zod@4.6.7:
     resolution: {integrity: sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg==}
 
@@ -3485,7 +3484,7 @@ snapshots:
       '@anthropic-ai/sdk': 0.71.2(zod@4.6.7)
       '@aws-sdk/client-bedrock-runtime': 3.975.0
       '@google/genai': 1.34.0(@modelcontextprotocol/sdk@1.32.1(@cfworker/json-schema@4.1.1)(zod@4.6.7))
-      '@mistralai/mistralai': 1.10.0
+      '@mistralai/mistralai': 1.15.1
       '@sinclair/typebox': 0.34.48
       ajv: 8.20.0
       ajv-formats: 3.0.1(ajv@8.20.0)
@@ -3512,10 +3511,14 @@ snapshots:
       marked: 15.0.12
       mime-types: 3.0.2
 
-  '@mistralai/mistralai@1.10.0':
+  '@mistralai/mistralai@1.15.1':
     dependencies:
-      zod: 3.25.76
-      zod-to-json-schema: 3.25.1(zod@3.25.76)
+      ws: 8.21.0
+      zod: 4.6.7
+      zod-to-json-schema: 3.25.1(zod@4.6.7)
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
 
   '@modelcontextprotocol/sdk@1.32.1(@cfworker/json-schema@4.1.1)(zod@4.6.7)':
     dependencies:
@@ -5650,14 +5653,8 @@ snapshots:
 
   yocto-queue@0.1.0: {}
 
-  zod-to-json-schema@3.25.1(zod@3.25.76):
-    dependencies:
-      zod: 3.25.76
-
   zod-to-json-schema@3.25.1(zod@4.6.7):
     dependencies:
       zod: 4.6.7
-
-  zod@3.25.76: {}
 
   zod@4.6.7: {}
