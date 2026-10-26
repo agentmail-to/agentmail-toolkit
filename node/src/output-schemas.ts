@@ -85,6 +85,24 @@ export const ThreadItemSchema = z.object({
     createdAt: isoDate('When the thread was created'),
 })
 
+// A string, not an enum: a verdict the API adds later must not fail every list, search, thread or
+// get result holding it, the failure a required `to` once caused (see MessageItemSchema).
+const authenticationVerdict = (mechanism: string) =>
+    z.string().optional().describe(`Recorded ${mechanism} verdict, such as pass, fail, none, neutral, softfail, temperror or permerror`)
+
+export const MessageAuthenticationResultsSchema = z.object({
+    spf: authenticationVerdict('SPF'),
+    dkim: authenticationVerdict('DKIM'),
+    dmarc: authenticationVerdict('DMARC'),
+    spfDomain: z.string().optional().describe('Envelope MAIL FROM domain the SPF verdict is about; SPF is reported only when it is aligned with the From domain'),
+    dkimDomain: z
+        .string()
+        .optional()
+        .describe('Signing domain (d=) the DKIM verdict is about, as written; a DKIM pass proves only this domain, so compare it with the From domain before trusting the sender'),
+    dmarcDomain: z.string().optional().describe('From domain the DMARC verdict is about'),
+    arcSealer: z.string().optional().describe('Trusted forwarder whose sealed original verdicts are reported, when applicable'),
+})
+
 export const MessageItemSchema = z.object({
     inboxId: z.string().describe('Inbox the message belongs to'),
     threadId: z.string().describe('Thread the message belongs to'),
@@ -111,6 +129,9 @@ export const MessageItemSchema = z.object({
         .describe(
             "The calendar event this email's invitation, update, cancellation or reply changed, set a few seconds after it arrives (a dated ID for one date of a recurring event); pass it to get_event. Only an invitation this inbox received can be answered with respond_to_invitation, not a reply or cancellation. Absent on other mail"
         ),
+    authenticationResults: MessageAuthenticationResultsSchema.optional().describe(
+        'AgentMail-recorded sender authentication verdicts; an absent check is unknown. The unauthenticated label, not this field, is the acceptance decision; do not reject mail on a DMARC fail alone'
+    ),
     // Raw RFC-822 `headers` deliberately excluded: they carry personal identifiers
     // (Received-chain IPs, Return-Path) a model never needs — flagged by OpenAI app
     // review. Threading works via inReplyTo/references.
@@ -119,28 +140,7 @@ export const MessageItemSchema = z.object({
     createdAt: isoDate('When AgentMail stored the message'),
 })
 
-// A string, not an enum: a verdict the API adds later must not fail every get_message and
-// get_thread holding it, the failure `to` above already caused once.
-const authenticationVerdict = (mechanism: string) =>
-    z.string().optional().describe(`Recorded ${mechanism} verdict, such as pass, fail, none, neutral, softfail, temperror or permerror`)
-
-export const MessageAuthenticationResultsSchema = z.object({
-    spf: authenticationVerdict('SPF'),
-    dkim: authenticationVerdict('DKIM'),
-    dmarc: authenticationVerdict('DMARC'),
-    spfDomain: z.string().optional().describe('Envelope MAIL FROM domain the SPF verdict is about; SPF is reported only when it is aligned with the From domain'),
-    dkimDomain: z
-        .string()
-        .optional()
-        .describe('Signing domain (d=) the DKIM verdict is about, as written; a DKIM pass proves only this domain, so compare it with the From domain before trusting the sender'),
-    dmarcDomain: z.string().optional().describe('From domain the DMARC verdict is about'),
-    arcSealer: z.string().optional().describe('Trusted forwarder whose sealed original verdicts are reported, when applicable'),
-})
-
 export const MessageSchema = MessageItemSchema.extend({
-    authenticationResults: MessageAuthenticationResultsSchema.optional().describe(
-        'AgentMail-recorded sender authentication verdicts; an absent check is unknown. The unauthenticated label, not this field, is the acceptance decision; do not reject mail on a DMARC fail alone'
-    ),
     replyTo: z.array(z.string()).optional().describe('Reply-To addresses: where replies should go'),
     text: z.string().optional().describe('Plain-text body, quoted history included'),
     html: z.string().optional().describe('HTML body, quoted history included'),

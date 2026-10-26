@@ -68,6 +68,18 @@ export const ListInboxItemsParams = ListItemsParams.extend({
     ascending: z.boolean().optional().describe('Sort by oldest first instead of most recent first'),
 })
 
+// The API leaves mail with a restricted label out unless its include flag is set and the key can
+// read that label, even when `labels` asks for it, and says nothing when the permission is missing.
+const includeRestricted = (items: string, label: string, meaning = '') =>
+    z
+        .boolean()
+        .optional()
+        .describe(
+            `Also return ${items} labeled ${label}${meaning}, which are left out when omitted, even when labels includes ${label}; needs an API key with label_${label}_read, or they stay left out without an error`
+        )
+const BLOCKED = ' (the sender is on a block list)'
+const UNAUTHENTICATED = ' (no authentication mechanism passed for the sender, or DMARC failed under a none policy)'
+
 // The API matches these by word prefix, case- and accent-insensitive: every word of every value
 // must start a word in the field ("acme" matches bob@acme.com; "voice" does not match "invoice").
 export const ListThreadsParams = ListInboxItemsParams.extend({
@@ -77,16 +89,10 @@ export const ListThreadsParams = ListInboxItemsParams.extend({
         .describe('Only threads whose senders match every value by word prefix, e.g. "acme" matches bob@acme.com'),
     recipients: z.array(z.string()).optional().describe('Only threads whose To, Cc or Bcc addresses match every value by word prefix'),
     subject: z.array(z.string()).optional().describe("Only threads whose subject (the first message's) matches every value by word prefix"),
-    includeSpam: z.boolean().optional().describe('Also return threads labeled spam, which are left out when omitted'),
-    includeBlocked: z
-        .boolean()
-        .optional()
-        .describe('Also return threads labeled blocked (the sender is on a block list), which are left out when omitted; needs an API key with label_blocked_read, or they stay left out without an error'),
-    includeUnauthenticated: z
-        .boolean()
-        .optional()
-        .describe('Also return threads labeled unauthenticated (no sender authentication passed), which are left out when omitted; needs an API key with label_unauthenticated_read, or they stay left out without an error'),
-    includeTrash: z.boolean().optional().describe('Also return threads labeled trash, which are left out when omitted'),
+    includeSpam: includeRestricted('threads', 'spam'),
+    includeBlocked: includeRestricted('threads', 'blocked', BLOCKED),
+    includeUnauthenticated: includeRestricted('threads', 'unauthenticated', UNAUTHENTICATED),
+    includeTrash: includeRestricted('threads', 'trash'),
 })
 
 export const SearchInboxItemsParams = ListItemsParams.extend({
@@ -276,16 +282,10 @@ export const ListMessagesParams = ListInboxItemsParams.extend({
         .describe('Only messages whose sender matches every value by word prefix, e.g. "acme" matches bob@acme.com'),
     to: z.array(z.string()).optional().describe('Only messages whose To, Cc or Bcc addresses match every value by word prefix'),
     subject: z.array(z.string()).optional().describe('Only messages whose subject matches every value by word prefix'),
-    includeSpam: z.boolean().optional().describe('Also return messages labeled spam, which are left out when omitted'),
-    includeBlocked: z
-        .boolean()
-        .optional()
-        .describe('Also return messages labeled blocked (the sender is on a block list), which are left out when omitted; needs an API key with label_blocked_read, or they stay left out without an error'),
-    includeUnauthenticated: z
-        .boolean()
-        .optional()
-        .describe('Also return messages labeled unauthenticated (no sender authentication passed), which are left out when omitted; needs an API key with label_unauthenticated_read, or they stay left out without an error'),
-    includeTrash: z.boolean().optional().describe('Also return messages labeled trash, which are left out when omitted'),
+    includeSpam: includeRestricted('messages', 'spam'),
+    includeBlocked: includeRestricted('messages', 'blocked', BLOCKED),
+    includeUnauthenticated: includeRestricted('messages', 'unauthenticated', UNAUTHENTICATED),
+    includeTrash: includeRestricted('messages', 'trash'),
 })
 
 // Draft schemas

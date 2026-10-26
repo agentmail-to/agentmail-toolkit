@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { AgentMailClient } from 'agentmail'
 import { AgentMailToolkit as BaseToolkit } from '../src/index.js'
 import { AgentMailToolkit } from '../src/mcp.js'
+import { MessageAuthenticationResultsSchema } from '../src/output-schemas.js'
 import { tools } from '../src/tools.js'
 import { message, mockClient, thread } from './fixtures.js'
 
@@ -116,24 +117,51 @@ describe('recorded authentication verdicts', () => {
         expect(first?.authenticationResults).not.toHaveProperty('spf')
     })
 
-    it('keeps the camelCase field an SDK that types authenticationResults returns', async () => {
+    // The base toolkit returns the func result as is, like the ai-sdk, LangChain and clawdbot
+    // adapters, so it shows exactly what the projection lets through.
+    const getMessageFromBaseToolkit = async (received: object) => {
         const client = mockClient()
-        const typed = { ...message(), authenticationResults: { dkim: 'pass', dkimDomain: 'example.com' } }
-        vi.spyOn(client.inboxes.messages, 'get').mockResolvedValue(typed as never)
-        const tool = new AgentMailToolkit(client).getTools().find((candidate) => candidate.name === 'get_message')!
-        const result = await tool.callback({ inboxId: 'inbox_1', messageId: 'msg_1' } as never, {} as never)
-        expect(result.isError ?? false).toBe(false)
-        expect((result.structuredContent as Record<string, unknown>).authenticationResults).toEqual({ dkim: 'pass', dkimDomain: 'example.com' })
+        vi.spyOn(client.inboxes.messages, 'get').mockResolvedValue(received as never)
+        const tool = new BaseToolkit(client).getTools().find((candidate) => candidate.name === 'get_message')!
+        return (await tool.func({ inboxId: 'inbox_1', messageId: 'msg_1' })) as Record<string, unknown>
+    }
+
+    it('filters the camelCase field an SDK that types authenticationResults returns', async () => {
+        const result = await getMessageFromBaseToolkit({ ...message(), authenticationResults: { dkim: 'pass', dkimDomain: 'example.com', private_debug: 'leak' } })
+        expect(result.authenticationResults).toStrictEqual({ dkim: 'pass', dkimDomain: 'example.com' })
     })
 
     it('gives adapters that do not strip undeclared fields only the projected copy', async () => {
-        const client = mockClient()
-        const received = { ...message(), authentication_results: { spf: 'pass', private_debug: 'never expose' } }
-        vi.spyOn(client.inboxes.messages, 'get').mockResolvedValue(received as never)
-        const tool = new BaseToolkit(client).getTools().find((candidate) => candidate.name === 'get_message')!
-        const result = (await tool.func({ inboxId: 'inbox_1', messageId: 'msg_1' })) as Record<string, unknown>
+        const result = await getMessageFromBaseToolkit({ ...message(), authentication_results: { spf: 'pass', private_debug: 'never expose' } })
         expect(result).not.toHaveProperty('authentication_results')
-        expect(result.authenticationResults).toEqual({ spf: 'pass' })
+        expect(result.authenticationResults).toStrictEqual({ spf: 'pass' })
         expect(JSON.stringify(result)).not.toContain('never expose')
+    })
+
+    it('maps every key MessageAuthenticationResultsSchema declares from its snake_case wire name', async () => {
+        const keys = Object.keys(MessageAuthenticationResultsSchema.shape)
+        const wire = Object.fromEntries(keys.map((key) => [key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`), key]))
+        const result = await getMessageFromBaseToolkit({ ...message(), authentication_results: wire })
+        expect(result.authenticationResults).toStrictEqual(Object.fromEntries(keys.map((key) => [key, key])))
+    })
+
+    it.each(['list_messages', 'search_messages'] as const)('%s items carry projected verdicts on every adapter', async (name) => {
+        const client = mockClient()
+        const item = { ...message(), authentication_results: { dkim: 'none', private_debug: 'leak' } }
+        const page = { count: 1, messages: [item] }
+        vi.spyOn(client.inboxes.messages, name === 'list_messages' ? 'list' : 'search').mockResolvedValue(page as never)
+        const args = { inboxId: 'inbox_1', q: 'invoice' }
+
+        const base = new BaseToolkit(client).getTools().find((candidate) => candidate.name === name)!
+        const [baseItem] = ((await base.func(args)) as { messages: Record<string, unknown>[] }).messages
+        expect(baseItem).not.toHaveProperty('authentication_results')
+        expect(baseItem?.authenticationResults).toStrictEqual({ dkim: 'none' })
+
+        const mcp = new AgentMailToolkit(client).getTools().find((candidate) => candidate.name === name)!
+        const result = await mcp.callback(args as never, {} as never)
+        expect(result.isError ?? false).toBe(false)
+        const [mcpItem] = (result.structuredContent as { messages: Record<string, unknown>[] }).messages
+        expect(mcpItem?.authenticationResults).toEqual({ dkim: 'none' })
+        expect(JSON.stringify(result.structuredContent)).not.toContain('leak')
     })
 })

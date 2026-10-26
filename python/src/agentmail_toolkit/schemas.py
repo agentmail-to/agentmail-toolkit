@@ -40,6 +40,16 @@ class CreateInboxParams(BaseModel):
     )
 
 
+# The API leaves mail with a restricted label out unless its include flag is set and the key can
+# read that label, even when `labels` asks for it, and says nothing when the permission is missing.
+def _include_restricted(label: str, meaning: str = ""):
+    return Field(
+        default=None,
+        description=f"Also return mail labeled {label}{meaning}, which is left out when omitted, even when labels "
+        f"includes {label}; needs an API key with label_{label}_read, or it stays left out without an error",
+    )
+
+
 class ListInboxItemsParams(ListItemsParams):
     inbox_id: InboxIdField
     labels: Optional[List[str]] = Field(
@@ -48,21 +58,12 @@ class ListInboxItemsParams(ListItemsParams):
     before: Optional[datetime] = Field(default=None, description=f"Only items before this time, as {UTC_EXAMPLE}")
     after: Optional[datetime] = Field(default=None, description=f"Only items at or after this time, as {UTC_EXAMPLE}")
     ascending: Optional[bool] = Field(default=None, description="Sort by oldest first instead of most recent first")
-    include_spam: Optional[bool] = Field(
-        default=None, description="Also return items labeled spam, which are left out when omitted"
+    include_spam: Optional[bool] = _include_restricted("spam")
+    include_blocked: Optional[bool] = _include_restricted("blocked", " (its sender is on a block list)")
+    include_unauthenticated: Optional[bool] = _include_restricted(
+        "unauthenticated", " (no authentication mechanism passed for the sender, or DMARC failed under a none policy)"
     )
-    include_blocked: Optional[bool] = Field(
-        default=None,
-        description="Also return mail labeled blocked (its sender is on a block list), which is left out when omitted",
-    )
-    include_unauthenticated: Optional[bool] = Field(
-        default=None,
-        description="Also return mail labeled unauthenticated (no sender authentication passed), which is left out "
-        "when omitted; needs an API key with label_unauthenticated_read, or it stays left out without an error",
-    )
-    include_trash: Optional[bool] = Field(
-        default=None, description="Also return items labeled trash, which are left out when omitted"
-    )
+    include_trash: Optional[bool] = _include_restricted("trash")
 
 
 class GetThreadParams(BaseModel):

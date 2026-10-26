@@ -7,9 +7,11 @@ call raising TypeError against the real SDK) and F7 (get_attachment calling
 the unscoped client.threads.get_attachment instead of the inbox-scoped one).
 """
 
+import inspect
 from datetime import datetime, timezone
 
 from agentmail.inboxes import CreateInboxRequest
+from agentmail.inboxes.threads.client import ThreadsClient
 from agentmail.inboxes.types.inbox import Inbox
 
 from agentmail_toolkit import functions
@@ -62,8 +64,10 @@ def test_list_threads_call_shape(mock_client):
 
 
 def test_list_threads_offers_every_restricted_label_opt_in():
-    fields = ListInboxItemsParams.model_fields
-    assert {"include_spam", "include_blocked", "include_unauthenticated", "include_trash"} <= fields.keys()
+    """Read from the SDK's signature, so an opt-in a newer SDK adds fails here until it's exposed."""
+    sdk = {name for name in inspect.signature(ThreadsClient.list).parameters if name.startswith("include_")}
+    assert "include_unauthenticated" in sdk
+    assert {name for name in ListInboxItemsParams.model_fields if name.startswith("include_")} == sdk
 
 
 def test_get_thread_call_shape(mock_client):
