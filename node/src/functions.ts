@@ -87,7 +87,31 @@ export async function searchThreads(client: AgentMailClient, args: z.infer<typeo
 
 export async function getThread(client: AgentMailClient, args: z.infer<typeof GetThreadParams>) {
     const { inboxId, threadId, ...options } = args
-    return client.inboxes.threads.get(inboxId, threadId, options)
+    const thread = await client.inboxes.threads.get(inboxId, threadId, options)
+    return { ...thread, messages: thread.messages.map(withMessageAuthentication) }
+}
+
+// SDK 0.5.46 passes this public API field through in snake_case. Project only its
+// documented verdicts; raw headers and unknown SDK fields still stay behind the
+// output schema's allowlist. Also accept camelCase from a future SDK serializer.
+function withMessageAuthentication<T extends object>(message: T) {
+    const fields = message as Record<string, unknown>
+    if (fields.authenticationResults !== undefined) return message
+    const raw = fields.authentication_results
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return message
+    const auth = raw as Record<string, unknown>
+    return {
+        ...message,
+        authenticationResults: {
+            spf: auth.spf,
+            dkim: auth.dkim,
+            dmarc: auth.dmarc,
+            spfDomain: auth.spf_domain,
+            dkimDomain: auth.dkim_domain,
+            dmarcDomain: auth.dmarc_domain,
+            arcSealer: auth.arc_sealer,
+        },
+    }
 }
 
 export async function updateThread(client: AgentMailClient, args: z.infer<typeof UpdateThreadParams>) {
@@ -367,7 +391,7 @@ export async function listAccounts(client: AgentMailClient, args: z.infer<typeof
 
 export async function getMessage(client: AgentMailClient, args: z.infer<typeof GetMessageParams>) {
     const { inboxId, messageId } = args
-    return client.inboxes.messages.get(inboxId, messageId)
+    return withMessageAuthentication(await client.inboxes.messages.get(inboxId, messageId))
 }
 
 export async function searchInboxes(client: AgentMailClient, args: z.infer<typeof SearchInboxesParams>) {

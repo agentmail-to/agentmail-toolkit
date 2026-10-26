@@ -78,6 +78,10 @@ export const ListThreadsParams = ListInboxItemsParams.extend({
     recipients: z.array(z.string()).optional().describe('Only threads whose To, Cc or Bcc addresses match every value by word prefix'),
     subject: z.array(z.string()).optional().describe("Only threads whose subject (the first message's) matches every value by word prefix"),
     includeSpam: z.boolean().optional().describe('Also return threads labeled spam, which are left out when omitted'),
+    includeUnauthenticated: z
+        .boolean()
+        .optional()
+        .describe('Also return threads labeled unauthenticated, which are left out when omitted; preserves their labels and authentication checks'),
     includeTrash: z.boolean().optional().describe('Also return threads labeled trash, which are left out when omitted'),
 })
 
@@ -269,6 +273,10 @@ export const ListMessagesParams = ListInboxItemsParams.extend({
     to: z.array(z.string()).optional().describe('Only messages whose To, Cc or Bcc addresses match every value by word prefix'),
     subject: z.array(z.string()).optional().describe('Only messages whose subject matches every value by word prefix'),
     includeSpam: z.boolean().optional().describe('Also return messages labeled spam, which are left out when omitted'),
+    includeUnauthenticated: z
+        .boolean()
+        .optional()
+        .describe('Also return messages labeled unauthenticated, which are left out when omitted; preserves their labels and authentication checks'),
     includeTrash: z.boolean().optional().describe('Also return messages labeled trash, which are left out when omitted'),
 })
 

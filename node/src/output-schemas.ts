@@ -119,7 +119,22 @@ export const MessageItemSchema = z.object({
     createdAt: isoDate('When AgentMail stored the message'),
 })
 
+const AuthenticationVerdictSchema = z.enum(['pass', 'fail', 'none', 'neutral', 'softfail', 'temperror', 'permerror'])
+
+export const MessageAuthenticationResultsSchema = z.object({
+    spf: AuthenticationVerdictSchema.optional().describe('Recorded SPF verdict, when available'),
+    dkim: AuthenticationVerdictSchema.optional().describe('Recorded DKIM verdict, when available'),
+    dmarc: AuthenticationVerdictSchema.optional().describe('Recorded DMARC verdict, when available'),
+    spfDomain: z.string().optional().describe('Envelope domain the SPF verdict applies to'),
+    dkimDomain: z.string().optional().describe('Signing domain the DKIM verdict applies to'),
+    dmarcDomain: z.string().optional().describe('From domain the DMARC verdict applies to'),
+    arcSealer: z.string().optional().describe('Trusted forwarder whose sealed original verdicts are reported, when applicable'),
+})
+
 export const MessageSchema = MessageItemSchema.extend({
+    authenticationResults: MessageAuthenticationResultsSchema.optional().describe(
+        'AgentMail-recorded sender authentication verdicts; absent checks are unknown, and the unauthenticated label remains the acceptance decision'
+    ),
     replyTo: z.array(z.string()).optional().describe('Reply-To addresses: where replies should go'),
     text: z.string().optional().describe('Plain-text body, quoted history included'),
     html: z.string().optional().describe('HTML body, quoted history included'),
