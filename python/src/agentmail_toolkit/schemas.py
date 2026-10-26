@@ -55,6 +55,11 @@ class ListInboxItemsParams(ListItemsParams):
         default=None,
         description="Also return mail labeled blocked (its sender is on a block list), which is left out when omitted",
     )
+    include_unauthenticated: Optional[bool] = Field(
+        default=None,
+        description="Also return mail labeled unauthenticated (no sender authentication passed), which is left out "
+        "when omitted; needs an API key with label_unauthenticated_read, or it stays left out without an error",
+    )
     include_trash: Optional[bool] = Field(
         default=None, description="Also return items labeled trash, which are left out when omitted"
     )

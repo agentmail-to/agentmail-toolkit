@@ -13,6 +13,7 @@ from agentmail.inboxes import CreateInboxRequest
 from agentmail.inboxes.types.inbox import Inbox
 
 from agentmail_toolkit import functions
+from agentmail_toolkit.schemas import ListInboxItemsParams
 
 
 def test_list_inboxes_call_shape(mock_client):
@@ -53,11 +54,16 @@ def test_delete_inbox_returns_stable_none(mock_client):
 def test_list_threads_call_shape(mock_client):
     functions.list_threads(
         mock_client,
-        {"inbox_id": "in_1", "ascending": True, "include_spam": True},
+        {"inbox_id": "in_1", "ascending": True, "include_spam": True, "include_unauthenticated": True},
     )
     mock_client.inboxes.threads.list.assert_called_once_with(
-        inbox_id="in_1", ascending=True, include_spam=True
+        inbox_id="in_1", ascending=True, include_spam=True, include_unauthenticated=True
     )
+
+
+def test_list_threads_offers_every_restricted_label_opt_in():
+    fields = ListInboxItemsParams.model_fields
+    assert {"include_spam", "include_blocked", "include_unauthenticated", "include_trash"} <= fields.keys()
 
 
 def test_get_thread_call_shape(mock_client):

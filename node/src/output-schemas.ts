@@ -119,21 +119,27 @@ export const MessageItemSchema = z.object({
     createdAt: isoDate('When AgentMail stored the message'),
 })
 
-const AuthenticationVerdictSchema = z.enum(['pass', 'fail', 'none', 'neutral', 'softfail', 'temperror', 'permerror'])
+// A string, not an enum: a verdict the API adds later must not fail every get_message and
+// get_thread holding it, the failure `to` above already caused once.
+const authenticationVerdict = (mechanism: string) =>
+    z.string().optional().describe(`Recorded ${mechanism} verdict, such as pass, fail, none, neutral, softfail, temperror or permerror`)
 
 export const MessageAuthenticationResultsSchema = z.object({
-    spf: AuthenticationVerdictSchema.optional().describe('Recorded SPF verdict, when available'),
-    dkim: AuthenticationVerdictSchema.optional().describe('Recorded DKIM verdict, when available'),
-    dmarc: AuthenticationVerdictSchema.optional().describe('Recorded DMARC verdict, when available'),
-    spfDomain: z.string().optional().describe('Envelope domain the SPF verdict applies to'),
-    dkimDomain: z.string().optional().describe('Signing domain the DKIM verdict applies to'),
-    dmarcDomain: z.string().optional().describe('From domain the DMARC verdict applies to'),
+    spf: authenticationVerdict('SPF'),
+    dkim: authenticationVerdict('DKIM'),
+    dmarc: authenticationVerdict('DMARC'),
+    spfDomain: z.string().optional().describe('Envelope MAIL FROM domain the SPF verdict is about; SPF is reported only when it is aligned with the From domain'),
+    dkimDomain: z
+        .string()
+        .optional()
+        .describe('Signing domain (d=) the DKIM verdict is about, as written; a DKIM pass proves only this domain, so compare it with the From domain before trusting the sender'),
+    dmarcDomain: z.string().optional().describe('From domain the DMARC verdict is about'),
     arcSealer: z.string().optional().describe('Trusted forwarder whose sealed original verdicts are reported, when applicable'),
 })
 
 export const MessageSchema = MessageItemSchema.extend({
     authenticationResults: MessageAuthenticationResultsSchema.optional().describe(
-        'AgentMail-recorded sender authentication verdicts; absent checks are unknown, and the unauthenticated label remains the acceptance decision'
+        'AgentMail-recorded sender authentication verdicts; an absent check is unknown. The unauthenticated label, not this field, is the acceptance decision; do not reject mail on a DMARC fail alone'
     ),
     replyTo: z.array(z.string()).optional().describe('Reply-To addresses: where replies should go'),
     text: z.string().optional().describe('Plain-text body, quoted history included'),

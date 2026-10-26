@@ -78,10 +78,14 @@ export const ListThreadsParams = ListInboxItemsParams.extend({
     recipients: z.array(z.string()).optional().describe('Only threads whose To, Cc or Bcc addresses match every value by word prefix'),
     subject: z.array(z.string()).optional().describe("Only threads whose subject (the first message's) matches every value by word prefix"),
     includeSpam: z.boolean().optional().describe('Also return threads labeled spam, which are left out when omitted'),
+    includeBlocked: z
+        .boolean()
+        .optional()
+        .describe('Also return threads labeled blocked (the sender is on a block list), which are left out when omitted; needs an API key with label_blocked_read, or they stay left out without an error'),
     includeUnauthenticated: z
         .boolean()
         .optional()
-        .describe('Also return threads labeled unauthenticated, which are left out when omitted; preserves their labels and authentication checks'),
+        .describe('Also return threads labeled unauthenticated (no sender authentication passed), which are left out when omitted; needs an API key with label_unauthenticated_read, or they stay left out without an error'),
     includeTrash: z.boolean().optional().describe('Also return threads labeled trash, which are left out when omitted'),
 })
 
@@ -273,10 +277,14 @@ export const ListMessagesParams = ListInboxItemsParams.extend({
     to: z.array(z.string()).optional().describe('Only messages whose To, Cc or Bcc addresses match every value by word prefix'),
     subject: z.array(z.string()).optional().describe('Only messages whose subject matches every value by word prefix'),
     includeSpam: z.boolean().optional().describe('Also return messages labeled spam, which are left out when omitted'),
+    includeBlocked: z
+        .boolean()
+        .optional()
+        .describe('Also return messages labeled blocked (the sender is on a block list), which are left out when omitted; needs an API key with label_blocked_read, or they stay left out without an error'),
     includeUnauthenticated: z
         .boolean()
         .optional()
-        .describe('Also return messages labeled unauthenticated, which are left out when omitted; preserves their labels and authentication checks'),
+        .describe('Also return messages labeled unauthenticated (no sender authentication passed), which are left out when omitted; needs an API key with label_unauthenticated_read, or they stay left out without an error'),
     includeTrash: z.boolean().optional().describe('Also return messages labeled trash, which are left out when omitted'),
 })
 

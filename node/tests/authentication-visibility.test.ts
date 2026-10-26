@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { AgentMailClient } from 'agentmail'
+import { AgentMailToolkit as BaseToolkit } from '../src/index.js'
 import { AgentMailToolkit } from '../src/mcp.js'
 import { tools } from '../src/tools.js'
 import { message, mockClient, thread } from './fixtures.js'
@@ -25,8 +26,33 @@ describe('unauthenticated mail discovery', () => {
         )
         const client = new AgentMailClient({ apiKey: 'test-key', fetch: fetcher as never })
         const tool = tools.find((candidate) => candidate.name === `list_${resource}`)!
-        await tool.func(client, tool.paramsSchema.parse({ inboxId: 'inbox_1', includeUnauthenticated: true }) as never)
+        await tool.func(client, tool.paramsSchema.parse({ inboxId: 'inbox_1', includeUnauthenticated: true, includeBlocked: true }) as never)
         expect(String(fetcher.mock.calls[0]?.[0])).toContain('include_unauthenticated=true')
+        expect(String(fetcher.mock.calls[0]?.[0])).toContain('include_blocked=true')
+    })
+
+    // The SDK reads each include* opt-in off the request, so a Proxy lists them: a restricted
+    // label the SDK learns fails here until list_messages and list_threads expose it.
+    it.each(['messages', 'threads'] as const)('list_%s exposes every restricted-label opt-in the SDK takes', async (resource) => {
+        const client = new AgentMailClient({
+            apiKey: 'test-key',
+            fetch: (async () => new Response(JSON.stringify({ count: 0, [resource]: [] }), { status: 200 })) as never,
+        })
+        const read = new Set<string>()
+        const request = new Proxy(
+            {},
+            {
+                get: (_target, key) => {
+                    read.add(String(key))
+                    return undefined
+                },
+            }
+        )
+        await client.inboxes[resource].list('inbox_1', request as never)
+        const includes = (keys: Iterable<string>) => [...keys].filter((key) => key.startsWith('include')).sort()
+        const tool = tools.find((candidate) => candidate.name === `list_${resource}`)!
+        expect(includes(read)).toContain('includeUnauthenticated')
+        expect(includes(Object.keys(tool.paramsSchema.shape))).toEqual(includes(read))
     })
 })
 
@@ -76,5 +102,38 @@ describe('recorded authentication verdicts', () => {
         expect(actual).not.toHaveProperty('organization_id')
         expect(JSON.stringify(actual)).not.toContain('never expose')
         expect(actual.authenticationResults).not.toHaveProperty('spf')
+    })
+
+    it('reads a thread whose verdict is one it does not know, dropping values that are not strings', async () => {
+        const client = mockClient()
+        const received = { ...message(), authentication_results: { dkim: 'policy', spf: 42, dmarc: null } }
+        vi.spyOn(client.inboxes.threads, 'get').mockResolvedValue({ ...thread(), messages: [received] } as never)
+        const tool = new AgentMailToolkit(client).getTools().find((candidate) => candidate.name === 'get_thread')!
+        const result = await tool.callback({ inboxId: 'inbox_1', threadId: 'thread_1' } as never, {} as never)
+        expect(result.isError ?? false).toBe(false)
+        const [first] = (result.structuredContent as { messages: Record<string, unknown>[] }).messages
+        expect(first?.authenticationResults).toEqual({ dkim: 'policy' })
+        expect(first?.authenticationResults).not.toHaveProperty('spf')
+    })
+
+    it('keeps the camelCase field an SDK that types authenticationResults returns', async () => {
+        const client = mockClient()
+        const typed = { ...message(), authenticationResults: { dkim: 'pass', dkimDomain: 'example.com' } }
+        vi.spyOn(client.inboxes.messages, 'get').mockResolvedValue(typed as never)
+        const tool = new AgentMailToolkit(client).getTools().find((candidate) => candidate.name === 'get_message')!
+        const result = await tool.callback({ inboxId: 'inbox_1', messageId: 'msg_1' } as never, {} as never)
+        expect(result.isError ?? false).toBe(false)
+        expect((result.structuredContent as Record<string, unknown>).authenticationResults).toEqual({ dkim: 'pass', dkimDomain: 'example.com' })
+    })
+
+    it('gives adapters that do not strip undeclared fields only the projected copy', async () => {
+        const client = mockClient()
+        const received = { ...message(), authentication_results: { spf: 'pass', private_debug: 'never expose' } }
+        vi.spyOn(client.inboxes.messages, 'get').mockResolvedValue(received as never)
+        const tool = new BaseToolkit(client).getTools().find((candidate) => candidate.name === 'get_message')!
+        const result = (await tool.func({ inboxId: 'inbox_1', messageId: 'msg_1' })) as Record<string, unknown>
+        expect(result).not.toHaveProperty('authentication_results')
+        expect(result.authenticationResults).toEqual({ spf: 'pass' })
+        expect(JSON.stringify(result)).not.toContain('never expose')
     })
 })

@@ -91,25 +91,25 @@ export async function getThread(client: AgentMailClient, args: z.infer<typeof Ge
     return { ...thread, messages: thread.messages.map(withMessageAuthentication) }
 }
 
-// SDK 0.5.46 passes this public API field through in snake_case. Project only its
-// documented verdicts; raw headers and unknown SDK fields still stay behind the
-// output schema's allowlist. Also accept camelCase from a future SDK serializer.
+// SDK 0.5.46 passes this public API field through in snake_case. The API's Fern definition
+// already declares it, so delete this projection once the toolkit requires an SDK that types
+// authenticationResults. Until then, project only the documented verdicts and drop the raw
+// copy: only the MCP adapter strips undeclared fields, the other adapters return this object.
 function withMessageAuthentication<T extends object>(message: T) {
-    const fields = message as Record<string, unknown>
-    if (fields.authenticationResults !== undefined) return message
-    const raw = fields.authentication_results
-    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return message
+    const { authentication_results: raw, ...rest } = message as T & { authentication_results?: unknown }
+    if ('authenticationResults' in rest || !raw || typeof raw !== 'object' || Array.isArray(raw)) return rest
     const auth = raw as Record<string, unknown>
+    const text = (value: unknown) => (typeof value === 'string' ? value : undefined)
     return {
-        ...message,
+        ...rest,
         authenticationResults: {
-            spf: auth.spf,
-            dkim: auth.dkim,
-            dmarc: auth.dmarc,
-            spfDomain: auth.spf_domain,
-            dkimDomain: auth.dkim_domain,
-            dmarcDomain: auth.dmarc_domain,
-            arcSealer: auth.arc_sealer,
+            spf: text(auth.spf),
+            dkim: text(auth.dkim),
+            dmarc: text(auth.dmarc),
+            spfDomain: text(auth.spf_domain),
+            dkimDomain: text(auth.dkim_domain),
+            dmarcDomain: text(auth.dmarc_domain),
+            arcSealer: text(auth.arc_sealer),
         },
     }
 }
