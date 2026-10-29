@@ -40,6 +40,13 @@ export const InboxSchema = z.object({
     email: z.string().describe("The inbox's email address"),
     displayName: z.string().optional().describe('Sender name recipients see on mail from this inbox'),
     metadata: MetadataSchema.optional().describe('Custom metadata attached to the inbox'),
+    signature: z
+        .object({
+            text: z.string().describe('Signature added to the plain-text part of every message this inbox sends'),
+            html: z.string().optional().describe('Signature added to the HTML part; absent when the HTML part uses text'),
+        })
+        .optional()
+        .describe('Signature AgentMail adds to messages this inbox sends; absent when none is set'),
     updatedAt: isoDate('When the inbox was last updated'),
     createdAt: isoDate('When the inbox was created'),
 })

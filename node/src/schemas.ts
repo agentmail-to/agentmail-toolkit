@@ -26,6 +26,15 @@ export const GetInboxParams = z.object({
     inboxId: InboxIdSchema,
 })
 
+// Added server-side to every message the inbox sends, after the caller's content and above any quoted message.
+const InboxSignatureSchema = z.object({
+    text: z.string().describe('Signature for the plain-text part, at most 1,000 characters; line breaks are kept'),
+    html: z
+        .string()
+        .optional()
+        .describe('HTML version for the HTML part, at most 4,000 characters; link a logo by URL. When omitted, the HTML part gets text'),
+})
+
 export const CreateInboxParams = z.object({
     username: z.string().optional().describe('Part of the address before the @; a random one is generated when omitted'),
     domain: z.string().optional().describe('Domain of the address, agentmail.to when omitted; a custom domain must be verified first'),
@@ -35,6 +44,9 @@ export const CreateInboxParams = z.object({
         .record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
         .optional()
         .describe('Your own key-value data, stored on the inbox and returned with it; recipients never see it'),
+    signature: InboxSignatureSchema.optional().describe(
+        'Signature AgentMail adds to every message this inbox sends, after your content and above any quoted message; not added again when the body already contains it'
+    ),
 })
 
 export const UpdateInboxParams = z.object({
@@ -45,6 +57,9 @@ export const UpdateInboxParams = z.object({
         .nullable()
         .optional()
         .describe('Metadata to merge into existing metadata. Set a key to null to remove it, or the whole field to null to clear all metadata'),
+    signature: InboxSignatureSchema.nullable()
+        .optional()
+        .describe('Replace the signature AgentMail adds to every message this inbox sends, or null to remove it'),
 })
 
 // The toolkit parses these with Date and sends UTC, so any ISO 8601 offset works; a time
