@@ -6,7 +6,7 @@ settings:
 
 overrides:
   nanoid@5: ^5.1.16
-  '@hono/node-server': '>=1.19.15'
+  '@hono/node-server': '>=2.1.3 <3'
   '@modelcontextprotocol/sdk': '>=1.31.0'
   '@protobufjs/utf8': '>=1.1.1'
   '@whiskeysockets/baileys': '>=7.0.0-rc12'
@@ -39,8 +39,8 @@ overrides:
   ws: '>=8.21.0'
   langchain: '>=1.2.3 <1.3.0'
   ajv: '>=8.18.0'
-  '@eslint/eslintrc>ajv': ^6.12.6
-  eslint>ajv: ^6.12.6
+  '@eslint/eslintrc>ajv': ^6.14.0
+  eslint>ajv: ^6.14.0
   '@simple-git/argv-parser': '>=2.0.1'
   proxy-addr: '>=2.0.8'
   source-map-js: '>=1.2.2'
@@ -52,6 +52,7 @@ overrides:
   music-metadata: '>=11.16.0 <12'
   '@humanfs/node': ^0.16.8
   zod@4: '>=4.6.7 <5'
+  yaml@2: '>=2.8.3 <3'
   vite: 8.3.4
   '@mistralai/mistralai@1': 1.15.1
   '@mistralai/mistralai>zod': 4.6.7
@@ -111,7 +112,7 @@ importers:
         version: 3.5.3
       tsup:
         specifier: ^8.5.1
-        version: 8.5.1(jiti@2.6.1)(postcss@8.5.26)(typescript@5.9.3)(yaml@2.8.2)
+        version: 8.5.1(jiti@2.6.1)(postcss@8.5.26)(typescript@5.9.3)
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -120,10 +121,10 @@ importers:
         version: 8.50.0(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3)
       vite:
         specifier: 8.3.4
-        version: 8.3.4(@types/node@24.10.4)(esbuild@0.27.2)(jiti@2.6.1)(yaml@2.8.2)
+        version: 8.3.4(@types/node@24.10.4)(esbuild@0.27.2)(jiti@2.6.1)
       vitest:
         specifier: ^4.1.12
-        version: 4.1.12(@opentelemetry/api@1.9.0)(@types/node@24.10.4)(vite@8.3.4(@types/node@24.10.4)(esbuild@0.27.2)(jiti@2.6.1)(yaml@2.8.2))
+        version: 4.1.12(@opentelemetry/api@1.9.0)(@types/node@24.10.4)(vite@8.3.4(@types/node@24.10.4)(esbuild@0.27.2)(jiti@2.6.1))
 
   examples:
     dependencies:
@@ -528,8 +529,8 @@ packages:
       '@modelcontextprotocol/sdk':
         optional: true
 
-  '@hono/node-server@2.1.1':
-    resolution: {integrity: sha512-ELuehkj5VCBdgEw9zs+ivkKwyzzUCSQuE96YmiPvn1ECBoZCczbFXJLeEGMTYjphP6gydh4pHMqEYPVMYUVgQg==}
+  '@hono/node-server@2.1.5':
+    resolution: {integrity: sha512-MgP/I06GdvsilDspMk/qmRzpk8LOUStP6jFAbSRi40W09DhoyUn+Mj7eyKICPqeYKybOjVFLVIAQzvu1bfIa7Q==}
     engines: {node: '>=20'}
     peerDependencies:
       hono: '>=4.13.11 <5'
@@ -1310,8 +1311,8 @@ packages:
       ajv:
         optional: true
 
-  ajv@6.12.6:
-    resolution: {integrity: sha512-j3fVLgvTo527anyYyJOGTYJbG+vnnQYvE0m5mmkc1TK+nxAppkCLMIL0aZ4dblVCNoGShhm+kzE4ZUykBoMg4g==}
+  ajv@6.15.0:
+    resolution: {integrity: sha512-fgFx7Hfoq60ytK2c7DhnF8jIvzYgOMxfugjLOSMHjLIPgenqa7S7oaagATUq99mV6IYvN2tRmC0wnTYX6iPbMw==}
 
   ajv@8.20.0:
     resolution: {integrity: sha512-Thbli+OlOj+iMPYFBVBfJ3OmCAnaSyNn4M1vz9T6Gka5Jt9ba/HIR56joy65tY6kx/FCF5VXNB819Y7/GUrBGA==}
@@ -2286,7 +2287,7 @@ packages:
       jiti: '>=1.21.0'
       postcss: '>=8.5.23'
       tsx: ^4.8.1
-      yaml: ^2.4.2
+      yaml: '>=2.8.3 <3'
     peerDependenciesMeta:
       jiti:
         optional: true
@@ -2649,7 +2650,7 @@ packages:
       sugarss: ^5.0.0
       terser: ^5.16.0
       tsx: ^4.8.1
-      yaml: ^2.4.2
+      yaml: '>=2.8.3 <3'
     peerDependenciesMeta:
       '@types/node':
         optional: true
@@ -2761,11 +2762,6 @@ packages:
   xml-naming@0.3.0:
     resolution: {integrity: sha512-ghig2TBE/H11aOVgmahA3MhimvkBr6JIYknH/Dhdk10nXwdbIqBJsbfMxpvFPG8bAw77gN29aQWvKpmVoPlvPQ==}
     engines: {node: '>=16.0.0'}
-
-  yaml@2.8.2:
-    resolution: {integrity: sha512-mplynKqc1C2hTVYxd0PU2xQAc22TI1vShAYGksCCfxbn/dFwnHTNi1bvYsBTkhdUNtGIf5xNOg938rrSSYvS9A==}
-    engines: {node: '>= 14.6'}
-    hasBin: true
 
   yocto-queue@0.1.0:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
@@ -3338,7 +3334,7 @@ snapshots:
 
   '@eslint/eslintrc@3.3.3':
     dependencies:
-      ajv: 6.12.6
+      ajv: 6.15.0
       debug: 4.4.3
       espree: 10.4.0
       globals: 14.0.0
@@ -3370,7 +3366,7 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@hono/node-server@2.1.1(hono@4.13.14)':
+  '@hono/node-server@2.1.5(hono@4.13.14)':
     dependencies:
       hono: 4.13.14
 
@@ -3522,7 +3518,7 @@ snapshots:
 
   '@modelcontextprotocol/sdk@1.32.1(@cfworker/json-schema@4.1.1)(zod@4.6.7)':
     dependencies:
-      '@hono/node-server': 2.1.1(hono@4.13.14)
+      '@hono/node-server': 2.1.5(hono@4.13.14)
       ajv: 8.20.0
       ajv-formats: 3.0.1(ajv@8.20.0)
       content-type: 1.0.5
@@ -4159,13 +4155,13 @@ snapshots:
       chai: 6.2.2
       tinyrainbow: 3.1.0
 
-  '@vitest/mocker@4.1.12(vite@8.3.4(@types/node@24.10.4)(esbuild@0.27.2)(jiti@2.6.1)(yaml@2.8.2))':
+  '@vitest/mocker@4.1.12(vite@8.3.4(@types/node@24.10.4)(esbuild@0.27.2)(jiti@2.6.1))':
     dependencies:
       '@vitest/spy': 4.1.12
       estree-walker: 3.0.3
       magic-string: 0.30.21
     optionalDependencies:
-      vite: 8.3.4(@types/node@24.10.4)(esbuild@0.27.2)(jiti@2.6.1)(yaml@2.8.2)
+      vite: 8.3.4(@types/node@24.10.4)(esbuild@0.27.2)(jiti@2.6.1)
 
   '@vitest/pretty-format@4.1.12':
     dependencies:
@@ -4223,7 +4219,7 @@ snapshots:
     optionalDependencies:
       ajv: 8.20.0
 
-  ajv@6.12.6:
+  ajv@6.15.0:
     dependencies:
       fast-deep-equal: 3.1.3
       fast-json-stable-stringify: 2.1.0
@@ -4478,7 +4474,7 @@ snapshots:
       '@humanwhocodes/module-importer': 1.0.1
       '@humanwhocodes/retry': 0.4.3
       '@types/estree': 1.0.8
-      ajv: 6.12.6
+      ajv: 6.15.0
       chalk: 4.1.2
       cross-spawn: 7.0.6
       debug: 4.4.3
@@ -5170,13 +5166,12 @@ snapshots:
       mlly: 1.8.0
       pathe: 2.0.3
 
-  postcss-load-config@6.0.1(jiti@2.6.1)(postcss@8.5.26)(yaml@2.8.2):
+  postcss-load-config@6.0.1(jiti@2.6.1)(postcss@8.5.26):
     dependencies:
       lilconfig: 3.1.3
     optionalDependencies:
       jiti: 2.6.1
       postcss: 8.5.26
-      yaml: 2.8.2
 
   postcss@8.5.26:
     dependencies:
@@ -5496,7 +5491,7 @@ snapshots:
 
   tslib@2.8.1: {}
 
-  tsup@8.5.1(jiti@2.6.1)(postcss@8.5.26)(typescript@5.9.3)(yaml@2.8.2):
+  tsup@8.5.1(jiti@2.6.1)(postcss@8.5.26)(typescript@5.9.3):
     dependencies:
       bundle-require: 5.1.0(esbuild@0.27.2)
       cac: 6.7.14
@@ -5507,7 +5502,7 @@ snapshots:
       fix-dts-default-cjs-exports: 1.0.1
       joycon: 3.1.1
       picocolors: 1.1.1
-      postcss-load-config: 6.0.1(jiti@2.6.1)(postcss@8.5.26)(yaml@2.8.2)
+      postcss-load-config: 6.0.1(jiti@2.6.1)(postcss@8.5.26)
       resolve-from: 5.0.0
       rollup: 4.62.4
       source-map: 0.7.6
@@ -5575,7 +5570,7 @@ snapshots:
 
   vary@1.1.2: {}
 
-  vite@8.3.4(@types/node@24.10.4)(esbuild@0.27.2)(jiti@2.6.1)(yaml@2.8.2):
+  vite@8.3.4(@types/node@24.10.4)(esbuild@0.27.2)(jiti@2.6.1):
     dependencies:
       lightningcss: 1.33.0
       picomatch: 4.0.5
@@ -5587,12 +5582,11 @@ snapshots:
       esbuild: 0.27.2
       fsevents: 2.3.3
       jiti: 2.6.1
-      yaml: 2.8.2
 
-  vitest@4.1.12(@opentelemetry/api@1.9.0)(@types/node@24.10.4)(vite@8.3.4(@types/node@24.10.4)(esbuild@0.27.2)(jiti@2.6.1)(yaml@2.8.2)):
+  vitest@4.1.12(@opentelemetry/api@1.9.0)(@types/node@24.10.4)(vite@8.3.4(@types/node@24.10.4)(esbuild@0.27.2)(jiti@2.6.1)):
     dependencies:
       '@vitest/expect': 4.1.12
-      '@vitest/mocker': 4.1.12(vite@8.3.4(@types/node@24.10.4)(esbuild@0.27.2)(jiti@2.6.1)(yaml@2.8.2))
+      '@vitest/mocker': 4.1.12(vite@8.3.4(@types/node@24.10.4)(esbuild@0.27.2)(jiti@2.6.1))
       '@vitest/pretty-format': 4.1.12
       '@vitest/runner': 4.1.12
       '@vitest/snapshot': 4.1.12
@@ -5609,7 +5603,7 @@ snapshots:
       tinyexec: 1.2.4
       tinyglobby: 0.2.17
       tinyrainbow: 3.1.0
-      vite: 8.3.4(@types/node@24.10.4)(esbuild@0.27.2)(jiti@2.6.1)(yaml@2.8.2)
+      vite: 8.3.4(@types/node@24.10.4)(esbuild@0.27.2)(jiti@2.6.1)
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@opentelemetry/api': 1.9.0
@@ -5647,9 +5641,6 @@ snapshots:
   ws@8.21.0: {}
 
   xml-naming@0.3.0: {}
-
-  yaml@2.8.2:
-    optional: true
 
   yocto-queue@0.1.0: {}
 
