@@ -102,7 +102,7 @@
     "pnpm": {
         "overrides": {
             "nanoid@5": "^5.1.16",
-            "@hono/node-server": ">=1.19.15",
+            "@hono/node-server": ">=2.1.3 <3",
             "@modelcontextprotocol/sdk": ">=1.31.0",
             "@protobufjs/utf8": ">=1.1.1",
             "@whiskeysockets/baileys": ">=7.0.0-rc12",
@@ -135,8 +135,8 @@
             "ws": ">=8.21.0",
             "langchain": ">=1.2.3 <1.3.0",
             "ajv": ">=8.18.0",
-            "@eslint/eslintrc>ajv": "^6.12.6",
-            "eslint>ajv": "^6.12.6",
+            "@eslint/eslintrc>ajv": "^6.14.0",
+            "eslint>ajv": "^6.14.0",
             "@simple-git/argv-parser": ">=2.0.1",
             "proxy-addr": ">=2.0.8",
             "source-map-js": ">=1.2.2",
@@ -148,6 +148,7 @@
             "music-metadata": ">=11.16.0 <12",
             "@humanfs/node": "^0.16.8",
             "zod@4": ">=4.6.7 <5",
+            "yaml@2": ">=2.8.3 <3",
             "vite": "8.3.4",
             "@mistralai/mistralai@1": "1.15.1",
             "@mistralai/mistralai>zod": "4.6.7"
