@@ -101,14 +101,56 @@ export const MessageAuthenticationResultsSchema = z.object({
     spf: authenticationVerdict('SPF'),
     dkim: authenticationVerdict('DKIM'),
     dmarc: authenticationVerdict('DMARC'),
-    spfDomain: z.string().optional().describe('Envelope MAIL FROM domain the SPF verdict is about; SPF is reported only when it is aligned with the From domain'),
+    spfDomain: z
+        .string()
+        .optional()
+        .describe('Envelope MAIL FROM domain the SPF verdict is about; SPF is reported only when it is aligned with the From domain'),
     dkimDomain: z
         .string()
         .optional()
-        .describe('Signing domain (d=) the DKIM verdict is about, as written; a DKIM pass proves only this domain, so compare it with the From domain before trusting the sender'),
+        .describe(
+            'Signing domain (d=) the DKIM verdict is about, as written; a DKIM pass proves only this domain, so compare it with the From domain before trusting the sender'
+        ),
     dmarcDomain: z.string().optional().describe('From domain the DMARC verdict is about'),
     arcSealer: z.string().optional().describe('Trusted forwarder whose sealed original verdicts are reported, when applicable'),
 })
+
+export const AgentArmorResultSchema = z.discriminatedUnion('status', [
+    z.object({
+        status: z.literal('pending').describe('The scan is still running'),
+        startedAt: isoDate('When scanning started'),
+        deadlineAt: isoDate('When the scan expires'),
+    }),
+    z.object({
+        status: z.literal('complete').describe('The scan finished with a verdict'),
+        verdict: z.string().describe('clear or review; only an explicit clear verdict is a clear result'),
+        reason: z.string().describe('Short API-provided explanation of the scan verdict'),
+        model: z.string().describe('Scanner version that produced this result'),
+        completedAt: isoDate('When scanning completed'),
+        manualOverride: z
+            .object({
+                overrideId: z.string().describe('Identifier of the recorded release action'),
+                actor: z
+                    .union([
+                        z.object({ kind: z.literal('console').describe('An organization admin released it in the console') }),
+                        z.object({
+                            kind: z.literal('api_key').describe('A permitted API credential released it'),
+                            apiKeyId: z.string().describe('Identifier of the credential used for release, never its secret'),
+                        }),
+                    ])
+                    .describe('Who released the held message'),
+                reason: z.string().describe('Explanation supplied by the person or credential releasing the message'),
+                originalVerdict: z.literal('review').describe('The scan finding before manual release; release does not clear it'),
+                releasedAt: isoDate('When a person or permitted key released the message'),
+            })
+            .optional()
+            .describe('Audit of an explicit release of a held message'),
+    }),
+    z.object({
+        status: z.literal('unavailable').describe('No usable scan verdict is available'),
+        unavailableReason: z.string().describe('Why scanning failed or could not complete; treat this as requiring review'),
+    }),
+])
 
 export const MessageItemSchema = z.object({
     inboxId: z.string().describe('Inbox the message belongs to'),
@@ -138,6 +180,9 @@ export const MessageItemSchema = z.object({
         ),
     authenticationResults: MessageAuthenticationResultsSchema.optional().describe(
         'AgentMail-recorded sender authentication verdicts; an absent check is unknown. The unauthenticated label, not this field, is the acceptance decision; do not reject mail on a DMARC fail alone'
+    ),
+    agentArmor: AgentArmorResultSchema.optional().describe(
+        'Agent Armor scan result. Absence, pending, unavailable and unknown verdicts are not a clear scan. Hold mode gates notifications; polling agents must still inspect the verdict and agent-armor-held label'
     ),
     // Raw RFC-822 `headers` deliberately excluded: they carry personal identifiers
     // (Received-chain IPs, Return-Path) a model never needs — flagged by OpenAI app
@@ -286,10 +331,7 @@ export const CalendarSchema = z.object({
 const AttendeeSchema = z.object({
     email: z.string().describe("Attendee's email address"),
     name: z.string().optional().describe('Name shown for the attendee'),
-    status: z
-        .enum(AgentMail.AttendeeStatus)
-        .optional()
-        .describe('Their response: needs_action until they answer, then accepted, declined, or tentative'),
+    status: z.enum(AgentMail.AttendeeStatus).optional().describe('Their response: needs_action until they answer, then accepted, declined, or tentative'),
     role: z.enum(AgentMail.AttendeeRole).optional().describe('Whether their presence is required or optional'),
     comment: z.string().optional().describe('Note the attendee sent with their response'),
     respondedAt: isoDate('When they last responded').optional(),
@@ -307,9 +349,7 @@ export const CalendarEventSchema = z.object({
     description: z.string().optional().describe('Details of the event; get_agenda leaves it out, so get the event for it'),
     location: z.string().optional().describe('Place or meeting link'),
     metadata: z.unknown().optional().describe('Your own data stored on the event; get_agenda leaves it out'),
-    status: z
-        .enum(AgentMail.CalendarEventStatus)
-        .describe('confirmed, tentative, or cancelled (still readable, but it no longer happens)'),
+    status: z.enum(AgentMail.CalendarEventStatus).describe('confirmed, tentative, or cancelled (still readable, but it no longer happens)'),
     allDay: z.boolean().describe('Whether it is an all-day event'),
     start: z.string().describe('Local start in timezone; for an all-day event, the first day'),
     end: z.string().describe('Local end in timezone; for an all-day event, the last day (inclusive)'),
@@ -353,16 +393,11 @@ export const CalendarEventSchema = z.object({
     originMessageId: z.string().optional().describe('For an email event, the message whose invitation last created or changed it'),
     createdAt: isoDate('When the event was created'),
     updatedAt: isoDate('When the event was last updated'),
-    etag: z
-        .string()
-        .optional()
-        .describe("The event's current version; pass it as ifMatch to make a later change conditional. Absent from get_agenda items"),
+    etag: z.string().optional().describe("The event's current version; pass it as ifMatch to make a later change conditional. Absent from get_agenda items"),
 })
 
 export const ListCalendarEventsResponseSchema = PaginationSchema.extend({
-    events: z
-        .array(CalendarEventSchema)
-        .describe('Events and dates of recurring events in the window, by start time, cancelled dates left out'),
+    events: z.array(CalendarEventSchema).describe('Events and dates of recurring events in the window, by start time, cancelled dates left out'),
 })
 
 export const CalendarEventMutationResponseSchema = z.object({
@@ -370,10 +405,7 @@ export const CalendarEventMutationResponseSchema = z.object({
 })
 
 export const DeleteCalendarEventResponseSchema = VoidResultSchema.extend({
-    deletionId: z
-        .string()
-        .optional()
-        .describe('Present when a whole event was deleted: it disappears at once and is removed in the background'),
+    deletionId: z.string().optional().describe('Present when a whole event was deleted: it disappears at once and is removed in the background'),
     event: CalendarEventSchema.optional().describe('Present when dates of a recurring event were cancelled: the cancelled date'),
 })
 
@@ -398,7 +430,9 @@ export const AgentVerifyResponseSchema = z.object({
 })
 
 export const LabsSchema = z.object({
-    enabled: z.boolean().describe('Whether the organization is in AgentMail Labs; false both when it never joined and when an organization admin left on purpose'),
+    enabled: z
+        .boolean()
+        .describe('Whether the organization is in AgentMail Labs; false both when it never joined and when an organization admin left on purpose'),
     enabledAt: z.iso.datetime().nullable().describe('When the organization joined Labs; null when it is not in Labs'),
     available: z.boolean().describe('Whether Labs is offered in this deployment (US production only, for now)'),
 })
@@ -413,9 +447,7 @@ export const AppSchema = z.object({
     slug: z
         .string()
         .optional()
-        .describe(
-            'Short name accepted in place of appId by get_app, list_accounts and connect_app. Present on catalog entries; store appId, the permanent ID'
-        ),
+        .describe('Short name accepted in place of appId by get_app, list_accounts and connect_app. Present on catalog entries; store appId, the permanent ID'),
     name: z.string().optional().describe('Display name of app'),
     updatedAt: isoDate(
         'Time at which the listing was last updated. Present only for curated catalog entries; absent means the app resolved as a bare identity'
@@ -423,10 +455,7 @@ export const AppSchema = z.object({
     description: z.string().optional().describe("The app's own description of what it offers"),
     // Plain strings, not the input enum: a category the API adds before the next SDK release must not
     // fail the output check.
-    categories: z
-        .array(z.string())
-        .optional()
-        .describe('Kinds of app, up to 3 (such as search, scraping or payments). Omitted when the app sets none'),
+    categories: z.array(z.string()).optional().describe('Kinds of app, up to 3 (such as search, scraping or payments). Omitted when the app sets none'),
     logoUrl: z.string().optional().describe("URL of the app's logo"),
     termsUrl: z.string().optional().describe("URL of the app's terms of service"),
     privacyUrl: z.string().optional().describe("URL of the app's privacy policy"),
@@ -499,10 +528,7 @@ export const ListEntrySchema = z.object({
     entryType: z.enum(['email', 'domain']).describe('Whether the entry is an email address or a domain'),
     reason: z.string().optional().describe('Why the entry was added'),
     inboxId: z.string().optional().describe('The inbox the entry is scoped to, when inbox-scoped'),
-    readOnly: z
-        .boolean()
-        .optional()
-        .describe('True for suppressions AgentMail added itself (bounce, complaint, unsubscribe); these cannot be deleted'),
+    readOnly: z.boolean().optional().describe('True for suppressions AgentMail added itself (bounce, complaint, unsubscribe); these cannot be deleted'),
     createdAt: isoDate('When the entry was added'),
 })
 
