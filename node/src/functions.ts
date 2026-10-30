@@ -2,7 +2,7 @@ import { AgentMailClient } from 'agentmail'
 import { z } from 'zod'
 
 import { detectFileType, extractPdfText, extractDocxText, type ToolCallOptions } from './util.js'
-import { MessageAuthenticationResultsSchema } from './output-schemas.js'
+import { AgentArmorResultSchema, MessageAuthenticationResultsSchema } from './output-schemas.js'
 import {
     ListItemsParams,
     GetInboxParams,
@@ -95,6 +95,30 @@ const AUTHENTICATION_RESULT_KEYS = Object.keys(MessageAuthenticationResultsSchem
 const snakeCase = (key: string) => key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`)
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value)
 
+// Older SDKs pass this public API field through in snake_case; newer ones deserialize it.
+// Select the public contract at every depth before validation, never scorer inputs or diagnostics.
+const armorField = (record: Record<string, unknown>, key: string) => {
+    const value = record[key] ?? record[snakeCase(key)]
+    return value instanceof Date ? value.toISOString() : value
+}
+function publicAgentArmor(value: unknown) {
+    if (!isRecord(value)) return { status: 'unavailable' as const, unavailableReason: 'contract_error' }
+    const pick = (record: Record<string, unknown>, keys: string[]) => Object.fromEntries(keys.map((key) => [key, armorField(record, key)]))
+    const result = pick(value, ['status', 'startedAt', 'deadlineAt', 'verdict', 'reason', 'model', 'completedAt', 'unavailableReason'])
+    const override = armorField(value, 'manualOverride')
+    if (isRecord(override)) {
+        const actor = armorField(override, 'actor')
+        result.manualOverride = {
+            ...pick(override, ['overrideId', 'reason', 'originalVerdict', 'releasedAt']),
+            actor: isRecord(actor) ? pick(actor, ['kind', 'apiKeyId']) : actor,
+        }
+    }
+    const parsed = AgentArmorResultSchema.safeParse(result)
+    // A malformed result must not break the entire mailbox list or silently look like an unscanned
+    // message. Keep it explicitly unavailable so a consumer cannot mistake it for a clear scan.
+    return parsed.success ? parsed.data : { status: 'unavailable' as const, unavailableReason: 'contract_error' }
+}
+
 // SDK 0.5.46 passes this public API field through in snake_case; an SDK built from the current
 // Fern definition, which already declares it, returns it in camelCase. Drop the snake_case branch
 // once the toolkit requires that SDK. Either way, keep only the string values of the keys
@@ -102,17 +126,27 @@ const isRecord = (value: unknown): value is Record<string, unknown> => typeof va
 // That covers this field only: the non-MCP adapters don't strip results to the output schema, so
 // they still return the message's other undeclared fields (headers, organization_id).
 function withMessageAuthentication<T extends object>(message: T) {
-    const { authentication_results: raw, authenticationResults: typed, ...rest } = message as T & {
+    const {
+        authentication_results: raw,
+        authenticationResults: typed,
+        agent_armor: armorRaw,
+        agentArmor: armorTyped,
+        ...rest
+    } = message as T & {
         authentication_results?: unknown
         authenticationResults?: unknown
+        agent_armor?: unknown
+        agentArmor?: unknown
     }
+    const armor = armorTyped ?? armorRaw
+    const publicMessage = armor === undefined ? rest : { ...rest, agentArmor: publicAgentArmor(armor) }
     const [source, keyOf] = isRecord(typed) ? [typed, (key: string) => key] : [raw, snakeCase]
-    if (!isRecord(source)) return rest
+    if (!isRecord(source)) return publicMessage
     const verdicts = AUTHENTICATION_RESULT_KEYS.flatMap((key) => {
         const value = source[keyOf(key)]
         return typeof value === 'string' ? [[key, value] as const] : []
     })
-    return { ...rest, authenticationResults: Object.fromEntries(verdicts) }
+    return { ...publicMessage, authenticationResults: Object.fromEntries(verdicts) }
 }
 
 // The SDK parses responses without validating them, so a page or thread missing its messages
