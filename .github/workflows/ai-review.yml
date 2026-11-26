@@ -1,0 +1,21 @@
+name: AI review
+
+# Asks the shared automated reviewer (agentmail-to/ai-review) for an approval when an engineer adds the
+# `ai-review` label. Adding the label is the engineer's statement that they reviewed the change and accept
+# responsibility for merging it on automated approval alone. The reviewer's workflow, script and prompt run
+# from that repository's `main`, so a PR here cannot change its own reviewer, and the PR's code is never
+# checked out or run.
+on:
+  pull_request_target:
+    types: [labeled, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  review:
+    uses: agentmail-to/ai-review/.github/workflows/review.yml@main
+    secrets:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      AI_REVIEWER_PRIVATE_KEY: ${{ secrets.AI_REVIEWER_PRIVATE_KEY }}
